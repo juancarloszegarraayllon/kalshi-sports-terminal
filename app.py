@@ -6,9 +6,63 @@ from kalshi_python_sync import Configuration, KalshiClient
 
 # --- Page Setup ---
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏀")
+
+# Custom CSS for the "Card" look
+st.markdown("""
+    <style>
+    .market-card {
+        background-color: white;
+        border-radius: 10px;
+        padding: 15px;
+        border: 1px solid #e6e9ef;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        min-height: 180px;
+    }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .badge-kalshi {
+        background-color: #f0fdf4;
+        color: #166534;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .mkts-count {
+        color: #94a3b8;
+        font-size: 11px;
+    }
+    .card-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 10px 0;
+        height: 45px;
+        overflow: hidden;
+    }
+    .card-footer {
+        display: flex;
+        gap: 15px;
+        margin-top: 15px;
+        font-size: 12px;
+        color: #64748b;
+    }
+    .footer-val {
+        font-weight: bold;
+        color: #1e293b;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("🏀 Kalshi Sports Terminal")
 
-# --- API Setup ---
+# --- API Setup (Retained from your code) ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
 
@@ -25,13 +79,10 @@ except Exception as e:
     st.error(f"Init Error: {e}")
     st.stop()
 
-# --- Sidebar Filters ---
+# --- Sidebar ---
 st.sidebar.header("🎯 Market Filters")
-min_prob = st.sidebar.slider("Min Probability (%)", 0, 100, 0)
 search_query = st.sidebar.text_input("Search", "")
-selected_date = st.sidebar.date_input("Select Date", datetime.utcnow().date())
 
-# --- Fetch Markets ---
 @st.cache_data(ttl=300)
 def fetch_markets():
     try:
@@ -44,62 +95,60 @@ def fetch_markets():
 df = fetch_markets()
 
 if not df.empty:
-    # --- Filter Sports Markets ---
+    # --- Filtering Logic ---
     sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
     is_sports = (
         df['ticker'].str.startswith(sport_prefixes, na=False) |
         df['event_ticker'].str.startswith(sport_prefixes, na=False) |
         df['title'].str.contains('vs|score|points|win', case=False, na=False)
     )
-    is_macro = df['title'].str.contains("inflation|cpi|rate|fed|gdp|election", case=False, na=False)
-    df_sports = df[is_sports & ~is_macro].copy()
+    df_sports = df[is_sports].copy()
+
+    if search_query:
+        df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
 
     if not df_sports.empty:
-        # --- Probability Column ---
-        if 'yes_ask_dollars' in df_sports.columns:
-            df_sports["Prob %"] = (pd.to_numeric(df_sports["yes_ask_dollars"]) * 100).fillna(0).astype(int)
-        elif 'yes_ask' in df_sports.columns:
-            df_sports["Prob %"] = pd.to_numeric(df_sports["yes_ask"]).fillna(0).astype(int)
+        # Group markets by event_ticker to create one card per game
+        # We aggregate to get the number of markets and total volume
+        grouped = df_sports.groupby('event_ticker').agg({
+            'title': 'first',
+            'ticker': 'count',  # This represents 'mkts' count
+            'volume': 'sum',
+            'liquidity': 'sum'
+        }).rename(columns={'ticker': 'mkts_count'}).reset_index()
 
-        # --- Close Time & Today ---
-        df_sports["close_time_dt"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True)
-        df_sports["Ends (UTC)"] = df_sports["close_time_dt"].dt.strftime('%m/%d %H:%M')
-        df_sports["Today"] = df_sports["close_time_dt"].dt.date == selected_date
+        # Render as a Grid
+        cols_per_row = 4
+        for i in range(0, len(grouped), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j in range(cols_per_row):
+                if i + j < len(grouped):
+                    row = grouped.iloc[i + j]
+                    
+                    # Clean up titles (remove specific bet details to show the game name)
+                    display_title = row['title'].split('?')[0].replace('Will the ', '').strip()
 
-        # --- Sidebar Filters ---
-        if search_query:
-            df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
-        df_sports = df_sports[df_sports["Prob %"] >= min_prob]
-
-        if df_sports.empty:
-            st.warning("No sports matches found for the selected filters.")
-        else:
-            st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
-
-            # --- Display Columns ---
-            display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
-            df_display = df_sports[display_cols].copy()
-
-            # --- Highlight Imminent Matches ---
-            now = datetime.utcnow().replace(tzinfo=timezone.utc)
-            def highlight_row(row):
-                idx = row.name
-                delta = df_sports.loc[idx, "close_time_dt"] - now
-                if df_sports.loc[idx, "Today"]:
-                    if delta <= timedelta(hours=2):
-                        return ['background-color: #a0ffa0']*len(row)  # Green: imminent today
-                    elif delta <= timedelta(hours=6):
-                        return ['background-color: #fff8a0']*len(row)  # Yellow: upcoming today
-                return ['']*len(row)
-
-            # --- Sort by close time ---
-            df_display = df_display.loc[df_sports["close_time_dt"].sort_values().index]
-
-            # --- Display in Streamlit ---
-            st.dataframe(
-                df_display.style.apply(highlight_row, axis=1),
-                use_container_width=True,
-                hide_index=True
-            )
+                    with cols[j]:
+                        st.markdown(f"""
+                            <div class="market-card">
+                                <div class="card-header">
+                                    <div>
+                                        <span class="badge-kalshi">KALSHI</span>
+                                        <span style="color:#94a3b8; font-size:11px; margin-left:5px;">Sports</span>
+                                    </div>
+                                    <div class="mkts-count">{row['mkts_count']} mkts</div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="background:#f1f5f9; padding:8px; border-radius:8px;">🏀</div>
+                                    <div class="card-title">{display_title}</div>
+                                </div>
+                                <div class="card-footer">
+                                    <div>Vol <span class="footer-val">${row['volume']/1000:,.1f}K</span></div>
+                                    <div>Liq <span class="footer-val">${row['liquidity']/1000:,.1f}K</span></div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+    else:
+        st.warning("No sports markets found.")
 else:
     st.info("No active markets found.")
