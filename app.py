@@ -27,48 +27,62 @@ except Exception as e:
     st.error(f"Error initializing Kalshi client: {e}")
     st.stop()
 
-# --- Fetch markets safely with rate limit handling ---
-@st.cache_data(ttl=300)  # cache for 5 minutes
-def fetch_sports_markets():
+# --- Fetch markets for today safely ---
+@st.cache_data(ttl=300)
+def fetch_sports_markets_today():
     all_markets = []
     cursor = None
     max_retries = 3
+
+    # Only fetch markets starting today (UTC)
+    today = datetime.utcnow().date()
+    tomorrow = today + timedelta(days=1)
 
     while True:
         retries = 0
         while retries < max_retries:
             try:
-                response = client.get_markets(limit=500, cursor=cursor, status="open")
+                response = client.get_markets(
+                    limit=500,
+                    cursor=cursor,
+                    status="open",
+                    start_time_min=today.isoformat(),
+                    start_time_max=tomorrow.isoformat()
+                )
                 break
             except ApiException as e:
                 if e.status == 429:
                     retries += 1
-                    wait_time = 2 * retries  # exponential backoff
+                    wait_time = 2 * retries
                     st.warning(f"Rate limit hit. Waiting {wait_time}s before retrying...")
                     time.sleep(wait_time)
                 else:
                     st.error(f"API Error: {e}")
-                    return []
+                    return pd.DataFrame()
 
         markets_page = response.to_dict().get("markets", [])
+        if not markets_page:
+            break  # exit if no markets returned
         all_markets.extend(markets_page)
+
         cursor = response.to_dict().get("cursor")
         if not cursor:
             break
 
-        time.sleep(0.5)  # small delay to avoid 429
+        time.sleep(0.5)  # small delay to avoid rate limit
 
     # Filter sports markets
-    sports_keywords = ["NBA", "NFL", "MLB", "Soccer", "Football", "Basketball", "Tennis"]
     df = pd.DataFrame(all_markets)
     if df.empty:
         return pd.DataFrame()
+
+    sports_keywords = ["NBA", "NFL", "MLB", "Soccer", "Football", "Basketball", "Tennis"]
     df_sports = df[df["title"].str.contains("|".join(sports_keywords), case=False, na=False)]
     return df_sports
 
 # --- Load and display ---
 st.write("🔄 Fetching today's sports markets from Kalshi...")
-df_sports = fetch_sports_markets()
+df_sports = fetch_sports_markets_today()
 
 if df_sports.empty:
     st.info("No sports markets found today.")
@@ -82,5 +96,5 @@ else:
     columns_to_show = ["title", "start_time", "YES %", "NO %"]
     columns_to_show = [c for c in columns_to_show if c in df_sports.columns]
 
-    st.write(f"### Total sports markets: {len(df_sports)}")
+    st.write(f"### Total sports markets today: {len(df_sports)}")
     st.dataframe(df_sports[columns_to_show].sort_values("start_time"), use_container_width=True)
