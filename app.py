@@ -1,23 +1,24 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from kalshi_python_sync import Configuration, KalshiClient
 from kalshi_python_sync.rest import ApiException
 
-st.title("🏀 Kalshi Sports Markets")
+st.set_page_config(page_title="Kalshi Sports Markets", layout="wide")
+st.title("🏀 Kalshi Sports Markets – Today")
 
-# --- Load secrets ---
+# --- Load API secrets from Streamlit ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
 
-# --- Write private key to temporary file ---
+# --- Write private key to temporary file for SDK ---
 with tempfile.NamedTemporaryFile(mode="w+", delete=False) as f:
     f.write(private_key_str)
     private_key_path = f.name
 
 st.write(f"🔑 API Key loaded: {bool(api_key_id)}")
-st.write(f"🔑 Private Key path loaded: {bool(private_key_path)}")
+st.write(f"🔑 Private Key path ready: {bool(private_key_path)}")
 
 # --- Initialize Kalshi client ---
 try:
@@ -30,20 +31,28 @@ except Exception as e:
     st.error(f"Error initializing Kalshi client: {e}")
     st.stop()
 
-# --- Fetch sports markets for today ---
+# --- Function to fetch today's sports markets ---
+@st.cache_data(ttl=60)
 def fetch_sports_markets():
-    today_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+    today_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow_utc = today_utc + timedelta(days=1)
+
+    # Convert to ISO8601 strings for Kalshi API
+    today_iso = today_utc.isoformat() + "Z"
+    tomorrow_iso = tomorrow_utc.isoformat() + "Z"
 
     try:
         response = client.get_markets(
             limit=100,
             status="open",
-            start_time_min=today_utc,
-            start_time_max=tomorrow_utc
+            start_time_min=today_iso,
+            start_time_max=tomorrow_iso
         )
     except ApiException as e:
         st.error(f"API Error: {e}")
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Unexpected error: {e}")
         return pd.DataFrame()
 
     markets = response.to_dict().get("markets", [])
@@ -51,11 +60,12 @@ def fetch_sports_markets():
         return pd.DataFrame()
 
     df = pd.DataFrame(markets)
-    # Filter sports markets
+
+    # Filter only sports markets
     sports_keywords = ["NBA", "NFL", "MLB", "Soccer", "Football", "Basketball", "Tennis"]
     df_sports = df[df["title"].str.contains("|".join(sports_keywords), case=False, na=False)]
 
-    # Add yes/no percentages
+    # Add YES/NO % if available
     if "yes_ask" in df_sports.columns:
         df_sports["YES %"] = df_sports["yes_ask"] / 100
     if "no_ask" in df_sports.columns:
@@ -63,6 +73,7 @@ def fetch_sports_markets():
 
     return df_sports
 
+# --- Display markets ---
 st.write("🔄 Fetching today's sports markets from Kalshi...")
 df_sports = fetch_sports_markets()
 
