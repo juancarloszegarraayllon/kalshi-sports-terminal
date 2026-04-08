@@ -9,6 +9,7 @@ st.set_page_config(page_title="Kalshi Sports Markets", layout="wide")
 st.title("🏀 Kalshi Sports Markets – Today")
 
 # --- Load API secrets from Streamlit ---
+# Ensure these match the keys in your Streamlit Secrets dashboard
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
 
@@ -34,19 +35,22 @@ except Exception as e:
 # --- Function to fetch today's sports markets ---
 @st.cache_data(ttl=60)
 def fetch_sports_markets():
+    # Calculate time range for today
     today_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow_utc = today_utc + timedelta(days=1)
 
-    # Convert to ISO8601 strings for Kalshi API
-    today_iso = today_utc.isoformat() + "Z"
-    tomorrow_iso = tomorrow_utc.isoformat() + "Z"
+    # The SDK requires Unix timestamps (integers) for the 'ts' parameters
+    today_ts = int(today_utc.timestamp())
+    tomorrow_ts = int(tomorrow_utc.timestamp())
 
     try:
+        # Updated parameters to match the latest SDK version
+        # start_time_min/max replaced with min_close_ts/max_close_ts
         response = client.get_markets(
             limit=100,
             status="open",
-            start_time_min=today_iso,
-            start_time_max=tomorrow_iso
+            min_close_ts=today_ts,
+            max_close_ts=tomorrow_ts
         )
     except ApiException as e:
         st.error(f"API Error: {e}")
@@ -80,4 +84,5 @@ df_sports = fetch_sports_markets()
 if df_sports.empty:
     st.info("No sports markets found today.")
 else:
+    # Displaying essential columns
     st.dataframe(df_sports[["title", "start_time", "YES %", "NO %"]])
