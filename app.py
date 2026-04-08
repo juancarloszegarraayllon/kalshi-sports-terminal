@@ -1,109 +1,75 @@
-import requests
 import streamlit as st
 import pandas as pd
+from time import sleep
+from kalshi_python_sync import Configuration, KalshiClient
+from kalshi_python_sync.rest import ApiException
 
 st.set_page_config(page_title="Kalshi Sports Markets", layout="wide")
-st.title("🏟️ Kalshi - Open Sports Markets")
+st.title("🏀 Kalshi Authenticated Sports Markets")
 
-# -----------------------------
-# Kalshi API endpoint
-# -----------------------------
-BASE_URL = "https://api.elections.kalshi.com/trade-api/v2/markets"
+# Load secrets
+api_key_id = st.secrets["KALSHI_API_KEY_ID"]
+private_key_path = st.secrets["KALSHI_PRIVATE_KEY_PATH"]
 
-# -----------------------------
-# Fetch Data (cached)
-# -----------------------------
+# Load private key
+try:
+    with open(private_key_path, "r") as f:
+        private_key_pem = f.read()
+except Exception as e:
+    st.error(f"Error loading private key: {e}")
+    st.stop()
+
+# Configure Kalshi client
+config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
+config.api_key_id = api_key_id
+config.private_key_pem = private_key_pem
+client = KalshiClient(config)
+
+# Fetch markets
 @st.cache_data(ttl=60)
-def get_markets():
-    params = {
-        "status": "open",
-        "limit": 1000
-    }
-    headers = {
-        "accept": "application/json"
-    }
-    try:
-        response = requests.get(BASE_URL, params=params, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        st.error(f"Error fetching data: {e}")
-        return None
+def fetch_all_markets(status="open"):
+    all_markets = []
+    cursor = None
 
-# -----------------------------
-# Filter Sports Markets
-# -----------------------------
-def filter_sports_markets(data):
-    if not data or "markets" not in data:
-        return []
+    while True:
+        try:
+            response = client.get_markets(limit=500, cursor=cursor, status=status)
+        except ApiException as e:
+            st.error(f"API Error: {e}")
+            break
 
-    results = []
+        markets_page = response.to_dict().get("markets", [])
+        all_markets.extend(markets_page)
 
-    sports_keywords = [
-        " vs ", " v ",
-        "nba", "nfl", "mlb", "nhl",
-        "soccer", "football", "tennis",
-        "atp", "wta", "match", "game"
-    ]
+        cursor = response.to_dict().get("cursor")
+        if not cursor:
+            break
 
-    for m in data["markets"]:
-        title = m.get("title", "")
-        subtitle = m.get("subtitle", "")
-        category = m.get("category", "")
+        sleep(0.1)  # avoid hitting rate limits
 
-        text = f"{title} {subtitle}".lower()
+    return all_markets
 
-        is_sports = any(k in text for k in sports_keywords)
-        if category and "sport" in category.lower():
-            is_sports = True
+# Load and filter markets
+st.write("🔄 Fetching open markets from Kalshi...")
+markets = fetch_all_markets()
 
-        if is_sports:
-            results.append({
-                "Game": title,
-                "Ticker": m.get("ticker"),
-                "YES Price": m.get("yes_ask"),
-                "NO Price": m.get("no_ask"),
-                "Volume": m.get("volume"),
-                "Status": m.get("status")
-            })
-
-    return results
-
-# -----------------------------
-# Prepare DataFrame
-# -----------------------------
-def prepare_table(markets):
-    if not markets:
-        return pd.DataFrame()
-
+if not markets:
+    st.warning("No markets returned by authenticated API.")
+else:
     df = pd.DataFrame(markets)
 
-    # Convert YES/NO to probabilities (0–1)
-    if "YES Price" in df.columns:
-        df["YES %"] = df["YES Price"] / 100
-    if "NO Price" in df.columns:
-        df["NO %"] = df["NO Price"] / 100
+    # Only sports markets (if title contains common sports keywords)
+    sports_keywords = ["NBA", "NFL", "MLB", "Soccer", "Football", "Basketball", "Tennis"]
+    df_sports = df[df["title"].str.contains("|".join(sports_keywords), case=False, na=False)]
 
-    # Sort by Volume descending
-    if "Volume" in df.columns:
-        df = df.sort_values(by="Volume", ascending=False)
-
-    return df
-
-# -----------------------------
-# MAIN
-# -----------------------------
-data = get_markets()
-
-if data:
-    sports_markets = filter_sports_markets(data)
-    df = prepare_table(sports_markets)
-
-    st.write(f"### Total sports markets found: {len(df)}")
-
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
+    if df_sports.empty:
+        st.info("No sports markets found today.")
     else:
-        st.warning("No sports markets found.")
-else:
-    st.error("Failed to load data from Kalshi.")
+        # Convert prices to probabilities
+        if "yes_ask" in df_sports.columns:
+            df_sports["YES %"] = df_sports["yes_ask"] / 100
+        if "no_ask" in df_sports.columns:
+            df_sports["NO %"] = df_sports["no_ask"] / 100
+
+        st.write(f"### Total sports markets: {len(df_sports)}")
+        st.dataframe(df_sports[["title", "YES %", "NO %"]], use_container_width=True)
