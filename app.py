@@ -9,7 +9,7 @@ from kalshi_python_sync.rest import ApiException
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏀")
 st.title("🏀 Kalshi Sports Terminal")
 
-# --- Load Secrets & API Setup ---
+# --- API Setup ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
 
@@ -28,29 +28,13 @@ except Exception as e:
 
 # --- Sidebar Filters ---
 st.sidebar.header("🎯 Market Filters")
-
-# 1. League Filter
-leagues = {
-    "NBA": "NBA",
-    "MLB": "MLB",
-    "NHL": "NHL",
-    "NFL": "NFL",
-    "Soccer": "SOC",
-    "Tennis": "TEN"
-}
-selected_leagues = st.sidebar.multiselect("Select Leagues", options=list(leagues.keys()), default=list(leagues.keys()))
-selected_prefixes = [leagues[l] for l in selected_leagues]
-
-# 2. Probability Filter
-min_prob = st.sidebar.slider("Minimum 'YES' Probability (%)", 0, 100, 0)
-
-# 3. Search Bar
-search_query = st.sidebar.text_input("Search Teams (e.g. Lakers)", "")
+min_prob = st.sidebar.slider("Min Probability (%)", 0, 100, 0)
+search_query = st.sidebar.text_input("Search Teams", "")
 
 @st.cache_data(ttl=300)
 def fetch_markets():
     now = int(datetime.utcnow().timestamp())
-    future = now + (7 * 24 * 60 * 60) 
+    future = now + (3 * 24 * 60 * 60) # 3 days is plenty for daily sports
     try:
         response = client.get_markets(limit=1000, status="open", min_close_ts=now, max_close_ts=future)
         return pd.DataFrame(response.to_dict().get("markets", []))
@@ -61,46 +45,47 @@ def fetch_markets():
 df = fetch_markets()
 
 if not df.empty:
-    # --- Filter Logic ---
-    # A. Ticker/League Filter
-    is_league = df['ticker'].str.startswith(tuple(selected_prefixes), na=False) | \
-                df['event_ticker'].str.startswith(tuple(selected_prefixes), na=False)
+    # --- 2026 Ticker Logic ---
+    # Most sports now use prefixes starting with KX (e.g., KXNBA, KXMLB)
+    sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
     
-    # B. Text Search Filter
-    is_search = df['title'].str.contains(search_query, case=False, na=False) if search_query else True
+    # 1. Broad Sports Filter
+    is_sports = (
+        df['ticker'].str.startswith(sport_prefixes, na=False) |
+        df['event_ticker'].str.startswith(sport_prefixes, na=False) |
+        df['title'].str.contains('vs|score|points|win', case=False, na=False)
+    )
     
-    # C. Exclusion Filter (Removes Inflation/Economics from Sports tab)
-    not_sports = df['title'].str.contains("inflation|cpi|rate|fed|biden|trump", case=False, na=False)
+    # 2. Hard Exclusion for Macro/Economics (like Argentina Inflation)
+    is_macro = df['title'].str.contains("inflation|cpi|rate|fed|gdp|election", case=False, na=False)
+    
+    df_sports = df[is_sports & ~is_macro].copy()
 
-    df_sports = df[is_league & is_search & ~not_sports].copy()
-    
-    # --- Formatting & Probability Filter ---
+    # --- Data Processing ---
     if not df_sports.empty:
-        # Use 2026 dollar fields or standard yes_ask
-        col = "yes_ask_dollars" if "yes_ask_dollars" in df_sports.columns else "yes_ask"
+        # Use newer dollar-denominated fields if available, otherwise cents
+        if 'yes_ask_dollars' in df_sports.columns:
+            df_sports["Prob %"] = (pd.to_numeric(df_sports["yes_ask_dollars"]) * 100).fillna(0).astype(int)
+        elif 'yes_ask' in df_sports.columns:
+            df_sports["Prob %"] = pd.to_numeric(df_sports["yes_ask"]).fillna(0).astype(int)
         
-        # Calculate numeric probability for filtering
-        df_sports["prob_val"] = pd.to_numeric(df_sports[col], errors='coerce')
-        # On Kalshi, yes_ask is usually 1-99 (cents) or 0.01-0.99 (dollars)
-        if col == "yes_ask":
-            df_sports["Prob %"] = df_sports["prob_val"]
-        else:
-            df_sports["Prob %"] = (df_sports["prob_val"] * 100).fillna(0).astype(int)
-        
-        # Apply the Sidebar Probability Slider
+        # Apply Sidebar Filters
+        if search_query:
+            df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
         df_sports = df_sports[df_sports["Prob %"] >= min_prob]
-        
-        # Final formatting
-        df_sports["Ends (UTC)"] = pd.to_datetime(df_sports["close_time"]).dt.strftime('%m/%d %H:%M')
-        df_sports["Price"] = df_sports["Prob %"].apply(lambda x: f"{x}%")
 
-    # --- UI ---
+        # Final Formatting
+        df_sports["Ends (UTC)"] = pd.to_datetime(df_sports["close_time"]).dt.strftime('%m/%d %H:%M')
+        df_sports["Price"] = df_sports["Prob %"].astype(str) + "%"
+
+    # --- Display ---
     if df_sports.empty:
-        st.warning("No sports matches found with the current filters.")
+        st.warning("No sports matches found. Ensure your filters aren't too restrictive.")
     else:
-        st.write(f"Showing **{len(df_sports)}** active markets")
-        cols = ["title", "Price", "Ends (UTC)", "ticker"]
-        st.dataframe(df_sports[cols].sort_values("Prob %", ascending=False), use_container_width=True, hide_index=True)
+        st.write(f"Showing **{len(df_sports)}** live sports markets.")
+        # Sorting by title makes it easier to find specific games
+        display_cols = ["title", "Price", "Ends (UTC)", "ticker"]
+        st.dataframe(df_sports[display_cols].sort_values("title"), use_container_width=True, hide_index=True)
 
 else:
     st.info("No active markets found.")
