@@ -9,15 +9,10 @@ st.title("🏀 Kalshi Authenticated Sports Markets")
 
 # Load secrets
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
-private_key_path = st.secrets["KALSHI_PRIVATE_KEY_PATH"]
+private_key_pem = st.secrets["KALSHI_PRIVATE_KEY_PEM"]
 
-# Load private key
-try:
-    with open(private_key_path, "r") as f:
-        private_key_pem = f.read()
-except Exception as e:
-    st.error(f"Error loading private key: {e}")
-    st.stop()
+st.write("🔑 API Key loaded:", bool(api_key_id))
+st.write("🔑 Private Key loaded:", bool(private_key_pem))
 
 # Configure Kalshi client
 config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
