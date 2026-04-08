@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from kalshi_python import Configuration, KalshiClient
+from kalshi_python_sync import Configuration, KalshiClient
 import plotly.express as px
 
 # --- Dashboard Config ---
