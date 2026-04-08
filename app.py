@@ -28,18 +28,19 @@ except Exception as e:
 
 @st.cache_data(ttl=300)
 def fetch_all_markets():
-    # Use a wider window (7 days) to see upcoming games
     now = int(datetime.utcnow().timestamp())
-    future = now + (7 * 24 * 60 * 60)
+    # Looking 2 weeks ahead to ensure we catch all sports seasons
+    future = now + (14 * 24 * 60 * 60)
 
     try:
         response = client.get_markets(
-            limit=200, # Increased limit to ensure we see sports
+            limit=500, # Increased limit to find more sports
             status="open",
             min_close_ts=now,
             max_close_ts=future
         )
-        return pd.DataFrame(response.to_dict().get("markets", []))
+        data = response.to_dict().get("markets", [])
+        return pd.DataFrame(data)
     except Exception as e:
         st.error(f"Fetch Error: {e}")
         return pd.DataFrame()
@@ -47,14 +48,13 @@ def fetch_all_markets():
 df = fetch_all_markets()
 
 if not df.empty:
-    # 1. Expanded Keywords
+    # 1. Broadened Keywords for April Sports (NBA Playoffs/MLB start)
     sports_list = [
         "NBA", "NFL", "MLB", "NHL", "Soccer", "Tennis", "UFC", "Golf", 
-        "Lakers", "Warriors", "Dodgers", "Yankees", "Inter Miami"
+        "Lakers", "Warriors", "Yankees", "Mets", "Inter Miami", "Champions League"
     ]
     
-    # 2. Advanced Filtering
-    # Check category column OR title for any sports names
+    # 2. Filtering Logic
     is_sports = df["title"].str.contains("|".join(sports_list), case=False, na=False)
     if "category" in df.columns:
         is_sports = is_sports | (df["category"].str.contains("Sports", case=False, na=False))
@@ -62,21 +62,37 @@ if not df.empty:
     df_sports = df[is_sports].copy()
     df_other = df[~is_sports].copy()
 
-    # --- UI Layout ---
+    # 3. Safe Column Processing (Prevents the KeyError)
+    for target_df in [df_sports, df_other]:
+        if not target_df.empty:
+            # Use 'yes_ask' or 'last_price' for probability
+            price_col = "yes_ask" if "yes_ask" in target_df.columns else "last_price"
+            if price_col in target_df.columns:
+                target_df["Prob %"] = target_df[price_col].apply(lambda x: f"{int(x)}%" if pd.notnull(x) else "N/A")
+            else:
+                target_df["Prob %"] = "N/A"
+            
+            # Ensure close_time is readable
+            if "close_time" in target_df.columns:
+                target_df["Ends"] = pd.to_datetime(target_df["close_time"]).dt.strftime('%b %d, %H:%M')
+            else:
+                target_df["Ends"] = "Unknown"
+
+    # --- UI Tabs ---
     tab1, tab2 = st.tabs(["🏆 Sports Markets", "📈 All Other Markets"])
 
     with tab1:
         if df_sports.empty:
-            st.warning("No specific sports matches found. Showing 'Other' markets in the second tab.")
+            st.warning("No sports matches matched your current filters. Check 'All Other Markets'.")
         else:
-            # Clean up percentages for display
-            if "yes_ask" in df_sports.columns:
-                df_sports["Prob %"] = (df_sports["yes_ask"] / 1).astype(int).astype(str) + "%"
-            st.dataframe(df_sports[["title", "Prob %", "close_time"]], use_container_width=True)
+            # Only display columns we know exist now
+            st.dataframe(df_sports[["title", "Prob %", "Ends"]], use_container_width=True, hide_index=True)
 
     with tab2:
-        st.write("These are non-sports markets (like Argentina Inflation) currently open:")
-        st.dataframe(df_other[["title", "close_time"]], use_container_width=True)
+        if df_other.empty:
+            st.info("No non-sports markets found.")
+        else:
+            st.dataframe(df_other[["title", "Prob %", "Ends"]], use_container_width=True, hide_index=True)
 
 else:
-    st.info("No markets found. Verify your API credentials.")
+    st.info("No markets found in the given timeframe.")
