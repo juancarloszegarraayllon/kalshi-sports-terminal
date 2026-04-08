@@ -27,16 +27,16 @@ except Exception as e:
     st.error(f"Error initializing Kalshi client: {e}")
     st.stop()
 
-# --- Fetch markets for today safely ---
+# --- Fetch today's sports markets safely ---
 @st.cache_data(ttl=300)
 def fetch_sports_markets_today():
     all_markets = []
     cursor = None
     max_retries = 3
 
-    # Only fetch markets starting today (UTC)
-    today = datetime.utcnow().date()
-    tomorrow = today + timedelta(days=1)
+    # UTC datetime for today
+    today_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_utc = today_utc + timedelta(days=1)
 
     while True:
         retries = 0
@@ -46,8 +46,8 @@ def fetch_sports_markets_today():
                     limit=500,
                     cursor=cursor,
                     status="open",
-                    start_time_min=today.isoformat(),
-                    start_time_max=tomorrow.isoformat()
+                    start_time_min=today_utc,
+                    start_time_max=tomorrow_utc
                 )
                 break
             except ApiException as e:
