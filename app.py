@@ -17,7 +17,7 @@ st.write("🔑 Private Key loaded:", bool(private_key_pem))
 # Configure Kalshi client
 config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
 config.api_key_id = api_key_id
-config.private_key_pem = private_key_pem
+config.private_key_pem = private_key_pem.encode("utf-8")  # <-- encode to bytes
 client = KalshiClient(config)
 
 # Fetch markets
