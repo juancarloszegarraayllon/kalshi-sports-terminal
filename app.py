@@ -28,7 +28,7 @@ except Exception as e:
 # --- Sidebar Filters ---
 st.sidebar.header("🎯 Market Filters")
 min_prob = st.sidebar.slider("Min Probability (%)", 0, 100, 0)
-search_query = st.sidebar.text_input("Search Teams / Event", "")
+search_query = st.sidebar.text_input("Search", "")
 selected_date = st.sidebar.date_input("Select Date", datetime.utcnow().date())
 
 # --- Fetch Markets ---
@@ -44,7 +44,7 @@ def fetch_markets():
 df = fetch_markets()
 
 if not df.empty:
-    # --- Filter Sports ---
+    # --- Filter Sports Markets ---
     sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
     is_sports = (
         df['ticker'].str.startswith(sport_prefixes, na=False) |
@@ -61,15 +61,10 @@ if not df.empty:
         elif 'yes_ask' in df_sports.columns:
             df_sports["Prob %"] = pd.to_numeric(df_sports["yes_ask"]).fillna(0).astype(int)
 
-        # --- Event/Close Time ---
+        # --- Close Time & Today ---
         df_sports["close_time_dt"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True)
         df_sports["Ends (UTC)"] = df_sports["close_time_dt"].dt.strftime('%m/%d %H:%M')
         df_sports["Today"] = df_sports["close_time_dt"].dt.date == selected_date
-
-        # --- Clean Titles for Display ---
-        # Split title into Event and Outcome for better readability
-        df_sports['Outcome'] = df_sports['title'].str.split(',').str[-1].str.strip()  # last part
-        df_sports['Event'] = df_sports['title'].str.split(',').str[0].str.strip()     # first part
 
         # --- Sidebar Filters ---
         if search_query:
@@ -82,7 +77,7 @@ if not df.empty:
             st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
 
             # --- Display Columns ---
-            display_cols = ["Event", "Outcome", "Prob %", "Ends (UTC)", "ticker", "Today"]
+            display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
             df_display = df_sports[display_cols].copy()
 
             # --- Highlight Imminent Matches ---
