@@ -4,9 +4,9 @@ from kalshi_python_sync import Configuration, KalshiClient
 import plotly.express as px
 
 # --- Dashboard Config ---
-st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="📈")
+st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏆")
 
-st.title("🏆 Kalshi Daily Sports Extraction")
+st.title("🏆 Kalshi Live Sports Extraction")
 
 # --- API Configuration ---
 KEY_ID = "8c40b181-5fda-4515-a554-8f73c224b1f7"
@@ -40,53 +40,53 @@ m6V/krn3WsZeW2JHZq7X+R4CyDNCVoCVf6QXLwnbyiGyW78vBz8iKeY=
 
 # --- Data Extraction Logic ---
 @st.cache_data(ttl=60)
-def fetch_kalshi_data(search_query):
+def fetch_kalshi_data(search_term):
     try:
         config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
         config.api_key_id = KEY_ID
         config.private_key_pem = PRIVATE_KEY
         client = KalshiClient(config)
         
-        response = client.get_markets(limit=200, status="open")
+        # Increase limit to scan more markets
+        response = client.get_markets(limit=500, status="open")
         markets = response.markets if hasattr(response, 'markets') else []
         
         all_data = []
         for m in markets:
-            if search_query.upper() in m.title.upper() or search_query.upper() in m.ticker.upper():
+            # Flexible search across title and ticker
+            if search_term.upper() in m.title.upper() or search_term.upper() in m.ticker.upper():
                 all_data.append({
                     "Event": m.title,
-                    "Yes Price ($)": m.yes_ask / 100 if hasattr(m, 'yes_ask') else 0,
-                    "No Price ($)": m.no_ask / 100 if hasattr(m, 'no_ask') else 0,
-                    "Volume": m.volume if hasattr(m, 'volume') else 0,
-                    "Ticker": m.ticker,
-                    "Close Time": m.close_time
+                    "Yes Price ($)": getattr(m, 'yes_ask', 0) / 100,
+                    "No Price ($)": getattr(m, 'no_ask', 0) / 100,
+                    "Volume": getattr(m, 'volume', 0),
+                    "Ticker": m.ticker
                 })
         return pd.DataFrame(all_data)
     except Exception as e:
         return str(e)
 
 # --- UI Layout ---
-st.sidebar.header("Search Markets")
-query = st.sidebar.text_input("Enter Sport (e.g., NBA, MLB, NHL)", value="NBA")
+st.sidebar.header("Market Discovery")
+query = st.sidebar.text_input("Enter Sport (NBA, MLB, NFL)", value="NBA")
 
-if st.sidebar.button("Refresh Feed"):
+if st.sidebar.button("Refresh Data"):
     st.cache_data.clear()
 
-data_result = fetch_kalshi_data(query)
+df = fetch_kalshi_data(query)
 
-if isinstance(data_result, pd.DataFrame):
-    if not data_result.empty:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Active Markets", len(data_result))
-        c2.metric("Top Vol Market", data_result.iloc[data_result['Volume'].idxmax()]['Ticker'])
-        c3.metric("Avg. Price", f"${data_result['Yes Price ($)'].mean():.2f}")
+if isinstance(df, pd.DataFrame):
+    if not df.empty:
+        c1, c2 = st.columns(2)
+        c1.metric("Markets Found", len(df))
+        c2.metric("Highest Volume Ticker", df.iloc[df['Volume'].idxmax()]['Ticker'])
 
-        st.subheader(f"Live {query} Market Odds")
-        st.dataframe(data_result.sort_values(by="Volume", ascending=False), use_container_width=True)
+        st.subheader(f"Live {query} Odds")
+        st.dataframe(df.sort_values(by="Volume", ascending=False), use_container_width=True)
 
-        fig = px.bar(data_result, x='Ticker', y='Yes Price ($)', color='Volume', range_y=[0, 1])
+        fig = px.bar(df, x='Ticker', y='Yes Price ($)', color='Volume', range_y=[0, 1])
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.warning(f"No active '{query}' markets found.")
+        st.warning(f"No active markets found for '{query}'. Try searching 'MLB' or 'NBA'—tickers may be in transition.")
 else:
-    st.error(f"Critical Error: {data_result}")
+    st.error(f"Critical Error: {df}")
