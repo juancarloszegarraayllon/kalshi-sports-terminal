@@ -9,7 +9,6 @@ st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon
 st.title("🏆 Kalshi Daily Sports Extraction")
 
 # --- API Configuration ---
-# Hardcoded credentials as requested
 KEY_ID = "8c40b181-5fda-4515-a554-8f73c224b1f7"
 PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
 MIIEpQIBAAKCAQEAs2IGcClv1Wzfeo96M0Fp+TQz+RPg4uH4WOD7nAi+o3hU0sMn
@@ -43,22 +42,16 @@ m6V/krn3WsZeW2JHZq7X+R4CyDNCVoCVf6QXLwnbyiGyW78vBz8iKeY=
 @st.cache_data(ttl=60)
 def fetch_kalshi_data(search_query):
     try:
-        # 1. Setup Configuration
         config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
         config.api_key_id = KEY_ID
         config.private_key_pem = PRIVATE_KEY
-        
-        # 2. Initialize Client
         client = KalshiClient(config)
         
-        # 3. Use 'get_markets' with a broad limit to find active games
-        # We filter for 'open' markets to see live trading data
         response = client.get_markets(limit=200, status="open")
         markets = response.markets if hasattr(response, 'markets') else []
         
         all_data = []
         for m in markets:
-            # Check if the market title contains our search word (e.g. "NBA")
             if search_query.upper() in m.title.upper() or search_query.upper() in m.ticker.upper():
                 all_data.append({
                     "Event": m.title,
@@ -68,7 +61,6 @@ def fetch_kalshi_data(search_query):
                     "Ticker": m.ticker,
                     "Close Time": m.close_time
                 })
-        
         return pd.DataFrame(all_data)
     except Exception as e:
         return str(e)
@@ -80,31 +72,21 @@ query = st.sidebar.text_input("Enter Sport (e.g., NBA, MLB, NHL)", value="NBA")
 if st.sidebar.button("Refresh Feed"):
     st.cache_data.clear()
 
-st.sidebar.markdown("---")
-st.sidebar.write("Current Status: **Connected**")
-
 data_result = fetch_kalshi_data(query)
 
 if isinstance(data_result, pd.DataFrame):
     if not data_result.empty:
-        # Metrics Row
         c1, c2, c3 = st.columns(3)
         c1.metric("Active Markets", len(data_result))
         c2.metric("Top Vol Market", data_result.iloc[data_result['Volume'].idxmax()]['Ticker'])
         c3.metric("Avg. Price", f"${data_result['Yes Price ($)'].mean():.2f}")
 
-        # Live Data Table
         st.subheader(f"Live {query} Market Odds")
         st.dataframe(data_result.sort_values(by="Volume", ascending=False), use_container_width=True)
 
-        # Visualization
-        st.subheader("Price Distribution")
-        fig = px.bar(data_result, x='Ticker', y='Yes Price ($)', color='Volume', 
-                     hover_data=['Event'], range_y=[0, 1])
+        fig = px.bar(data_result, x='Ticker', y='Yes Price ($)', color='Volume', range_y=[0, 1])
         st.plotly_chart(fig, use_container_width=True)
-        
-        # CSV Export
-        csv = data_result.to_csv(index=False).encode('utf-8')
-        st.download_button("Download as CSV", csv, "kalshi_export.csv", "text/csv")
     else:
-        st.warning(f"No active '{query}' markets found. Try searching for 'MLB' or
+        st.warning(f"No active '{query}' markets found.")
+else:
+    st.error(f"Critical Error: {data_result}")
