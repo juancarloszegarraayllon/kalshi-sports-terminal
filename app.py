@@ -4,7 +4,6 @@ import tempfile
 from datetime import datetime, timedelta
 from kalshi_python_sync import Configuration, KalshiClient
 
-# --- Page Config ---
 st.set_page_config(page_title="Kalshi Sports Board", layout="wide", page_icon="🏀")
 st.title("🏟️ Today's Full Sports Board")
 
@@ -27,21 +26,25 @@ except Exception as e:
 
 # --- Sidebar Controls ---
 st.sidebar.header("🎯 Filters")
-# April 2026 update: Most sports now use 'KX' prefixes
-target_leagues = st.sidebar.multiselect(
-    "Select Leagues", 
-    ["KXNBA", "KXMLB", "KXNHL", "KXSOC", "KXNFL", "KXTEN"], 
-    default=["KXNBA", "KXMLB"]
-)
+# Codes like KXNBA, KXMLB, and KXNHL are standard in April 2026
+leagues_map = {
+    "NBA": "NBA",
+    "MLB": "MLB",
+    "NHL": "NHL",
+    "Soccer": "SOC",
+    "NFL": "NFL",
+    "Tennis": "TEN"
+}
+selected_leagues = st.sidebar.multiselect("Select Leagues", options=list(leagues_map.keys()), default=["NBA", "MLB"])
+selected_codes = [leagues_map[l] for l in selected_leagues]
 
 @st.cache_data(ttl=60)
 def fetch_unlimited_markets():
     now_ts = int(datetime.utcnow().timestamp())
-    # Looking 24 hours ahead for today's specific slate
+    # 24-hour window for the current daily slate
     tomorrow_ts = now_ts + (24 * 60 * 60)
     
     try:
-        # Fetching 1000 markets to ensure nothing is missed
         response = client.get_markets(
             limit=1000, 
             status="open", 
@@ -56,33 +59,24 @@ def fetch_unlimited_markets():
 df = fetch_unlimited_markets()
 
 if not df.empty:
-    # --- RELIABLE 2026 FILTERING ---
-    # We filter by event_ticker prefix (e.g. 'KXNBA') which is immutable
-    df_sports = df[df['event_ticker'].str.startswith(tuple(target_leagues), na=False)].copy()
+    # --- FIX: USE CONTAINS INSTEAD OF STARTSWITH ---
+    # This ensures KXNBA or 2026NBA both get caught
+    search_pattern = "|".join(selected_codes)
+    df_sports = df[
+        (df['event_ticker'].str.contains(search_pattern, case=False, na=False)) |
+        (df['ticker'].str.contains(search_pattern, case=False, na=False))
+    ].copy()
 
     if not df_sports.empty:
-        # Processing Prices: Using the mandatory 2026 '_dollars' fields
+        # Use the 2026 _dollars field
         if 'yes_ask_dollars' in df_sports.columns:
             df_sports["Win Prob"] = df_sports["yes_ask_dollars"].apply(lambda x: f"{int(float(x)*100)}%" if pd.notnull(x) else "N/A")
         
-        # Formatting Time
         df_sports["Game Start (UTC)"] = pd.to_datetime(df_sports["close_time"]).dt.strftime('%H:%M')
         
-        # UI Display
-        st.write(f"### Found {len(df_sports)} Matches for Today")
+        st.write(f"### Found {len(df_sports)} Matches")
         
-        # Displaying grouped by League
-        for league in target_leagues:
-            league_df = df_sports[df_sports['event_ticker'].str.startswith(league)]
-            if not league_df.empty:
-                with st.expander(f"📅 {league} Schedule", expanded=True):
-                    st.dataframe(
-                        league_df[["title", "Win Prob", "Game Start (UTC)", "ticker"]].sort_values("Game Start (UTC)"),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-    else:
-        st.warning("No open markets found for the selected leagues in the next 24 hours.")
-        st.info("💡 Try selecting more leagues in the sidebar or checking if games have already started (Status: Closed).")
-else:
-    st.info("📡 Connecting to Kalshi exchange...")
+        # Displaying grouped by your selected Leagues
+        for league_name in selected_leagues:
+            code = leagues_map[league_name]
+            league_df = df_sports[df_sports['event_ticker'].str.contains(code, case=False, na
