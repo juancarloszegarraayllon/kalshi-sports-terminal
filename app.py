@@ -7,62 +7,71 @@ from kalshi_python_sync import Configuration, KalshiClient
 # --- Page Setup ---
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏀")
 
-# Custom CSS for the "Card" look
+# --- Custom CSS for Card UI ---
 st.markdown("""
     <style>
     .market-card {
         background-color: white;
-        border-radius: 10px;
-        padding: 15px;
-        border: 1px solid #e6e9ef;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #edf2f7;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         margin-bottom: 20px;
-        min-height: 180px;
+        transition: transform 0.2s;
+    }
+    .market-card:hover {
+        border-color: #cbd5e1;
+        transform: translateY(-2px);
     }
     .card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
     }
     .badge-kalshi {
         background-color: #f0fdf4;
         color: #166534;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 10px;
-        font-weight: bold;
-        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
     }
     .mkts-count {
         color: #94a3b8;
-        font-size: 11px;
+        font-size: 12px;
     }
     .card-title {
-        font-size: 15px;
-        font-weight: 600;
+        font-size: 16px;
+        font-weight: 700;
         color: #1e293b;
         margin: 10px 0;
-        height: 45px;
+        min-height: 48px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
     }
     .card-footer {
         display: flex;
-        gap: 15px;
+        gap: 20px;
         margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #f1f5f9;
         font-size: 12px;
         color: #64748b;
     }
     .footer-val {
-        font-weight: bold;
-        color: #1e293b;
+        font-weight: 600;
+        color: #334155;
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🏀 Kalshi Sports Terminal")
 
-# --- API Setup (Retained from your code) ---
+# --- API Setup ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
 
@@ -79,10 +88,11 @@ except Exception as e:
     st.error(f"Init Error: {e}")
     st.stop()
 
-# --- Sidebar ---
+# --- Sidebar Filters ---
 st.sidebar.header("🎯 Market Filters")
-search_query = st.sidebar.text_input("Search", "")
+search_query = st.sidebar.text_input("Search Teams or Sports", "")
 
+# --- Fetch Markets ---
 @st.cache_data(ttl=300)
 def fetch_markets():
     try:
@@ -95,11 +105,11 @@ def fetch_markets():
 df = fetch_markets()
 
 if not df.empty:
-    # --- Filtering Logic ---
+    # --- Filter Sports Markets ---
     sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
     is_sports = (
         df['ticker'].str.startswith(sport_prefixes, na=False) |
-        df['event_ticker'].str.startswith(sport_prefixes, na=False) |
+        df.get('event_ticker', pd.Series()).str.startswith(sport_prefixes, na=False) |
         df['title'].str.contains('vs|score|points|win', case=False, na=False)
     )
     df_sports = df[is_sports].copy()
@@ -108,27 +118,41 @@ if not df.empty:
         df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
 
     if not df_sports.empty:
-        # Group markets by event_ticker to create one card per game
-        # We aggregate to get the number of markets and total volume
-        grouped = df_sports.groupby('event_ticker').agg({
-            'title': 'first',
-            'ticker': 'count',  # This represents 'mkts' count
-            'volume': 'sum',
-            'liquidity': 'sum'
-        }).rename(columns={'ticker': 'mkts_count'}).reset_index()
+        # --- Aggregation Logic (Prevents KeyError) ---
+        cols = df_sports.columns
+        
+        # Determine available columns dynamically
+        title_col = 'title' if 'title' in cols else 'ticker'
+        vol_col = 'volume' if 'volume' in cols else ('open_interest' if 'open_interest' in cols else None)
+        liq_col = 'liquidity' if 'liquidity' in cols else None
+        
+        agg_map = {title_col: 'first'}
+        if vol_col: agg_map[vol_col] = 'sum'
+        if liq_col: agg_map[liq_col] = 'sum'
+        agg_map['ticker'] = 'count' # Count markets per game
 
-        # Render as a Grid
+        # Group by event_ticker if it exists, otherwise use title as a fallback
+        group_by_col = 'event_ticker' if 'event_ticker' in cols else title_col
+        grouped = df_sports.groupby(group_by_col).agg(agg_map).reset_index()
+
+        # --- Display in Grid ---
         cols_per_row = 4
         for i in range(0, len(grouped), cols_per_row):
-            cols = st.columns(cols_per_row)
+            grid_cols = st.columns(cols_per_row)
             for j in range(cols_per_row):
                 if i + j < len(grouped):
                     row = grouped.iloc[i + j]
                     
-                    # Clean up titles (remove specific bet details to show the game name)
-                    display_title = row['title'].split('?')[0].replace('Will the ', '').strip()
+                    # Data preparation
+                    raw_title = str(row[title_col])
+                    # Clean title: "Will the Pistons beat the 76ers?" -> "Pistons beat the 76ers"
+                    clean_title = raw_title.split('?')[0].replace('Will the ', '').strip()
+                    
+                    vol_val = row.get(vol_col, 0) if vol_col else 0
+                    liq_val = row.get(liq_col, 0) if liq_col else 0
+                    mkts = row['ticker']
 
-                    with cols[j]:
+                    with grid_cols[j]:
                         st.markdown(f"""
                             <div class="market-card">
                                 <div class="card-header">
@@ -136,19 +160,19 @@ if not df.empty:
                                         <span class="badge-kalshi">KALSHI</span>
                                         <span style="color:#94a3b8; font-size:11px; margin-left:5px;">Sports</span>
                                     </div>
-                                    <div class="mkts-count">{row['mkts_count']} mkts</div>
+                                    <div class="mkts-count">{mkts} mkts</div>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <div style="background:#f1f5f9; padding:8px; border-radius:8px;">🏀</div>
-                                    <div class="card-title">{display_title}</div>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="font-size: 24px;">🏀</div>
+                                    <div class="card-title">{clean_title}</div>
                                 </div>
                                 <div class="card-footer">
-                                    <div>Vol <span class="footer-val">${row['volume']/1000:,.1f}K</span></div>
-                                    <div>Liq <span class="footer-val">${row['liquidity']/1000:,.1f}K</span></div>
+                                    <div>Vol <span class="footer-val">${vol_val/1000:,.1f}K</span></div>
+                                    <div>Liq <span class="footer-val">${liq_val/1000:,.1f}K</span></div>
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
     else:
-        st.warning("No sports markets found.")
+        st.info("No sports markets found for the current search.")
 else:
-    st.info("No active markets found.")
+    st.warning("No active markets found from Kalshi.")
