@@ -8,11 +8,10 @@ from kalshi_python_sync.rest import ApiException
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide")
 st.title("🏀 Kalshi Sports & Featured Markets")
 
-# --- Load Secrets ---
+# --- API Setup ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
 
-# --- API Setup ---
 with tempfile.NamedTemporaryFile(mode="w+", delete=False) as f:
     f.write(private_key_str)
     private_key_path = f.name
@@ -29,18 +28,18 @@ except Exception as e:
 @st.cache_data(ttl=300)
 def fetch_all_markets():
     now = int(datetime.utcnow().timestamp())
-    # Looking 2 weeks ahead to ensure we catch all sports seasons
-    future = now + (14 * 24 * 60 * 60)
+    # Wide window to catch the whole week of sports
+    future = now + (7 * 24 * 60 * 60)
 
     try:
+        # Increase limit to 1000 to catch all active markets
         response = client.get_markets(
-            limit=500, # Increased limit to find more sports
+            limit=1000, 
             status="open",
             min_close_ts=now,
             max_close_ts=future
         )
-        data = response.to_dict().get("markets", [])
-        return pd.DataFrame(data)
+        return pd.DataFrame(response.to_dict().get("markets", []))
     except Exception as e:
         st.error(f"Fetch Error: {e}")
         return pd.DataFrame()
@@ -48,51 +47,54 @@ def fetch_all_markets():
 df = fetch_all_markets()
 
 if not df.empty:
-    # 1. Broadened Keywords for April Sports (NBA Playoffs/MLB start)
-    sports_list = [
-        "NBA", "NFL", "MLB", "NHL", "Soccer", "Tennis", "UFC", "Golf", 
-        "Lakers", "Warriors", "Yankees", "Mets", "Inter Miami", "Champions League"
-    ]
+    # --- Advanced Sport Filtering ---
+    # Kalshi usually prefixes sports tickers with league names or specific codes
+    sport_prefixes = ('NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN', 'UFC', 'KX')
     
-    # 2. Filtering Logic
-    is_sports = df["title"].str.contains("|".join(sports_list), case=False, na=False)
+    # Identify sports by Ticker prefix OR Category OR common Title keywords
+    is_sports = (
+        df['ticker'].str.startswith(sport_prefixes, na=False) | 
+        df['event_ticker'].str.startswith(sport_prefixes, na=False) |
+        df['title'].str.contains('vs|score|points|win', case=False, na=False)
+    )
+    
+    # Also check the explicit category field if it exists
     if "category" in df.columns:
         is_sports = is_sports | (df["category"].str.contains("Sports", case=False, na=False))
 
     df_sports = df[is_sports].copy()
     df_other = df[~is_sports].copy()
 
-    # 3. Safe Column Processing (Prevents the KeyError)
+    # --- Defensive Data Processing ---
     for target_df in [df_sports, df_other]:
         if not target_df.empty:
-            # Use 'yes_ask' or 'last_price' for probability
-            price_col = "yes_ask" if "yes_ask" in target_df.columns else "last_price"
-            if price_col in target_df.columns:
-                target_df["Prob %"] = target_df[price_col].apply(lambda x: f"{int(x)}%" if pd.notnull(x) else "N/A")
+            # Calculate Probability from the 'yes_ask' (price in cents)
+            if 'yes_ask' in target_df.columns:
+                target_df["Prob %"] = target_df["yes_ask"].apply(lambda x: f"{int(x)}%" if pd.notnull(x) else "0%")
             else:
                 target_df["Prob %"] = "N/A"
             
-            # Ensure close_time is readable
-            if "close_time" in target_df.columns:
-                target_df["Ends"] = pd.to_datetime(target_df["close_time"]).dt.strftime('%b %d, %H:%M')
+            # Format Closing Time
+            if 'close_time' in target_df.columns:
+                target_df["Ends (UTC)"] = pd.to_datetime(target_df["close_time"]).dt.strftime('%m/%d %H:%M')
             else:
-                target_df["Ends"] = "Unknown"
+                target_df["Ends (UTC)"] = "N/A"
 
-    # --- UI Tabs ---
-    tab1, tab2 = st.tabs(["🏆 Sports Markets", "📈 All Other Markets"])
+    # --- UI Layout ---
+    tab1, tab2 = st.tabs(["🏆 Sports Markets", "📈 Non-Sports Markets"])
 
     with tab1:
         if df_sports.empty:
-            st.warning("No sports matches matched your current filters. Check 'All Other Markets'.")
+            st.warning("No sports matches found. Try checking the 'Non-Sports' tab to see what's available.")
         else:
-            # Only display columns we know exist now
-            st.dataframe(df_sports[["title", "Prob %", "Ends"]], use_container_width=True, hide_index=True)
+            # Display sorted by closing time
+            cols = ["title", "Prob %", "Ends (UTC)", "ticker"]
+            st.dataframe(df_sports[cols].sort_values("Ends (UTC)"), use_container_width=True, hide_index=True)
 
     with tab2:
         if df_other.empty:
-            st.info("No non-sports markets found.")
+            st.info("No other markets found.")
         else:
-            st.dataframe(df_other[["title", "Prob %", "Ends"]], use_container_width=True, hide_index=True)
-
+            st.dataframe(df_other[["title", "Prob %", "Ends (UTC)"]], use_container_width=True, hide_index=True)
 else:
-    st.info("No markets found in the given timeframe.")
+    st.info("Connecting to Kalshi... No markets currently found.")
