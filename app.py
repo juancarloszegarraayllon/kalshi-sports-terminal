@@ -84,17 +84,17 @@ if not df.empty:
                     return ['background-color: #fff8a0']*len(row)  # Yellow: upcoming today
             return ['']*len(row)
 
-    # --- Display ---
-    if df_sports.empty:
-        st.warning("No sports matches found for the selected filters.")
-    else:
-        st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
-        display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
-        st.dataframe(
-            df_sports[display_cols].sort_values("close_time_dt").style.apply(highlight_row, axis=1),
-            use_container_width=True,
-            hide_index=True
-        )
-
+        # --- Display ---
+        if df_sports.empty:
+            st.warning("No sports matches found for the selected filters.")
+        else:
+            st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
+            display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
+            df_sports_sorted = df_sports.sort_values("close_time_dt")
+            st.dataframe(
+                df_sports_sorted[display_cols].style.apply(highlight_row, axis=1),
+                use_container_width=True,
+                hide_index=True
+            )
 else:
     st.info("No active markets found.")
