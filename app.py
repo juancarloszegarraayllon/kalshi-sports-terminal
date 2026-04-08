@@ -29,49 +29,29 @@ except Exception as e:
 st.sidebar.header("🎯 Market Filters")
 min_prob = st.sidebar.slider("Min Probability (%)", 0, 100, 0)
 search_query = st.sidebar.text_input("Search Teams", "")
-
-# --- Date Filter ---
 selected_date = st.sidebar.date_input("Select Date", datetime.utcnow().date())
 
-# Convert local selected_date to UTC midnight timestamps
-start_of_day_utc = int(datetime.combine(selected_date, datetime.min.time(), tzinfo=timezone.utc).timestamp())
-end_of_day_utc = int(datetime.combine(selected_date, datetime.max.time(), tzinfo=timezone.utc).timestamp())
-
+# --- Fetch Markets (All Open) ---
 @st.cache_data(ttl=300)
-def fetch_markets(min_ts, max_ts):
+def fetch_markets():
     try:
-        response = client.get_markets(
-            limit=1000,
-            status="open",
-            min_close_ts=min_ts,
-            max_close_ts=max_ts
-        )
+        response = client.get_markets(limit=1000, status="open")
         return pd.DataFrame(response.to_dict().get("markets", []))
     except Exception as e:
         st.error(f"Fetch Error: {e}")
         return pd.DataFrame()
 
-df = fetch_markets(start_of_day_utc, end_of_day_utc)
-
-# Debugging: show range of close times
-if not df.empty:
-    st.write("Market close times range (UTC):", 
-             pd.to_datetime(df['close_time'], unit='s', utc=True).min(),
-             "-", 
-             pd.to_datetime(df['close_time'], unit='s', utc=True).max())
+df = fetch_markets()
 
 if not df.empty:
     # --- Sports Filtering ---
     sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
-    
     is_sports = (
         df['ticker'].str.startswith(sport_prefixes, na=False) |
         df['event_ticker'].str.startswith(sport_prefixes, na=False) |
         df['title'].str.contains('vs|score|points|win', case=False, na=False)
     )
-    
     is_macro = df['title'].str.contains("inflation|cpi|rate|fed|gdp|election", case=False, na=False)
-    
     df_sports = df[is_sports & ~is_macro].copy()
 
     if not df_sports.empty:
@@ -80,23 +60,27 @@ if not df.empty:
             df_sports["Prob %"] = (pd.to_numeric(df_sports["yes_ask_dollars"]) * 100).fillna(0).astype(int)
         elif 'yes_ask' in df_sports.columns:
             df_sports["Prob %"] = pd.to_numeric(df_sports["yes_ask"]).fillna(0).astype(int)
-        
+
+        # --- Date Filter ---
+        df_sports["close_time_dt"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True)
+        df_sports["Ends (UTC)"] = df_sports["close_time_dt"].dt.strftime('%m/%d %H:%M')
+        # Filter by selected date for display only
+        df_sports = df_sports[
+            df_sports["close_time_dt"].dt.date == selected_date
+        ]
+
         # --- Apply Sidebar Filters ---
         if search_query:
             df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
         df_sports = df_sports[df_sports["Prob %"] >= min_prob]
-
-        # --- Formatting ---
-        df_sports["Ends (UTC)"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True).dt.strftime('%m/%d %H:%M')
-        df_sports["Price"] = df_sports["Prob %"].astype(str) + "%"
 
     # --- Display ---
     if df_sports.empty:
         st.warning("No sports matches found for the selected date and filters.")
     else:
         st.write(f"Showing **{len(df_sports)}** sports markets for {selected_date.strftime('%Y-%m-%d')}.")
-        display_cols = ["title", "Price", "Ends (UTC)", "ticker"]
+        display_cols = ["title", "Prob %", "Ends (UTC)", "ticker"]
         st.dataframe(df_sports[display_cols].sort_values("title"), use_container_width=True, hide_index=True)
 
 else:
-    st.info("No active markets found for the selected date.")
+    st.info("No active markets found.")
