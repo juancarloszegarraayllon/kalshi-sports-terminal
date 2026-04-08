@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-from datetime import datetime, timezone, timedelta
+import re
+from datetime import datetime
 from kalshi_python_sync import Configuration, KalshiClient
 
 # --- Page Setup ---
@@ -18,6 +19,7 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         margin-bottom: 20px;
         transition: transform 0.2s;
+        height: 220px;
     }
     .market-card:hover {
         border-color: #cbd5e1;
@@ -47,11 +49,12 @@ st.markdown("""
         font-weight: 700;
         color: #1e293b;
         margin: 10px 0;
-        min-height: 48px;
+        min-height: 55px;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        line-height: 1.4;
     }
     .card-footer {
         display: flex;
@@ -88,6 +91,27 @@ except Exception as e:
     st.error(f"Init Error: {e}")
     st.stop()
 
+# --- Utility: Clean Titles ---
+def clean_event_title(text):
+    """
+    Cleans strings like 'yes Kawhi Leonard: 25+' into 'Kawhi Leonard'
+    or 'Will the Pistons beat the 76ers?' into 'Pistons vs 76ers'
+    """
+    if not isinstance(text, str): return "Unknown Event"
+    
+    # Remove "yes " or "no " at the start
+    text = re.sub(r'^(yes|no)\s+', '', text, flags=re.IGNORECASE)
+    # Remove "Will the "
+    text = text.replace('Will the ', '')
+    # Strip everything after a colon (removes ": 25+", ": 10+ rebounds", etc.)
+    text = text.split(':')[0]
+    # Strip question marks
+    text = text.replace('?', '')
+    # Convert 'beat the' to 'vs' for a cleaner look
+    text = text.replace(' beat the ', ' vs ').replace(' vs. ', ' vs ')
+    
+    return text.strip()
+
 # --- Sidebar Filters ---
 st.sidebar.header("🎯 Market Filters")
 search_query = st.sidebar.text_input("Search Teams or Sports", "")
@@ -110,7 +134,7 @@ if not df.empty:
     is_sports = (
         df['ticker'].str.startswith(sport_prefixes, na=False) |
         df.get('event_ticker', pd.Series()).str.startswith(sport_prefixes, na=False) |
-        df['title'].str.contains('vs|score|points|win', case=False, na=False)
+        df['title'].str.contains('vs|score|points|win|beat', case=False, na=False)
     )
     df_sports = df[is_sports].copy()
 
@@ -118,22 +142,16 @@ if not df.empty:
         df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
 
     if not df_sports.empty:
-        # --- Aggregation Logic (Prevents KeyError) ---
+        # Group by event_ticker to roll up player-props into a single game card
         cols = df_sports.columns
+        group_col = 'event_ticker' if 'event_ticker' in cols else 'title'
         
-        # Determine available columns dynamically
-        title_col = 'title' if 'title' in cols else 'ticker'
-        vol_col = 'volume' if 'volume' in cols else ('open_interest' if 'open_interest' in cols else None)
-        liq_col = 'liquidity' if 'liquidity' in cols else None
-        
-        agg_map = {title_col: 'first'}
-        if vol_col: agg_map[vol_col] = 'sum'
-        if liq_col: agg_map[liq_col] = 'sum'
-        agg_map['ticker'] = 'count' # Count markets per game
+        # Aggregate logic
+        agg_map = {'title': 'first', 'ticker': 'count'}
+        if 'volume' in cols: agg_map['volume'] = 'sum'
+        if 'liquidity' in cols: agg_map['liquidity'] = 'sum'
 
-        # Group by event_ticker if it exists, otherwise use title as a fallback
-        group_by_col = 'event_ticker' if 'event_ticker' in cols else title_col
-        grouped = df_sports.groupby(group_by_col).agg(agg_map).reset_index()
+        grouped = df_sports.groupby(group_col).agg(agg_map).reset_index()
 
         # --- Display in Grid ---
         cols_per_row = 4
@@ -143,13 +161,9 @@ if not df.empty:
                 if i + j < len(grouped):
                     row = grouped.iloc[i + j]
                     
-                    # Data preparation
-                    raw_title = str(row[title_col])
-                    # Clean title: "Will the Pistons beat the 76ers?" -> "Pistons beat the 76ers"
-                    clean_title = raw_title.split('?')[0].replace('Will the ', '').strip()
-                    
-                    vol_val = row.get(vol_col, 0) if vol_col else 0
-                    liq_val = row.get(liq_col, 0) if liq_col else 0
+                    display_title = clean_event_title(row['title'])
+                    vol_val = row.get('volume', 0)
+                    liq_val = row.get('liquidity', 0)
                     mkts = row['ticker']
 
                     with grid_cols[j]:
@@ -162,9 +176,9 @@ if not df.empty:
                                     </div>
                                     <div class="mkts-count">{mkts} mkts</div>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div style="font-size: 24px;">🏀</div>
-                                    <div class="card-title">{clean_title}</div>
+                                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                    <div style="font-size: 24px; background: #f8fafc; padding: 10px; border-radius: 10px;">🏀</div>
+                                    <div class="card-title">{display_title}</div>
                                 </div>
                                 <div class="card-footer">
                                     <div>Vol <span class="footer-val">${vol_val/1000:,.1f}K</span></div>
