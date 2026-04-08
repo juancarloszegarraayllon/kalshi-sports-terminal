@@ -65,8 +65,8 @@ if not df.empty:
         df_sports["close_time_dt"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True)
         df_sports["Ends (UTC)"] = df_sports["close_time_dt"].dt.strftime('%m/%d %H:%M')
 
-        # --- Date Filter ---
-        df_sports = df_sports[df_sports["close_time_dt"].dt.date == selected_date]
+        # --- Flag Markets Happening Today ---
+        df_sports["Today"] = df_sports["close_time_dt"].dt.date == selected_date
 
         # --- Sidebar Filters ---
         if search_query:
@@ -77,20 +77,24 @@ if not df.empty:
         now = datetime.utcnow().replace(tzinfo=timezone.utc)
         def highlight_row(row):
             delta = row["close_time_dt"] - now
-            if delta <= timedelta(hours=2):
-                return ['background-color: #a0ffa0']*len(row)  # Green: imminent
-            elif delta <= timedelta(hours=6):
-                return ['background-color: #fff8a0']*len(row)  # Yellow: upcoming
-            else:
-                return ['']*len(row)
+            if row["Today"]:
+                if delta <= timedelta(hours=2):
+                    return ['background-color: #a0ffa0']*len(row)  # Green: imminent today
+                elif delta <= timedelta(hours=6):
+                    return ['background-color: #fff8a0']*len(row)  # Yellow: upcoming today
+            return ['']*len(row)
 
     # --- Display ---
     if df_sports.empty:
-        st.warning("No sports matches found for the selected date and filters.")
+        st.warning("No sports matches found for the selected filters.")
     else:
-        st.write(f"Showing **{len(df_sports)}** sports markets for {selected_date.strftime('%Y-%m-%d')}.")
-        display_cols = ["title", "Prob %", "Ends (UTC)", "ticker"]
-        st.dataframe(df_sports[display_cols].sort_values("close_time_dt").style.apply(highlight_row, axis=1), 
-                     use_container_width=True, hide_index=True)
+        st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
+        display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
+        st.dataframe(
+            df_sports[display_cols].sort_values("close_time_dt").style.apply(highlight_row, axis=1),
+            use_container_width=True,
+            hide_index=True
+        )
+
 else:
     st.info("No active markets found.")
