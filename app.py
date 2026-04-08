@@ -90,9 +90,14 @@ if not df.empty:
         else:
             st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
             display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
+
+            # Sort by close_time_dt first
             df_sports_sorted = df_sports.sort_values("close_time_dt")
+
+            # Keep full DataFrame for styling, but only display selected columns
+            styled = df_sports_sorted.style.apply(highlight_row, axis=1)
             st.dataframe(
-                df_sports_sorted[display_cols].style.apply(highlight_row, axis=1),
+                styled[display_cols],
                 use_container_width=True,
                 hide_index=True
             )
