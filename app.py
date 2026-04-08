@@ -28,7 +28,7 @@ except Exception as e:
 # --- Sidebar Filters ---
 st.sidebar.header("🎯 Market Filters")
 min_prob = st.sidebar.slider("Min Probability (%)", 0, 100, 0)
-search_query = st.sidebar.text_input("Search Teams", "")
+search_query = st.sidebar.text_input("Search Teams / Event", "")
 selected_date = st.sidebar.date_input("Select Date", datetime.utcnow().date())
 
 # --- Fetch Markets ---
@@ -66,6 +66,11 @@ if not df.empty:
         df_sports["Ends (UTC)"] = df_sports["close_time_dt"].dt.strftime('%m/%d %H:%M')
         df_sports["Today"] = df_sports["close_time_dt"].dt.date == selected_date
 
+        # --- Clean Titles for Display ---
+        # Split title into Event and Outcome for better readability
+        df_sports['Outcome'] = df_sports['title'].str.split(',').str[-1].str.strip()  # last part
+        df_sports['Event'] = df_sports['title'].str.split(',').str[0].str.strip()     # first part
+
         # --- Sidebar Filters ---
         if search_query:
             df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
@@ -77,13 +82,12 @@ if not df.empty:
             st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
 
             # --- Display Columns ---
-            display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
+            display_cols = ["Event", "Outcome", "Prob %", "Ends (UTC)", "ticker", "Today"]
             df_display = df_sports[display_cols].copy()
-            
+
             # --- Highlight Imminent Matches ---
             now = datetime.utcnow().replace(tzinfo=timezone.utc)
             def highlight_row(row):
-                # Use original df_sports for time calculations
                 idx = row.name
                 delta = df_sports.loc[idx, "close_time_dt"] - now
                 if df_sports.loc[idx, "Today"]:
