@@ -1,0 +1,81 @@
+import streamlit as st
+import pandas as pd
+from pykalshi import KalshiClient
+import plotly.express as px
+
+# --- Dashboard Config ---
+st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="📈")
+
+st.title("🏆 Kalshi Daily Sports Extraction")
+st.markdown("Extracting live market data for NBA, NFL, and MLB games.")
+
+# --- Sidebar Configuration ---
+st.sidebar.header("API Configuration")
+email = st.sidebar.text_input("Kalshi Email")
+password = st.sidebar.text_input("Kalshi Password", type="password")
+
+st.sidebar.divider()
+sport_filter = st.sidebar.multiselect("Select Sports", ["NBA", "NFL", "MLB", "NHL"], default=["NBA", "NFL"])
+
+# --- Data Extraction Logic ---
+@st.cache_data(ttl=300) # Caches data for 5 minutes to stay under rate limits
+def fetch_kalshi_data(usr, pwd, tickers):
+    try:
+        # Initialize client
+        if usr and pwd:
+            client = KalshiClient(email=usr, password=pwd)
+        else:
+            client = KalshiClient() # Public data access (limited)
+        
+        all_markets = []
+        for ticker in tickers:
+            markets = client.get_markets(series_ticker=ticker, status="open")
+            all_markets.extend(markets)
+        
+        # Build Dataframe
+        data = []
+        for m in all_markets:
+            data.append({
+                "Event": m.title,
+                "Yes Price": m.yes_ask,
+                "No Price": m.no_ask,
+                "Volume": m.volume,
+                "Expiration": m.close_time,
+                "Ticker": m.ticker
+            })
+        return pd.DataFrame(data)
+    except Exception as e:
+        return str(e)
+
+# --- Main Dashboard Display ---
+if st.sidebar.button("Refresh Data"):
+    st.cache_data.clear()
+
+df = fetch_kalshi_data(email, password, sport_filter)
+
+if isinstance(df, pd.DataFrame) and not df.empty:
+    # Top Level Metrics
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Markets", len(df))
+    m2.metric("Most Liquid", df.iloc[df['Volume'].idxmax()]['Event'])
+    m3.metric("Avg. Yes Price", f"{df['Yes Price'].mean():.1f}¢")
+
+    # Data Table
+    st.subheader("Active Game Markets")
+    st.dataframe(df, use_container_width=True)
+
+    # Visualization
+    st.subheader("Market Sentiment (Probability of 'Yes')")
+    fig = px.bar(df, x='Event', y='Yes Price', color='Volume', 
+                 labels={'Yes Price': 'Price (Probability %)'},
+                 color_continuous_scale='Viridis')
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Export Feature
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button("Download Game Data as CSV", data=csv, file_name="kalshi_sports_data.csv", mime="text/csv")
+
+elif isinstance(df, str):
+    st.error(f"Error connecting to Kalshi: {df}")
+else:
+    st.info("No active markets found for the selected sports. Try adding credentials in the sidebar.")
