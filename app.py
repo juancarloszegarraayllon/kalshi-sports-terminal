@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from kalshi_python_sync import Configuration, KalshiClient
 
-st.set_page_config(page_title="Kalshi Game Day", layout="wide", page_icon="🏀")
-st.title("🏟️ Today's Sports Board")
+st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="🏀")
+st.title("🏀 Kalshi Sports & Markets")
 
 # --- API Setup ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
@@ -24,72 +24,48 @@ except Exception as e:
     st.error(f"Init Error: {e}")
     st.stop()
 
-# --- Sidebar Controls ---
-st.sidebar.header("🕹️ Game Controls")
-view_mode = st.sidebar.radio("Market Status", ["Active (Betting Open)", "Closed (Games In-Progress/Done)"])
-status_filter = "open" if view_mode == "Active (Betting Open)" else "closed"
-
-# Time range for TODAY
-today_start = datetime.combine(date.today(), datetime.min.time())
-today_start_ts = int(today_start.timestamp())
-three_days_out_ts = today_start_ts + (3 * 24 * 60 * 60)
-
 @st.cache_data(ttl=60)
-def fetch_today_slates(status):
+def fetch_everything():
+    now = int(datetime.utcnow().timestamp())
+    # Looking 3 days ahead to catch today's and tomorrow's slates
+    future = now + (3 * 24 * 60 * 60)
     try:
-        response = client.get_markets(
-            limit=1000, 
-            status=status,
-            min_close_ts=today_start_ts,
-            max_close_ts=three_days_out_ts
-        )
+        response = client.get_markets(limit=1000, status="open", min_close_ts=now, max_close_ts=future)
         return pd.DataFrame(response.to_dict().get("markets", []))
     except Exception as e:
-        st.error(f"API Error: {e}")
+        st.error(f"Fetch Error: {e}")
         return pd.DataFrame()
 
-df = fetch_today_slates(status_filter)
+df = fetch_everything()
 
 if not df.empty:
-    # 2026 Sport Detection (KX Prefixes are standard for NBA/MLB now)
-    sport_prefixes = ('KX', 'NBA', 'MLB', 'NHL', 'SOC', 'UCL', 'TEN')
+    # 1. Expanded Sports Detection
+    # Catching League codes, vs matchups, and common player stats keywords
+    sport_indicators = [
+        "NBA", "MLB", "NHL", "NFL", "UFC", "SOC", "UCL", "KX",
+        " vs ", " vs. ", " @ ", " win ", " score ", " points ", " total "
+    ]
     
+    # Identify Sports
     is_sports = (
-        df['ticker'].str.startswith(sport_prefixes, na=False) |
-        df['title'].str.contains('vs|@|score|win', case=False, na=False)
+        df['title'].str.contains("|".join(sport_indicators), case=False, na=False) |
+        df['ticker'].str.contains("NBA|MLB|NHL|SOC|UFC", case=False, na=False)
     )
-    # Filter out the Argentina Inflation / Macro stuff
-    is_macro = df['title'].str.contains("inflation|cpi|rate|fed", case=False, na=False)
     
-    df_today = df[is_sports & ~is_macro].copy()
+    # 2. Hard Exclusion for Macro/Economics (pushing Inflation away from Sports)
+    is_macro = df['title'].str.contains("inflation|cpi|rate|fed|gdp|election", case=False, na=False)
+    
+    df_sports = df[is_sports & ~is_macro].copy()
+    df_other = df[~is_sports | is_macro].copy()
 
-    if not df_today.empty:
-        # Probability / Price Logic
-        col = "yes_ask_dollars" if "yes_ask_dollars" in df_today.columns else "yes_ask"
-        if col in df_today.columns:
-            df_today["Price"] = df_today[col].apply(lambda x: f"{int(float(x)*100)}%" if col.endswith("dollars") else f"{int(x)}%")
-        
-        df_today["Time (UTC)"] = pd.to_datetime(df_today["close_time"]).dt.strftime('%H:%M')
-
-        # Display
-        st.write(f"### {view_mode} - April 8, 2026")
-        
-        # Group by League for better reading
-        for league in ["NBA", "MLB", "SOC"]:
-            league_df = df_today[df_today['ticker'].str.contains(league, na=False)]
-            if not league_df.empty:
-                st.subheader(f"{league} Slate")
-                st.dataframe(
-                    league_df[["title", "Price", "Time (UTC)"]].sort_values("Time (UTC)"),
-                    use_container_width=True, hide_index=True
-                )
-        
-        # Show everything else sports-related
-        other_sports = df_today[~df_today['ticker'].str.contains("NBA|MLB|SOC", na=False)]
-        if not other_sports.empty:
-            st.subheader("Other Sports")
-            st.dataframe(other_sports[["title", "Price", "Time (UTC)"]], use_container_width=True, hide_index=True)
-    else:
-        st.warning(f"No {status_filter} sports markets found for today.")
-else:
-    st.info("Gathering market data...")
+    # 3. Defensive Processing
+    for frame in [df_sports, df_other]:
+        if not frame.empty:
+            # Handle the new 2026 dollar fields
+            price_col = "yes_ask_dollars" if "yes_ask_dollars" in frame.columns else "yes_ask"
+            if price_col in frame.columns:
+                frame["Prob %"] = frame[price_col].apply(lambda x: f"{int(float(x)*100)}%" if price_col.endswith("dollars") else f"{int(x)}%")
+            else:
+                frame["Prob %"] = "N/A"
+            
+            frame["Ends (UTC)"] = pd.to_datetime(frame["close_time"]).
