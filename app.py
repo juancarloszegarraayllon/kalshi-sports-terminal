@@ -28,19 +28,19 @@ except Exception as e:
 
 @st.cache_data(ttl=300)
 def fetch_markets():
-    # Use Unix timestamps (integers) to satisfy SDK validation
+    # Use Unix timestamps (integers)
     now = int(datetime.utcnow().timestamp())
-    future = now + (7 * 24 * 60 * 60) # Look 7 days ahead
+    future = now + (7 * 24 * 60 * 60) 
 
     try:
-        # Replaced start_time_min with min_close_ts (integer only)
         response = client.get_markets(
             limit=1000, 
             status="open",
             min_close_ts=now,
             max_close_ts=future
         )
-        return pd.DataFrame(response.to_dict().get("markets", []))
+        data = response.to_dict().get("markets", [])
+        return pd.DataFrame(data)
     except Exception as e:
         st.error(f"Fetch Error: {e}")
         return pd.DataFrame()
@@ -48,39 +48,51 @@ def fetch_markets():
 df = fetch_markets()
 
 if not df.empty:
-    # --- Advanced Sport Identification ---
-    # Kalshi 2026 uses tickers like NBA, MLB, NHL, or SOC (Soccer)
+    # 1. Broader Identification Logic
+    # In 2026, most sports tickers start with these prefixes
     sport_codes = ('NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN', 'UFC', 'KX')
     
+    # Identify sports using ticker or title keywords
     is_sports = (
         df['ticker'].str.startswith(sport_codes, na=False) | 
-        df['event_ticker'].str.startswith(sport_codes, na=False) |
         df['title'].str.contains('vs|score|win|points', case=False, na=False)
     )
     
-    if "category" in df.columns:
-        is_sports = is_sports | (df["category"].str.contains("Sports", case=False, na=False))
-
     df_sports = df[is_sports].copy()
     df_other = df[~is_sports].copy()
 
-    # --- Formatting for Display ---
+    # 2. Defensive Processing (Creates the columns and handles missing data)
     for frame in [df_sports, df_other]:
         if not frame.empty:
-            if 'yes_ask' in frame.columns:
-                frame["Price"] = frame["yes_ask"].apply(lambda x: f"{int(x)}¢")
+            # Use new 2026 fixed-point dollar fields if available
+            if 'yes_ask_dollars' in frame.columns:
+                frame["Price"] = frame["yes_ask_dollars"].apply(lambda x: f"${float(x):.2f}" if pd.notnull(x) else "N/A")
+            elif 'yes_ask' in frame.columns:
+                frame["Price"] = frame["yes_ask"].apply(lambda x: f"{int(x)}¢" if pd.notnull(x) else "N/A")
+            else:
+                frame["Price"] = "N/A"
+            
             if 'close_time' in frame.columns:
                 frame["Ends (UTC)"] = pd.to_datetime(frame["close_time"]).dt.strftime('%m/%d %H:%M')
+            else:
+                frame["Ends (UTC)"] = "N/A"
 
+    # --- UI Layout ---
     tab1, tab2 = st.tabs(["🏆 Sports", "📈 All Other"])
 
     with tab1:
         if df_sports.empty:
-            st.warning("No sports found for the next 7 days.")
+            st.warning("No sports found for the next 7 days. Check the 'All Other' tab.")
         else:
-            st.dataframe(df_sports[["title", "Price", "Ends (UTC)"]], use_container_width=True, hide_index=True)
+            # ONLY select columns that we are sure exist now
+            cols_to_show = [c for c in ["title", "Price", "Ends (UTC)"] if c in df_sports.columns]
+            st.dataframe(df_sports[cols_to_show], use_container_width=True, hide_index=True)
 
     with tab2:
-        st.dataframe(df_other[["title", "Price", "Ends (UTC)"]], use_container_width=True, hide_index=True)
+        if df_other.empty:
+            st.info("No other markets found.")
+        else:
+            cols_to_show = [c for c in ["title", "Price", "Ends (UTC)"] if c in df_other.columns]
+            st.dataframe(df_other[cols_to_show], use_container_width=True, hide_index=True)
 else:
     st.info("No active markets found.")
