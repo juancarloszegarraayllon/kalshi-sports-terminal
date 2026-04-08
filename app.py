@@ -31,7 +31,7 @@ min_prob = st.sidebar.slider("Min Probability (%)", 0, 100, 0)
 search_query = st.sidebar.text_input("Search Teams", "")
 selected_date = st.sidebar.date_input("Select Date", datetime.utcnow().date())
 
-# --- Fetch Markets (All Open) ---
+# --- Fetch Markets ---
 @st.cache_data(ttl=300)
 def fetch_markets():
     try:
@@ -44,7 +44,7 @@ def fetch_markets():
 df = fetch_markets()
 
 if not df.empty:
-    # --- Sports Filtering ---
+    # --- Filter Sports ---
     sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
     is_sports = (
         df['ticker'].str.startswith(sport_prefixes, na=False) |
@@ -64,8 +64,6 @@ if not df.empty:
         # --- Event/Close Time ---
         df_sports["close_time_dt"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True)
         df_sports["Ends (UTC)"] = df_sports["close_time_dt"].dt.strftime('%m/%d %H:%M')
-
-        # --- Flag Markets Happening Today ---
         df_sports["Today"] = df_sports["close_time_dt"].dt.date == selected_date
 
         # --- Sidebar Filters ---
@@ -73,31 +71,34 @@ if not df.empty:
             df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
         df_sports = df_sports[df_sports["Prob %"] >= min_prob]
 
-        # --- Highlight Imminent Matches ---
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)
-        def highlight_row(row):
-            delta = row["close_time_dt"] - now
-            if row["Today"]:
-                if delta <= timedelta(hours=2):
-                    return ['background-color: #a0ffa0']*len(row)  # Green: imminent today
-                elif delta <= timedelta(hours=6):
-                    return ['background-color: #fff8a0']*len(row)  # Yellow: upcoming today
-            return ['']*len(row)
-
-        # --- Display ---
         if df_sports.empty:
             st.warning("No sports matches found for the selected filters.")
         else:
             st.write(f"Showing **{len(df_sports)}** sports markets (green/yellow = happening today).")
+
+            # --- Display Columns ---
             display_cols = ["title", "Prob %", "Ends (UTC)", "ticker", "Today"]
+            df_display = df_sports[display_cols].copy()
+            
+            # --- Highlight Imminent Matches ---
+            now = datetime.utcnow().replace(tzinfo=timezone.utc)
+            def highlight_row(row):
+                # Use original df_sports for time calculations
+                idx = row.name
+                delta = df_sports.loc[idx, "close_time_dt"] - now
+                if df_sports.loc[idx, "Today"]:
+                    if delta <= timedelta(hours=2):
+                        return ['background-color: #a0ffa0']*len(row)  # Green: imminent today
+                    elif delta <= timedelta(hours=6):
+                        return ['background-color: #fff8a0']*len(row)  # Yellow: upcoming today
+                return ['']*len(row)
 
-            # Sort by close_time_dt first
-            df_sports_sorted = df_sports.sort_values("close_time_dt")
+            # --- Sort by close time ---
+            df_display = df_display.loc[df_sports["close_time_dt"].sort_values().index]
 
-            # Keep full DataFrame for styling, but only display selected columns
-            styled = df_sports_sorted.style.apply(highlight_row, axis=1)
+            # --- Display in Streamlit ---
             st.dataframe(
-                styled[display_cols],
+                df_display.style.apply(highlight_row, axis=1),
                 use_container_width=True,
                 hide_index=True
             )
