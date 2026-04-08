@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from kalshi_python_sync import Configuration, KalshiClient
 
 # --- Page Setup ---
@@ -32,8 +32,10 @@ search_query = st.sidebar.text_input("Search Teams", "")
 
 # --- Date Filter ---
 selected_date = st.sidebar.date_input("Select Date", datetime.utcnow().date())
-start_of_day = int(datetime.combine(selected_date, datetime.min.time()).timestamp())
-end_of_day = int(datetime.combine(selected_date, datetime.max.time()).timestamp())
+
+# Convert local selected_date to UTC midnight timestamps
+start_of_day_utc = int(datetime.combine(selected_date, datetime.min.time(), tzinfo=timezone.utc).timestamp())
+end_of_day_utc = int(datetime.combine(selected_date, datetime.max.time(), tzinfo=timezone.utc).timestamp())
 
 @st.cache_data(ttl=300)
 def fetch_markets(min_ts, max_ts):
@@ -49,7 +51,14 @@ def fetch_markets(min_ts, max_ts):
         st.error(f"Fetch Error: {e}")
         return pd.DataFrame()
 
-df = fetch_markets(start_of_day, end_of_day)
+df = fetch_markets(start_of_day_utc, end_of_day_utc)
+
+# Debugging: show range of close times
+if not df.empty:
+    st.write("Market close times range (UTC):", 
+             pd.to_datetime(df['close_time'], unit='s', utc=True).min(),
+             "-", 
+             pd.to_datetime(df['close_time'], unit='s', utc=True).max())
 
 if not df.empty:
     # --- Sports Filtering ---
@@ -78,7 +87,7 @@ if not df.empty:
         df_sports = df_sports[df_sports["Prob %"] >= min_prob]
 
         # --- Formatting ---
-        df_sports["Ends (UTC)"] = pd.to_datetime(df_sports["close_time"]).dt.strftime('%m/%d %H:%M')
+        df_sports["Ends (UTC)"] = pd.to_datetime(df_sports["close_time"], unit='s', utc=True).dt.strftime('%m/%d %H:%M')
         df_sports["Price"] = df_sports["Prob %"].astype(str) + "%"
 
     # --- Display ---
