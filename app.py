@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from kalshi_python_sync import Configuration, KalshiClient
 from kalshi_python_sync.rest import ApiException
 
@@ -18,7 +18,7 @@ st.write(f"🔑 Private Key path loaded: {bool(private_key_path)}")
 
 # --- Initialize Kalshi client ---
 try:
-    config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
+    config = Configuration()
     config.api_key_id = api_key_id
     config.private_key_pem_path = private_key_path
     client = KalshiClient(config)
@@ -34,8 +34,8 @@ def fetch_sports_markets_today():
     cursor = None
     max_retries = 3
 
-    # UTC datetime for today
-    today_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    # UTC datetime for today with timezone
+    today_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
     tomorrow_utc = today_utc + timedelta(days=1)
 
     while True:
@@ -71,13 +71,21 @@ def fetch_sports_markets_today():
 
         time.sleep(0.5)  # small delay to avoid rate limit
 
-    # Filter sports markets
+    # Convert to DataFrame
     df = pd.DataFrame(all_markets)
     if df.empty:
         return pd.DataFrame()
 
+    # Filter only sports markets
     sports_keywords = ["NBA", "NFL", "MLB", "Soccer", "Football", "Basketball", "Tennis"]
     df_sports = df[df["title"].str.contains("|".join(sports_keywords), case=False, na=False)]
+
+    # Add probabilities if present
+    if "yes_ask" in df_sports.columns:
+        df_sports["YES %"] = df_sports["yes_ask"] / 100
+    if "no_ask" in df_sports.columns:
+        df_sports["NO %"] = df_sports["no_ask"] / 100
+
     return df_sports
 
 # --- Load and display ---
@@ -87,12 +95,6 @@ df_sports = fetch_sports_markets_today()
 if df_sports.empty:
     st.info("No sports markets found today.")
 else:
-    # Add probabilities if available
-    if "yes_ask" in df_sports.columns:
-        df_sports["YES %"] = df_sports["yes_ask"] / 100
-    if "no_ask" in df_sports.columns:
-        df_sports["NO %"] = df_sports["no_ask"] / 100
-
     columns_to_show = ["title", "start_time", "YES %", "NO %"]
     columns_to_show = [c for c in columns_to_show if c in df_sports.columns]
 
