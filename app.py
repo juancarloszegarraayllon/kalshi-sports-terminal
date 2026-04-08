@@ -68,4 +68,23 @@ if not df.empty:
             else:
                 frame["Prob %"] = "N/A"
             
-            frame["Ends (UTC)"] = pd.to_datetime(frame["close_time"]).
+            frame["Ends (UTC)"] = pd.to_datetime(frame["close_time"]).dt.strftime('%m/%d %H:%M')
+
+    # --- UI Layout ---
+    tab1, tab2 = st.tabs(["🏆 Sports Board", "📈 Other Markets"])
+
+    with tab1:
+        if df_sports.empty:
+            st.warning("No sports matches matched the current filters. They may be in 'Other Markets'.")
+        else:
+            st.write(f"Showing **{len(df_sports)}** live sports events.")
+            # Selecting only existing columns to prevent errors
+            display_cols = [c for c in ["title", "Prob %", "Ends (UTC)", "ticker"] if c in df_sports.columns]
+            st.dataframe(df_sports[display_cols].sort_values("Ends (UTC)"), use_container_width=True, hide_index=True)
+
+    with tab2:
+        if not df_other.empty:
+            st.dataframe(df_other[["title", "Prob %", "Ends (UTC)"]], use_container_width=True, hide_index=True)
+
+else:
+    st.info("No active markets found. Checking the exchange...")
