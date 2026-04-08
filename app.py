@@ -4,23 +4,29 @@ from time import sleep
 from kalshi_python_sync import Configuration, KalshiClient
 from kalshi_python_sync.rest import ApiException
 
+# --- Streamlit page setup ---
 st.set_page_config(page_title="Kalshi Sports Markets", layout="wide")
-st.title("🏀 Kalshi Authenticated Sports Markets")
+st.title("🏀 Kalshi Sports Markets Dashboard")
 
-# Load secrets
+# --- Load secrets ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
 private_key_pem = st.secrets["KALSHI_PRIVATE_KEY_PEM"]
 
-st.write("🔑 API Key loaded:", bool(api_key_id))
-st.write("🔑 Private Key loaded:", bool(private_key_pem))
+# Convert single-line secret to proper PEM format and bytes
+private_key_bytes = private_key_pem.replace("\\n", "\n").encode("utf-8")
 
-# Configure Kalshi client
-config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
-config.api_key_id = api_key_id
-config.private_key_pem = private_key_pem.encode("utf-8")  # <-- encode to bytes
-client = KalshiClient(config)
+# --- Initialize Kalshi client ---
+try:
+    config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
+    config.api_key_id = api_key_id
+    config.private_key_pem = private_key_bytes
+    client = KalshiClient(config)
+    st.success("✅ Kalshi client initialized successfully!")
+except Exception as e:
+    st.error(f"Error initializing Kalshi client: {e}")
+    st.stop()
 
-# Fetch markets
+# --- Function to fetch all markets ---
 @st.cache_data(ttl=60)
 def fetch_all_markets(status="open"):
     all_markets = []
@@ -40,11 +46,11 @@ def fetch_all_markets(status="open"):
         if not cursor:
             break
 
-        sleep(0.1)  # avoid hitting rate limits
+        sleep(0.1)  # avoid rate limits
 
     return all_markets
 
-# Load and filter markets
+# --- Load markets ---
 st.write("🔄 Fetching open markets from Kalshi...")
 markets = fetch_all_markets()
 
@@ -53,7 +59,7 @@ if not markets:
 else:
     df = pd.DataFrame(markets)
 
-    # Only sports markets (if title contains common sports keywords)
+    # --- Filter sports markets ---
     sports_keywords = ["NBA", "NFL", "MLB", "Soccer", "Football", "Basketball", "Tennis"]
     df_sports = df[df["title"].str.contains("|".join(sports_keywords), case=False, na=False)]
 
@@ -66,5 +72,9 @@ else:
         if "no_ask" in df_sports.columns:
             df_sports["NO %"] = df_sports["no_ask"] / 100
 
+        # Show table with key info
+        columns_to_show = ["title", "start_time", "YES %", "NO %"]
+        columns_to_show = [c for c in columns_to_show if c in df_sports.columns]
+
         st.write(f"### Total sports markets: {len(df_sports)}")
-        st.dataframe(df_sports[["title", "YES %", "NO %"]], use_container_width=True)
+        st.dataframe(df_sports[columns_to_show].sort_values("start_time"), use_container_width=True)
