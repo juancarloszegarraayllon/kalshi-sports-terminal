@@ -40,8 +40,8 @@ m6V/krn3WsZeW2JHZq7X+R4CyDNCVoCVf6QXLwnbyiGyW78vBz8iKeY=
 -----END RSA PRIVATE KEY-----"""
 
 # --- Data Extraction Logic ---
-@st.cache_data(ttl=300)
-def fetch_kalshi_data(tickers):
+@st.cache_data(ttl=60)
+def fetch_kalshi_data(search_query):
     try:
         # 1. Setup Configuration
         config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
@@ -51,21 +51,22 @@ def fetch_kalshi_data(tickers):
         # 2. Initialize Client
         client = KalshiClient(config)
         
+        # 3. Use 'get_markets' with a broad limit to find active games
+        # We filter for 'open' markets to see live trading data
+        response = client.get_markets(limit=200, status="open")
+        markets = response.markets if hasattr(response, 'markets') else []
+        
         all_data = []
-        for ticker in tickers:
-            # Fetching markets for the specific sport ticker (NBA, NFL, etc.)
-            response = client.get_markets(series_ticker=ticker, status="open")
-            
-            # Extract markets from the response object
-            markets = response.markets if hasattr(response, 'markets') else []
-            
-            for m in markets:
+        for m in markets:
+            # Check if the market title contains our search word (e.g. "NBA")
+            if search_query.upper() in m.title.upper() or search_query.upper() in m.ticker.upper():
                 all_data.append({
                     "Event": m.title,
-                    "Yes Price ($)": m.yes_ask / 100,
-                    "No Price ($)": m.no_ask / 100,
-                    "Volume": m.volume,
-                    "Ticker": m.ticker
+                    "Yes Price ($)": m.yes_ask / 100 if hasattr(m, 'yes_ask') else 0,
+                    "No Price ($)": m.no_ask / 100 if hasattr(m, 'no_ask') else 0,
+                    "Volume": m.volume if hasattr(m, 'volume') else 0,
+                    "Ticker": m.ticker,
+                    "Close Time": m.close_time
                 })
         
         return pd.DataFrame(all_data)
@@ -73,30 +74,37 @@ def fetch_kalshi_data(tickers):
         return str(e)
 
 # --- UI Layout ---
-st.sidebar.header("Filters")
-selected_sports = st.sidebar.multiselect("Sports to Track", ["NBA", "NFL", "MLB"], default=["NBA", "NFL"])
+st.sidebar.header("Search Markets")
+query = st.sidebar.text_input("Enter Sport (e.g., NBA, MLB, NHL)", value="NBA")
 
 if st.sidebar.button("Refresh Feed"):
     st.cache_data.clear()
 
-data_result = fetch_kalshi_data(selected_sports)
+st.sidebar.markdown("---")
+st.sidebar.write("Current Status: **Connected**")
+
+data_result = fetch_kalshi_data(query)
 
 if isinstance(data_result, pd.DataFrame):
     if not data_result.empty:
-        # Display Stats
-        c1, c2 = st.columns(2)
-        c1.metric("Total Markets", len(data_result))
-        c2.metric("Highest Volume", data_result.iloc[data_result['Volume'].idxmax()]['Event'])
+        # Metrics Row
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Active Markets", len(data_result))
+        c2.metric("Top Vol Market", data_result.iloc[data_result['Volume'].idxmax()]['Ticker'])
+        c3.metric("Avg. Price", f"${data_result['Yes Price ($)'].mean():.2f}")
 
-        # Display Table
-        st.subheader("Live Market Odds")
-        st.dataframe(data_result, use_container_width=True)
+        # Live Data Table
+        st.subheader(f"Live {query} Market Odds")
+        st.dataframe(data_result.sort_values(by="Volume", ascending=False), use_container_width=True)
 
-        # Chart
-        st.subheader("Sentiment Analysis (Probability of 'Yes')")
-        fig = px.bar(data_result, x='Event', y='Yes Price ($)', color='Volume', range_y=[0,1])
+        # Visualization
+        st.subheader("Price Distribution")
+        fig = px.bar(data_result, x='Ticker', y='Yes Price ($)', color='Volume', 
+                     hover_data=['Event'], range_y=[0, 1])
         st.plotly_chart(fig, use_container_width=True)
+        
+        # CSV Export
+        csv = data_result.to_csv(index=False).encode('utf-8')
+        st.download_button("Download as CSV", csv, "kalshi_export.csv", "text/csv")
     else:
-        st.warning("No active games found. Markets might be closed for the day.")
-else:
-    st.error(f"Critical Error: {data_result}")
+        st.warning(f"No active '{query}' markets found. Try searching for 'MLB' or
