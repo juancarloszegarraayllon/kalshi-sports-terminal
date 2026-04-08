@@ -10,16 +10,16 @@ st.title("🏀 Kalshi Sports Markets Dashboard")
 
 # --- Load secrets ---
 api_key_id = st.secrets["KALSHI_API_KEY_ID"]
-private_key_pem = st.secrets["KALSHI_PRIVATE_KEY_PEM"]
+private_key_path = st.secrets["KALSHI_PRIVATE_KEY_PATH"]
 
-# Convert single-line secret to proper PEM format and bytes
-private_key_bytes = private_key_pem.replace("\\n", "\n").encode("utf-8")
+st.write(f"🔑 API Key loaded: {bool(api_key_id)}")
+st.write(f"🔑 Private Key path loaded: {bool(private_key_path)}")
 
 # --- Initialize Kalshi client ---
 try:
     config = Configuration(host="https://api.elections.kalshi.com/trade-api/v2")
     config.api_key_id = api_key_id
-    config.private_key_pem = private_key_bytes
+    config.private_key_pem_path = private_key_path  # use file path, avoids PEM formatting issues
     client = KalshiClient(config)
     st.success("✅ Kalshi client initialized successfully!")
 except Exception as e:
