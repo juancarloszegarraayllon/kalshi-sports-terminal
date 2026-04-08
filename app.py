@@ -1,14 +1,13 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-import re
 from datetime import datetime
 from kalshi_python_sync import Configuration, KalshiClient
 
 # --- Page Setup ---
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏀")
 
-# --- Custom CSS for Card UI ---
+# Custom CSS for the clean "Screenshot" look
 st.markdown("""
     <style>
     .market-card {
@@ -18,18 +17,7 @@ st.markdown("""
         border: 1px solid #edf2f7;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         margin-bottom: 20px;
-        transition: transform 0.2s;
-        height: 220px;
-    }
-    .market-card:hover {
-        border-color: #cbd5e1;
-        transform: translateY(-2px);
-    }
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
+        height: 200px;
     }
     .badge-kalshi {
         background-color: #f0fdf4;
@@ -38,36 +26,25 @@ st.markdown("""
         border-radius: 6px;
         font-size: 11px;
         font-weight: 700;
-        letter-spacing: 0.5px;
-    }
-    .mkts-count {
-        color: #94a3b8;
-        font-size: 12px;
+        text-transform: uppercase;
     }
     .card-title {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 700;
         color: #1e293b;
-        margin: 10px 0;
-        min-height: 55px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        line-height: 1.4;
+        margin: 15px 0;
+        line-height: 1.2;
     }
     .card-footer {
         display: flex;
         gap: 20px;
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid #f1f5f9;
-        font-size: 12px;
+        margin-top: 20px;
+        font-size: 13px;
         color: #64748b;
     }
     .footer-val {
-        font-weight: 600;
-        color: #334155;
+        font-weight: 700;
+        color: #1e293b;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -91,102 +68,64 @@ except Exception as e:
     st.error(f"Init Error: {e}")
     st.stop()
 
-# --- Utility: Clean Titles ---
-def clean_event_title(text):
-    """
-    Cleans strings like 'yes Kawhi Leonard: 25+' into 'Kawhi Leonard'
-    or 'Will the Pistons beat the 76ers?' into 'Pistons vs 76ers'
-    """
-    if not isinstance(text, str): return "Unknown Event"
-    
-    # Remove "yes " or "no " at the start
-    text = re.sub(r'^(yes|no)\s+', '', text, flags=re.IGNORECASE)
-    # Remove "Will the "
-    text = text.replace('Will the ', '')
-    # Strip everything after a colon (removes ": 25+", ": 10+ rebounds", etc.)
-    text = text.split(':')[0]
-    # Strip question marks
-    text = text.replace('?', '')
-    # Convert 'beat the' to 'vs' for a cleaner look
-    text = text.replace(' beat the ', ' vs ').replace(' vs. ', ' vs ')
-    
-    return text.strip()
+# --- Sidebar ---
+st.sidebar.header("🎯 Filters")
+search_query = st.sidebar.text_input("Search Teams", "")
 
-# --- Sidebar Filters ---
-st.sidebar.header("🎯 Market Filters")
-search_query = st.sidebar.text_input("Search Teams or Sports", "")
-
-# --- Fetch Markets ---
+# --- Fetch Events (Groups of Markets) ---
 @st.cache_data(ttl=300)
-def fetch_markets():
+def fetch_sports_events():
     try:
-        response = client.get_markets(limit=1000, status="open")
-        return pd.DataFrame(response.to_dict().get("markets", []))
+        # get_events returns the parent games/events
+        response = client.get_events(limit=200, status="open")
+        events_df = pd.DataFrame(response.to_dict().get("events", []))
+        
+        if events_df.empty:
+            return pd.DataFrame()
+
+        # Filter for sports based on category or ticker prefixes
+        sport_prefixes = ('NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN', 'KXNBA', 'KXNFL')
+        is_sport = (
+            events_df['event_ticker'].str.startswith(sport_prefixes, na=False) |
+            events_df['category'].str.contains('Sports', case=False, na=False)
+        )
+        return events_df[is_sport].copy()
     except Exception as e:
-        st.error(f"Fetch Error: {e}")
+        st.error(f"Event Fetch Error: {e}")
         return pd.DataFrame()
 
-df = fetch_markets()
+events = fetch_sports_events()
 
-if not df.empty:
-    # --- Filter Sports Markets ---
-    sport_prefixes = ('KX', 'NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN')
-    is_sports = (
-        df['ticker'].str.startswith(sport_prefixes, na=False) |
-        df.get('event_ticker', pd.Series()).str.startswith(sport_prefixes, na=False) |
-        df['title'].str.contains('vs|score|points|win|beat', case=False, na=False)
-    )
-    df_sports = df[is_sports].copy()
-
+if not events.empty:
     if search_query:
-        df_sports = df_sports[df_sports['title'].str.contains(search_query, case=False, na=False)]
+        events = events[events['title'].str.contains(search_query, case=False, na=False)]
 
-    if not df_sports.empty:
-        # Group by event_ticker to roll up player-props into a single game card
-        cols = df_sports.columns
-        group_col = 'event_ticker' if 'event_ticker' in cols else 'title'
-        
-        # Aggregate logic
-        agg_map = {'title': 'first', 'ticker': 'count'}
-        if 'volume' in cols: agg_map['volume'] = 'sum'
-        if 'liquidity' in cols: agg_map['liquidity'] = 'sum'
+    # --- Grid Layout ---
+    cols_per_row = 4
+    for i in range(0, len(events), cols_per_row):
+        grid_cols = st.columns(cols_per_row)
+        for j in range(cols_per_row):
+            if i + j < len(events):
+                event = events.iloc[i + j]
+                
+                # Clean up the event title (e.g., "NBA - Lakers vs Celtics")
+                display_name = event['title'].replace('NBA: ', '').replace('Will the ', '').split('?')[0]
 
-        grouped = df_sports.groupby(group_col).agg(agg_map).reset_index()
-
-        # --- Display in Grid ---
-        cols_per_row = 4
-        for i in range(0, len(grouped), cols_per_row):
-            grid_cols = st.columns(cols_per_row)
-            for j in range(cols_per_row):
-                if i + j < len(grouped):
-                    row = grouped.iloc[i + j]
-                    
-                    display_title = clean_event_title(row['title'])
-                    vol_val = row.get('volume', 0)
-                    liq_val = row.get('liquidity', 0)
-                    mkts = row['ticker']
-
-                    with grid_cols[j]:
-                        st.markdown(f"""
-                            <div class="market-card">
-                                <div class="card-header">
-                                    <div>
-                                        <span class="badge-kalshi">KALSHI</span>
-                                        <span style="color:#94a3b8; font-size:11px; margin-left:5px;">Sports</span>
-                                    </div>
-                                    <div class="mkts-count">{mkts} mkts</div>
-                                </div>
-                                <div style="display: flex; align-items: flex-start; gap: 12px;">
-                                    <div style="font-size: 24px; background: #f8fafc; padding: 10px; border-radius: 10px;">🏀</div>
-                                    <div class="card-title">{display_title}</div>
-                                </div>
-                                <div class="card-footer">
-                                    <div>Vol <span class="footer-val">${vol_val/1000:,.1f}K</span></div>
-                                    <div>Liq <span class="footer-val">${liq_val/1000:,.1f}K</span></div>
-                                </div>
+                with grid_cols[j]:
+                    st.markdown(f"""
+                        <div class="market-card">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span class="badge-kalshi">KALSHI</span>
+                                <span style="color:#94a3b8; font-size:12px;">{event.get('category', 'Sports')}</span>
                             </div>
-                        """, unsafe_allow_html=True)
-    else:
-        st.info("No sports markets found for the current search.")
+                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+                                <div style="font-size: 24px;">🏀</div>
+                                <div class="card-title">{display_name}</div>
+                            </div>
+                            <div class="card-footer">
+                                <div>Ticker <span class="footer-val">{event['event_ticker']}</span></div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
 else:
-    st.warning("No active markets found from Kalshi.")
+    st.info("No active sports events found.")
