@@ -39,11 +39,16 @@ h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0
 .card-icon{font-size:20px;margin-bottom:6px;display:block;}
 .card-title{font-size:14px;font-weight:500;color:#e2e8f0;line-height:1.45;margin-bottom:12px;min-height:58px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1a1a2e;padding-top:10px;}
-.ticker-text{font-size:10px;color:#374151;letter-spacing:.06em;display:block;margin-bottom:8px;word-break:break-all;white-space:normal;}
+.ticker-text{font-size:10px;color:#374151;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;}
 .odds-row{display:flex;gap:8px;}
 .odds-yes{flex:1;background:#0d2d1a;border:1px solid #166534;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{flex:1;background:#2d0d0d;border:1px solid #7f1d1d;border-radius:6px;padding:5px 8px;text-align:center;}
-.odds-subtitle{font-size:11px;color:#9ca3af;margin-bottom:6px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.outcome-label{font-size:11px;color:#9ca3af;font-weight:500;flex:0 0 auto;min-width:60px;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
+.outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
+.ticker-link{font-size:10px;color:#4f46e5;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;}
+.ticker-link:hover{color:#818cf8;text-decoration:underline;}
 .odds-label{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
 .odds-price-yes{font-size:15px;font-weight:500;color:#4ade80;}
 .odds-price-no{font-size:15px;font-weight:500;color:#f87171;}
@@ -644,26 +649,23 @@ def fetch_all():
 
     def extract(row):
         mkts = row.get("markets")
-        if not isinstance(mkts,list) or not mkts: return "—","—",None,""
-        m = mkts[0]
-        yes = fmt_pct(m.get("yes_bid_dollars") or m.get("yes_bid"))
-        no  = fmt_pct(m.get("no_bid_dollars")  or m.get("no_bid"))
-        # Get team/player name from subtitle or market title
-        subtitle = str(m.get("subtitle") or m.get("title") or "").strip()
-        # For game markets, try to get both sides from first two markets
-        if len(mkts) >= 2:
-            s1 = str(mkts[0].get("subtitle") or "").strip()
-            s2 = str(mkts[1].get("subtitle") or "").strip()
-            if s1 and s2 and s1 != s2:
-                subtitle = f"{s1} / {s2}"
+        if not isinstance(mkts,list) or not mkts: return "—","—",None,[]
         close = None
         for mk in mkts:
             d = safe_date(mk.get("close_time"))
             if d and (close is None or d < close): close = d
-        return yes, no, close, subtitle
+        # Build list of (label, yes, no) for each outcome
+        outcomes = []
+        for mk in mkts:
+            label = str(mk.get("subtitle") or mk.get("title") or "").strip()
+            yes = fmt_pct(mk.get("yes_bid_dollars") or mk.get("yes_bid"))
+            no  = fmt_pct(mk.get("no_bid_dollars")  or mk.get("no_bid"))
+            if label or yes != "—":
+                outcomes.append((label, yes, no))
+        return "—","—", close, outcomes
 
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_subtitle"] = info[3]
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_outcomes"] = info[3]
 
     def best_dt(row):
         for col in ["strike_date","close_time","end_date","expiration_time"]:
@@ -754,18 +756,32 @@ def render_cards(data):
             dt      = str(row.get("_display_dt","Open"))
             yes     = str(row.get("_yes","—"))
             no      = str(row.get("_no","—"))
-            subtitle = str(row.get("_subtitle","")).strip()
-            sub_html = f'<div class="odds-subtitle">{subtitle[:40]}</div>' if subtitle else ""
+            outcomes = row.get("_outcomes") or []
+            # Build URL: https://kalshi.com/markets/{series_lower}/slug/{ticker_lower}
+            series_lower = str(row.get("series_ticker","")).lower()
+            ticker_lower = ticker.lower()
+            kalshi_url = f"https://kalshi.com/markets/{series_lower}/{series_lower.replace('kx','')}/{ticker_lower}" if series_lower else ""
+            link_html = f'<a class="ticker-link" href="{kalshi_url}" target="_blank">{ticker}</a>' if kalshi_url else f'<span class="ticker-text">{ticker}</span>'
+            # Build outcomes rows
+            if outcomes:
+                odds_html = ""
+                for (olabel, oyes, ono) in outcomes[:4]:  # max 4 outcomes
+                    safe_label = olabel[:22] if olabel else "—"
+                    odds_html += f'''<div class="outcome-row">
+<div class="outcome-label">{safe_label}</div>
+<div class="outcome-odds">
+<div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">{oyes}</div></div>
+<div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">{ono}</div></div>
+</div></div>'''
+            else:
+                odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             html += f"""<div class="market-card">
 <div class="card-top"><span class="cat-pill {pill}">{label}</span><span class="date-text">📅 {dt}</span></div>
 <span class="card-icon">{icon}</span>
 <div class="card-title">{title}</div>
-<div class="card-footer"><span class="ticker-text">{ticker}</span>
-{sub_html}
-<div class="odds-row">
-<div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">{yes}</div></div>
-<div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">{no}</div></div>
-</div></div></div>"""
+<div class="card-footer">{link_html}
+{odds_html}
+</div></div>"""
         except: continue
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
