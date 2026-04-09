@@ -760,9 +760,16 @@ def paginate(with_markets=False, category=None, max_pages=30):
 def fetch_all():
     prog = st.progress(0, text="Loading markets…")
 
-    all_ev = paginate(with_markets=True, max_pages=30)
-    prog.progress(0.80, text=f"{len(all_ev)} events loaded…")
-    combined = all_ev
+    # Fast first pass - no nested markets (quick metadata load)
+    all_ev = paginate(with_markets=False, max_pages=30)
+    prog.progress(0.5, text=f"{len(all_ev)} events. Loading odds…")
+    # Second pass - sports only with markets (for odds/outcomes)
+    sport_ev = paginate(with_markets=True, category="Sports", max_pages=30)
+    ev_map = {e["event_ticker"]: e for e in all_ev}
+    for e in sport_ev:
+        t = e.get("event_ticker","")
+        if t: ev_map[t] = e
+    combined = list(ev_map.values())
     if not combined:
         prog.empty(); return pd.DataFrame()
 
@@ -1116,12 +1123,21 @@ present_cats = ["All"] + [c for c in TOP_CATS
 
 top_tabs = st.tabs(present_cats)
 
+# Track which tab was clicked - don't auto-render All on load
+if "active_cat" not in st.session_state:
+    st.session_state["active_cat"] = None
+
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
+        if st.session_state["active_cat"] != cat:
+            st.session_state["active_cat"] = cat
 
         if cat == "All":
-            render_cards(filtered)
+            if len(filtered) > 0:
+                render_cards(filtered)
+            else:
+                st.markdown("<div class='empty-state'>No markets found.</div>", unsafe_allow_html=True)
 
         elif cat == "Sports":
             sdf = filtered[filtered["_is_sport"]].copy()
@@ -1135,60 +1151,61 @@ for i, tab in enumerate(top_tabs):
             nav_col, card_col = st.columns([1, 4])
 
             with nav_col:
-                sel_sport = st.session_state["nav_sport"]
-                sel_comp  = st.session_state["nav_comp"]
-                expanded  = st.session_state["nav_exp"]
+                sel_sport = st.session_state.get("nav_sport", "All")
+                sel_comp  = st.session_state.get("nav_comp", "All")
+                expanded  = st.session_state.get("nav_exp", None)
 
-                # Build full nav as one HTML block — no Streamlit buttons
-                html = "<div style='font-family:Helvetica,Arial,sans-serif;padding:8px 4px;'>"
-
+                html = "<div style='font-family:Helvetica,Arial,sans-serif;line-height:1.8;'>"
                 # All sports
                 c = "#00ff00" if sel_sport=="All" else "#ffffff"
-                w = "700" if sel_sport=="All" else "400"
-                html += f"<div style='color:{c};font-weight:{w};font-size:13px;padding:5px 0;'><a href='?nav_sport=All&nav_comp=All' style='color:inherit;text-decoration:none;'>All sports ({len(sdf)})</a></div>"
+                w = "bold" if sel_sport=="All" else "normal"
+                html += f"<div><a href='?s=All&c=All' style='color:{c};font-weight:{w};text-decoration:none;font-size:13px;'>All sports ({len(sdf)})</a></div>"
 
                 for sport in sports_present:
-                    sport_df = sdf[sdf["_sport"]==sport].copy()
-                    cnt = len(sport_df)
+                    sport_df2 = sdf[sdf["_sport"]==sport].copy()
+                    cnt = len(sport_df2)
                     is_sel = sel_sport == sport
                     is_exp = expanded == sport
                     c = "#00ff00" if is_sel else "#ffffff"
-                    w = "700" if is_sel else "400"
+                    w = "bold" if is_sel else "normal"
 
                     if sport == "Soccer":
-                        children = ["All"] + sorted([x for x in sport_df["_soccer_comp"].unique() if x and x not in ("Other","")])
+                        children = ["All"] + sorted([x for x in sport_df2["_soccer_comp"].unique() if x and x not in ("Other","")])
                     else:
-                        tabs_def = SPORT_SUBTABS.get(sport, [])
-                        if tabs_def:
-                            lookup = SERIES_TO_SUBTAB.get(sport, {})
-                            sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s,"Other"))
-                            children = ["All"] + [t for t,_ in tabs_def if (sport_df["_subtab"]==t).any()]
+                        td = SPORT_SUBTABS.get(sport, [])
+                        if td:
+                            lk = SERIES_TO_SUBTAB.get(sport, {})
+                            sport_df2["_subtab"] = sport_df2["_series"].apply(lambda s: lk.get(s,"Other"))
+                            children = ["All"] + [t for t,_ in td if (sport_df2["_subtab"]==t).any()]
                         else:
                             children = []
 
                     arrow = " ▾" if (is_exp and children) else (" ▸" if children else "")
-                    exp_val = "None" if is_exp else sport
-                    html += f"<div style='color:{c};font-weight:{w};font-size:13px;padding:5px 0;'><a href='?nav_sport={sport}&nav_comp=All&nav_exp={exp_val}' style='color:inherit;text-decoration:none;'>{sport} ({cnt}){arrow}</a></div>"
+                    ne = "None" if is_exp else sport
+                    html += f"<div><a href='?s={sport}&c=All&e={ne}' style='color:{c};font-weight:{w};text-decoration:none;font-size:13px;'>{sport} ({cnt}){arrow}</a></div>"
 
                     if is_exp and children:
                         for child in children:
-                            cc = "#00ff00" if sel_comp==child else "#aaaaaa"
-                            cw = "600" if sel_comp==child else "400"
-                            html += f"<div style='color:{cc};font-weight:{cw};font-size:12px;padding:3px 0 3px 14px;'><a href='?nav_sport={sport}&nav_comp={child}&nav_exp={sport}' style='color:inherit;text-decoration:none;'>{'▸ ' if sel_comp==child else ''}{child}</a></div>"
+                            cc = "#00ff00" if sel_comp==child else "#999999"
+                            cw = "bold" if sel_comp==child else "normal"
+                            prefix = "▸ " if sel_comp==child else ""
+                            html += f"<div><a href='?s={sport}&c={child}&e={sport}' style='color:{cc};font-weight:{cw};text-decoration:none;font-size:12px;padding-left:14px;display:block;'>{prefix}{child}</a></div>"
 
                 html += "</div>"
                 st.markdown(html, unsafe_allow_html=True)
 
-                # Handle query params for navigation
+                # Handle query params
                 qp = st.query_params
-                if "nav_sport" in qp:
-                    new_s = qp["nav_sport"]
-                    new_c = qp.get("nav_comp", "All")
-                    new_e = qp.get("nav_exp", "None")
-                    if new_s != st.session_state["nav_sport"] or new_c != st.session_state["nav_comp"]:
-                        st.session_state["nav_sport"] = new_s
-                        st.session_state["nav_comp"]  = new_c
-                        st.session_state["nav_exp"]   = None if new_e == "None" else new_e
+                qs = qp.get("s", None)
+                qc = qp.get("c", "All")
+                qe = qp.get("e", "None")
+                if qs is not None:
+                    changed = (qs != st.session_state.get("nav_sport","All") or 
+                               qc != st.session_state.get("nav_comp","All"))
+                    st.session_state["nav_sport"] = qs
+                    st.session_state["nav_comp"]  = qc
+                    st.session_state["nav_exp"]   = None if qe=="None" else qe
+                    if changed:
                         st.query_params.clear()
                         st.rerun()
 
