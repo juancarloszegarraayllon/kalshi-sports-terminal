@@ -760,16 +760,9 @@ def paginate(with_markets=False, category=None, max_pages=30):
 def fetch_all():
     prog = st.progress(0, text="Loading markets…")
 
-    # Fast first pass - no nested markets (quick metadata load)
-    all_ev = paginate(with_markets=False, max_pages=30)
-    prog.progress(0.5, text=f"{len(all_ev)} events. Loading odds…")
-    # Second pass - sports only with markets (for odds/outcomes)
-    sport_ev = paginate(with_markets=True, category="Sports", max_pages=30)
-    ev_map = {e["event_ticker"]: e for e in all_ev}
-    for e in sport_ev:
-        t = e.get("event_ticker","")
-        if t: ev_map[t] = e
-    combined = list(ev_map.values())
+    all_ev = paginate(with_markets=True, max_pages=30)
+    prog.progress(0.80, text=f"{len(all_ev)} events loaded…")
+    combined = all_ev
     if not combined:
         prog.empty(); return pd.DataFrame()
 
@@ -1117,118 +1110,81 @@ def filter_data(cat, subcat, subsubcat, data):
                 data = data[data["title"].str.contains(subcat, case=False, na=False)]
     return data
 
-# ── Main layout: top tabs, sports nav in sidebar ─────────────────────────────
+# ── Main layout: top tabs + left sidebar subcategories ────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
+# Top category tabs
 top_tabs = st.tabs(present_cats)
-
-# Track which tab was clicked - don't auto-render All on load
-if "active_cat" not in st.session_state:
-    st.session_state["active_cat"] = None
 
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
-        if st.session_state["active_cat"] != cat:
-            st.session_state["active_cat"] = cat
+        subcats = get_subcats(cat, filtered)
 
-        if cat == "All":
-            if len(filtered) > 0:
-                render_cards(filtered)
-            else:
-                st.markdown("<div class='empty-state'>No markets found.</div>", unsafe_allow_html=True)
+        if not subcats:
+            render_cards(filtered if cat == "All" else filter_data(cat, None, None, filtered))
+        else:
+            # Layout: left column for subcategories, right for cards
+            _left, _right = st.columns([1, 4])
 
-        elif cat == "Sports":
-            sdf = filtered[filtered["_is_sport"]].copy()
-            sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
+            with _left:
+                subcat_key    = f"subcat_{cat}"
+                subsubcat_key = f"subsubcat_{cat}"
+                expand_key_prefix = f"expand_{cat}"
+                if subcat_key not in st.session_state:
+                    st.session_state[subcat_key] = subcats[0]
+                if subsubcat_key not in st.session_state:
+                    st.session_state[subsubcat_key] = "All"
 
-            if "nav_sport" not in st.session_state: st.session_state["nav_sport"] = "All"
-            if "nav_comp"  not in st.session_state: st.session_state["nav_comp"]  = "All"
-            if "nav_exp"   not in st.session_state: st.session_state["nav_exp"]   = None
+                selected_subcat    = st.session_state[subcat_key]
+                selected_subsubcat = st.session_state[subsubcat_key]
 
-            # LEFT nav column + RIGHT cards
-            nav_col, card_col = st.columns([1, 4])
+                for sc in subcats:
+                    clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
+                    is_active = selected_subcat == sc
+                    expand_key = f"expand_{cat}_{sc}"
+                    if expand_key not in st.session_state:
+                        st.session_state[expand_key] = False
+                    is_expanded = st.session_state[expand_key]
 
-            with nav_col:
-                sel_sport = st.session_state.get("nav_sport", "All")
-                sel_comp  = st.session_state.get("nav_comp", "All")
-                expanded  = st.session_state.get("nav_exp", None)
-
-                html = "<div style='font-family:Helvetica,Arial,sans-serif;line-height:1.8;'>"
-                # All sports
-                c = "#00ff00" if sel_sport=="All" else "#ffffff"
-                w = "bold" if sel_sport=="All" else "normal"
-                html += f"<div><a href='?s=All&c=All' style='color:{c};font-weight:{w};text-decoration:none;font-size:13px;'>All sports ({len(sdf)})</a></div>"
-
-                for sport in sports_present:
-                    sport_df2 = sdf[sdf["_sport"]==sport].copy()
-                    cnt = len(sport_df2)
-                    is_sel = sel_sport == sport
-                    is_exp = expanded == sport
-                    c = "#00ff00" if is_sel else "#ffffff"
-                    w = "bold" if is_sel else "normal"
-
-                    if sport == "Soccer":
-                        children = ["All"] + sorted([x for x in sport_df2["_soccer_comp"].unique() if x and x not in ("Other","")])
+                    if cat == "Sports" and sc != "All sports":
+                        cnt = int((filtered["_sport"] == sc).sum())
+                    elif cat == "Sports" and sc == "All sports":
+                        cnt = int(filtered["_is_sport"].sum())
                     else:
-                        td = SPORT_SUBTABS.get(sport, [])
-                        if td:
-                            lk = SERIES_TO_SUBTAB.get(sport, {})
-                            sport_df2["_subtab"] = sport_df2["_series"].apply(lambda s: lk.get(s,"Other"))
-                            children = ["All"] + [t for t,_ in td if (sport_df2["_subtab"]==t).any()]
-                        else:
-                            children = []
+                        cnt = len(filtered)
 
-                    arrow = " ▾" if (is_exp and children) else (" ▸" if children else "")
-                    ne = "None" if is_exp else sport
-                    html += f"<div><a href='?s={sport}&c=All&e={ne}' style='color:{c};font-weight:{w};text-decoration:none;font-size:13px;'>{sport} ({cnt}){arrow}</a></div>"
+                    subsubcats = get_subsubcats(cat, sc, filtered)
+                    has_children = bool(subsubcats)
+                    arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
 
-                    if is_exp and children:
-                        for child in children:
-                            cc = "#00ff00" if sel_comp==child else "#999999"
-                            cw = "bold" if sel_comp==child else "normal"
-                            prefix = "▸ " if sel_comp==child else ""
-                            html += f"<div><a href='?s={sport}&c={child}&e={sport}' style='color:{cc};font-weight:{cw};text-decoration:none;font-size:12px;padding-left:14px;display:block;'>{prefix}{child}</a></div>"
-
-                html += "</div>"
-                st.markdown(html, unsafe_allow_html=True)
-
-                # Handle query params
-                qp = st.query_params
-                qs = qp.get("s", None)
-                qc = qp.get("c", "All")
-                qe = qp.get("e", "None")
-                if qs is not None:
-                    changed = (qs != st.session_state.get("nav_sport","All") or 
-                               qc != st.session_state.get("nav_comp","All"))
-                    st.session_state["nav_sport"] = qs
-                    st.session_state["nav_comp"]  = qc
-                    st.session_state["nav_exp"]   = None if qe=="None" else qe
-                    if changed:
-                        st.query_params.clear()
+                    # Bold if active, normal otherwise
+                    btn_label = f"**{clean}** ({cnt}){arrow}" if is_active else f"{clean} ({cnt}){arrow}"
+                    if st.button(btn_label, key=f"sc_{cat}_{sc}", use_container_width=True):
+                        if has_children:
+                            st.session_state[expand_key] = not is_expanded
+                        st.session_state[subcat_key] = sc
+                        st.session_state[subsubcat_key] = "All"
                         st.rerun()
 
-            with card_col:
-                s = st.session_state["nav_sport"]
-                c = st.session_state["nav_comp"]
-                if s == "All":
-                    view = sdf
-                else:
-                    view = sdf[sdf["_sport"]==s].copy()
-                    if c and c != "All":
-                        if s == "Soccer":
-                            view = view[view["_soccer_comp"]==c]
-                        else:
-                            lookup = SERIES_TO_SUBTAB.get(s, {})
-                            view["_subtab"] = view["_series"].apply(lambda x: lookup.get(x,"Other"))
-                            view = view[view["_subtab"]==c]
+                    if is_expanded and has_children:
+                        for ssc in subsubcats:
+                            is_ssc = selected_subsubcat == ssc
+                            ssc_label = f"  ▸ **{ssc}**" if is_ssc else f"    {ssc}"
+                            if st.button(ssc_label, key=f"ssc_{cat}_{sc}_{ssc}",
+                                         use_container_width=True):
+                                st.session_state[subcat_key] = sc
+                                st.session_state[subsubcat_key] = ssc
+                                st.rerun()
+
+
+            with _right:
+                selected_subcat  = st.session_state.get(subcat_key, subcats[0])
+                selected_subsubcat = st.session_state.get(subsubcat_key, "All")
+                view = filter_data(cat, selected_subcat, selected_subsubcat, filtered)
                 render_cards(view)
 
-        else:
-            render_cards(filtered[filtered["category"]==cat].copy())
-
-st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>ODDSIQ · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
 
 # JS to fix button styles at runtime
 import streamlit.components.v1 as _cv1
