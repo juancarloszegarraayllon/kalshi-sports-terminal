@@ -1110,115 +1110,59 @@ def filter_data(cat, subcat, subsubcat, data):
                 data = data[data["title"].str.contains(subcat, case=False, na=False)]
     return data
 
-# ── Main layout: top tabs + left sidebar subcategories ────────────────────────
+# ── Main layout: top tabs only ───────────────────────────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
-# Top category tabs
 top_tabs = st.tabs(present_cats)
 
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
-        subcats = get_subcats(cat, filtered)
-
-        if not subcats:
-            render_cards(filtered if cat == "All" else filter_data(cat, None, None, filtered))
-        else:
-            # Layout: left column for subcategories, right for cards
-            _left, _right = st.columns([1, 4])
-
-            with _left:
-                subcat_key    = f"subcat_{cat}"
-                subsubcat_key = f"subsubcat_{cat}"
-                expand_key_prefix = f"expand_{cat}"
-                if subcat_key not in st.session_state:
-                    st.session_state[subcat_key] = subcats[0]
-                if subsubcat_key not in st.session_state:
-                    st.session_state[subsubcat_key] = "All"
-
-                selected_subcat    = st.session_state[subcat_key]
-                selected_subsubcat = st.session_state[subsubcat_key]
-
-                for sc in subcats:
-                    clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
-                    is_active = selected_subcat == sc
-                    expand_key = f"expand_{cat}_{sc}"
-                    if expand_key not in st.session_state:
-                        st.session_state[expand_key] = False
-                    is_expanded = st.session_state[expand_key]
-
-                    if cat == "Sports" and sc != "All sports":
-                        cnt = int((filtered["_sport"] == sc).sum())
-                    elif cat == "Sports" and sc == "All sports":
-                        cnt = int(filtered["_is_sport"].sum())
+        if cat == "All":
+            render_cards(filtered)
+        elif cat == "Sports":
+            # Sports subtabs across the top
+            sdf = filtered[filtered["_is_sport"]].copy()
+            sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
+            sport_labels = ["All"] + sports_present
+            sport_tabs = st.tabs(sport_labels)
+            with sport_tabs[0]:
+                render_cards(sdf)
+            for si, sport in enumerate(sports_present):
+                with sport_tabs[si+1]:
+                    sport_df = sdf[sdf["_sport"]==sport].copy()
+                    if sport == "Soccer":
+                        comps = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
+                        has_other = sport_df["_soccer_comp"].isin(["Other",""]).any()
+                        if comps:
+                            comp_tabs = st.tabs(["All"] + comps + (["Other"] if has_other else []))
+                            with comp_tabs[0]: render_cards(sport_df)
+                            for ci, comp in enumerate(comps):
+                                with comp_tabs[ci+1]:
+                                    render_cards(sport_df[sport_df["_soccer_comp"]==comp])
+                            if has_other:
+                                with comp_tabs[-1]:
+                                    render_cards(sport_df[sport_df["_soccer_comp"].isin(["Other",""])])
+                        else:
+                            render_cards(sport_df)
                     else:
-                        cnt = len(filtered)
+                        tabs_def = SPORT_SUBTABS.get(sport, [])
+                        if tabs_def:
+                            lookup = SERIES_TO_SUBTAB.get(sport, {})
+                            sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s, "Other"))
+                            present_tabs = [t for t,_ in tabs_def if (sport_df["_subtab"]==t).any()]
+                            if present_tabs:
+                                sub_tabs = st.tabs(["All"] + present_tabs)
+                                with sub_tabs[0]: render_cards(sport_df)
+                                for ti, tn in enumerate(present_tabs):
+                                    with sub_tabs[ti+1]:
+                                        render_cards(sport_df[sport_df["_subtab"]==tn])
+                            else:
+                                render_cards(sport_df)
+                        else:
+                            render_cards(sport_df)
+        else:
+            render_cards(filtered[filtered["category"]==cat].copy())
 
-                    subsubcats = get_subsubcats(cat, sc, filtered)
-                    has_children = bool(subsubcats)
-                    arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
-
-                    # Bold if active, normal otherwise — no st.rerun() to keep tab state
-                    btn_label = f"**{clean}** ({cnt}){arrow}" if is_active else f"{clean} ({cnt}){arrow}"
-                    if st.button(btn_label, key=f"sc_{cat}_{sc}", use_container_width=True):
-                        if has_children:
-                            st.session_state[expand_key] = not is_expanded
-                        st.session_state[subcat_key] = sc
-                        st.session_state[subsubcat_key] = "All"
-
-                    if is_expanded and has_children:
-                        for ssc in subsubcats:
-                            is_ssc = selected_subsubcat == ssc
-                            ssc_label = f"  ▸ **{ssc}**" if is_ssc else f"    {ssc}"
-                            if st.button(ssc_label, key=f"ssc_{cat}_{sc}_{ssc}",
-                                         use_container_width=True):
-                                st.session_state[subcat_key] = sc
-                                st.session_state[subsubcat_key] = ssc
-
-
-            with _right:
-                selected_subcat  = st.session_state.get(subcat_key, subcats[0])
-                selected_subsubcat = st.session_state.get(subsubcat_key, "All")
-                view = filter_data(cat, selected_subcat, selected_subsubcat, filtered)
-                render_cards(view)
-
-
-# JS to style nav buttons as plain text
-import streamlit.components.v1 as _cv1
-_cv1.html("""
-<style>
-  /* injected into iframe - won't affect parent but let's try parent via JS */
-</style>
-<script>
-(function() {
-  var doc = window.parent ? window.parent.document : document;
-  function styleBtn(btn) {
-    btn.style.setProperty('background', 'transparent', 'important');
-    btn.style.setProperty('background-color', 'transparent', 'important');
-    btn.style.setProperty('border', 'none', 'important');
-    btn.style.setProperty('box-shadow', 'none', 'important');
-    btn.style.setProperty('outline', 'none', 'important');
-    btn.style.setProperty('color', '#ffffff', 'important');
-    btn.style.setProperty('font-family', 'Helvetica, Arial, sans-serif', 'important');
-    btn.style.setProperty('font-size', '13px', 'important');
-    btn.style.setProperty('text-align', 'left', 'important');
-    btn.style.setProperty('justify-content', 'flex-start', 'important');
-    btn.style.setProperty('padding', '3px 0', 'important');
-    btn.style.setProperty('margin', '0', 'important');
-    btn.style.setProperty('width', '100%', 'important');
-    btn.style.setProperty('border-radius', '0', 'important');
-    btn.style.setProperty('min-height', '0', 'important');
-    btn.style.setProperty('display', 'flex', 'important');
-  }
-  function fixAll() {
-    doc.querySelectorAll('button').forEach(styleBtn);
-  }
-  fixAll();
-  var ob = new MutationObserver(function() { fixAll(); });
-  ob.observe(doc.body, {childList:true, subtree:true});
-})();
-</script>
-""", height=0)
-
-st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>ODDSIQ · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
