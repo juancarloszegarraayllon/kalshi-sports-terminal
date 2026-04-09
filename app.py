@@ -7,7 +7,7 @@ import time
 # --- Page Setup ---
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏀")
 
-# Custom CSS
+# Custom CSS for the clean "Card" look
 st.markdown("""
     <style>
     .market-card {
@@ -68,7 +68,6 @@ try:
     config.api_key_id = api_key_id
     config.private_key_pem_path = private_key_path
     client = KalshiClient(config)
-    st.success("✅ Connected to Kalshi", icon="🔗")
 except Exception as e:
     st.error(f"Init Error: {e}")
     st.stop()
@@ -81,146 +80,94 @@ use_markets_api = st.sidebar.toggle("Use Markets API (more detailed)", value=Tru
 refresh_button = st.sidebar.button("🔄 Refresh Data Now")
 
 @st.cache_data(ttl=120)
-def fetch_all_events():
+def fetch_data(use_markets=True):
     try:
-        all_events = []
+        all_data = []
         cursor = None
-        with st.spinner("Fetching events from Kalshi..."):
-            while True:
-                response = client.get_events(
-                    limit=200,
-                    status="open",
-                    cursor=cursor
-                )
-                data = response.to_dict()
-                events_list = data.get("events", [])
-                
-                if not events_list:
-                    break
-                    
-                all_events.extend(events_list)
-                cursor = data.get("cursor")
-                
-                if not cursor:
-                    break
-                time.sleep(0.1)  # Be gentle on the API
+        limit = 100 # Safe limit to avoid 400 errors
         
-        return pd.DataFrame(all_events) if all_events else pd.DataFrame()
-    
+        with st.spinner(f"Fetching {'markets' if use_markets else 'events'}..."):
+            for _ in range(3): # Fetch up to 300 items
+                if use_markets:
+                    response = client.get_markets(limit=limit, status="open", cursor=cursor)
+                    key = "markets"
+                else:
+                    response = client.get_events(limit=limit, status="open", cursor=cursor)
+                    key = "events"
+                
+                res_dict = response.to_dict()
+                batch = res_dict.get(key, [])
+                if not batch: break
+                
+                all_data.extend(batch)
+                cursor = res_dict.get("cursor")
+                if not cursor: break
+                
+        return pd.DataFrame(all_data)
     except Exception as e:
-        st.error(f"Events API Error: {e}")
+        st.error(f"API Error: {e}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=120)
-def fetch_all_markets():
-    try:
-        all_markets = []
-        cursor = None
-        with st.spinner("Fetching markets from Kalshi..."):
-            while True:
-                response = client.get_markets(
-                    limit=200,
-                    status="open",
-                    cursor=cursor
-                )
-                data = response.to_dict()
-                markets_list = data.get("markets", [])
-                
-                if not markets_list:
-                    break
-                    
-                all_markets.extend(markets_list)
-                cursor = data.get("cursor")
-                
-                if not cursor:
-                    break
-                time.sleep(0.1)
-        
-        return pd.DataFrame(all_markets) if all_markets else pd.DataFrame()
-    
-    except Exception as e:
-        st.error(f"Markets API Error: {e}")
-        return pd.DataFrame()
-
-# Fetch data
 if refresh_button:
     st.cache_data.clear()
 
-if use_markets_api:
-    df = fetch_all_markets()
-    ticker_col = 'ticker'
-    title_col = 'title'
-    category_col = 'category'
-    event_ticker_col = 'event_ticker'
-else:
-    df = fetch_all_events()
-    ticker_col = 'event_ticker'
-    title_col = 'title'
-    category_col = 'category'
-    event_ticker_col = 'event_ticker'
+df = fetch_data(use_markets_api)
 
-# Sports filtering
 if not df.empty:
-    sport_keywords = ['NBA', 'MLB', 'NFL', 'NHL', 'soccer', 'tennis', 'basketball', 
-                     'baseball', 'football', 'hockey', 'KXNBA', 'KXMLB', 'KXNFL', 
-                     'KXNH', 'game', 'spread', 'total', 'props', 'player']
+    # 1. Broad Sports Detection
+    sport_keywords = ['NBA', 'MLB', 'NFL', 'NHL', 'SOC', 'TEN', 'KX', 'PLAYER', 'beat', 'vs']
     
-    def is_sports(row):
-        text = ' '.join(str(x).lower() for x in row if isinstance(x, str))
-        return any(kw.lower() in text for kw in sport_keywords)
-    
-    sports_df = df[df.apply(is_sports, axis=1)].copy()
-    
-    # Date handling
-    if 'close_time' in sports_df.columns:
-        sports_df['strike_dt'] = pd.to_datetime(sports_df['close_time'], errors='coerce').dt.date
-    elif 'strike_date' in sports_df.columns:
-        sports_df['strike_dt'] = pd.to_datetime(sports_df['strike_date'], errors='coerce').dt.date
+    def is_sports_row(row):
+        combined_text = f"{row.get('title', '')} {row.get('event_ticker', '')} {row.get('category', '')}".upper()
+        return any(kw in combined_text for kw in sport_keywords)
+
+    sports_df = df[df.apply(is_sports_row, axis=1)].copy()
+
+    # 2. FIXED DATE PARSING
+    if 'strike_date' in sports_df.columns:
+        # Events API uses ISO strings
+        sports_df['clean_date'] = pd.to_datetime(sports_df['strike_date']).dt.date
+    elif 'close_time' in sports_df.columns:
+        # Markets API uses Unix timestamps
+        sports_df['clean_date'] = pd.to_datetime(sports_df['close_time'], unit='s').dt.date
     else:
-        sports_df['strike_dt'] = date.today()
-    
-    # Filter by date and search
-    filtered = sports_df[sports_df['strike_dt'] == selected_date].copy()
+        sports_df['clean_date'] = None
+
+    # 3. Filtering
+    filtered = sports_df[sports_df['clean_date'] == selected_date].copy()
     
     if search_query:
-        mask = (
-            filtered[title_col].str.contains(search_query, case=False, na=False) |
-            filtered[event_ticker_col].str.contains(search_query, case=False, na=False)
-        )
-        filtered = filtered[mask]
-    
-    filtered = filtered.drop_duplicates(subset=[event_ticker_col])
-    
-    if filtered.empty:
-        st.warning(f"No sports events found for **{selected_date}** with current filters.")
-        st.info(f"Total sports items found overall: {len(sports_df)}")
-    else:
-        st.success(f"Showing **{len(filtered)}** sports events for {selected_date}", icon="🏟️")
-        
-        # Display as cards
-        cols_per_row = 3
-        for i in range(0, len(filtered), cols_per_row):
-            grid_cols = st.columns(cols_per_row)
-            for j in range(cols_per_row):
-                if i + j < len(filtered):
-                    ev = filtered.iloc[i + j]
-                    title = str(ev.get(title_col, 'No Title')).replace('Will ', '').replace('?', '').strip()
-                    
-                    with grid_cols[j]:
-                        st.markdown(f"""
-                            <div class="market-card">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span class="badge-kalshi">KALSHI</span>
-                                    <span style="color:#94a3b8; font-size:11px;">{ev.get(category_col, 'Sports')}</span>
-                                </div>
-                                <div class="card-title">{title}</div>
-                                <div class="card-footer">
-                                    <span>Ticker: <span class="footer-val">{ev.get(event_ticker_col, 'N/A')}</span></span>
-                                    <span>Markets: <span class="footer-val">{len(filtered) if use_markets_api else 'Event'}</span></span>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-else:
-    st.info("No data received from Kalshi yet...")
+        filtered = filtered[filtered['title'].str.contains(search_query, case=False, na=False)]
 
-st.caption("Data refreshes every 2 minutes • Powered by Kalshi API")
+    # Group by event_ticker so we don't show the same game 50 times
+    if 'event_ticker' in filtered.columns:
+        filtered = filtered.drop_duplicates(subset=['event_ticker'])
+
+    # 4. UI Rendering
+    if filtered.empty:
+        st.warning(f"No sports found for {selected_date}.")
+        with st.expander("🔍 Debug Raw Data"):
+            st.write("First 5 items found (Any Category):")
+            st.write(df[['title', 'event_ticker']].head())
+            st.write("Total Sports Items in memory:", len(sports_df))
+    else:
+        st.success(f"Found {len(filtered)} matches", icon="🏆")
+        cols = st.columns(3)
+        for idx, (_, row) in enumerate(filtered.iterrows()):
+            with cols[idx % 3]:
+                title = str(row['title']).replace('Will the ', '').split('?')[0]
+                st.markdown(f"""
+                    <div class="market-card">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="badge-kalshi">KALSHI</span>
+                            <span style="color:#94a3b8; font-size:11px;">{row.get('category', 'Sports')}</span>
+                        </div>
+                        <div class="card-title">{title}</div>
+                        <div class="card-footer">
+                            <span>{row['event_ticker']}</span>
+                            <span class="footer-val">Active</span>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+else:
+    st.info("No data received. Check your API Keys in Secrets.")
