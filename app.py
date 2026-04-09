@@ -621,37 +621,28 @@ def get_game_datetime_from_sub_title(sub_title: str):
     return None, None
 
 def fmt_date(d):
-    """d can be a date or datetime."""
-    from datetime import datetime, timezone as _tz
+    """d can be a date or datetime. Always shows clean date - no fake times."""
+    from datetime import date as _d
     try:
         if d is None: return "Open"
-        if hasattr(d, 'hour'):  # full datetime
-            try:
-                import pytz
-                eastern = pytz.timezone('US/Eastern')
-            except ImportError:
-                from zoneinfo import ZoneInfo
-                eastern = ZoneInfo('America/New_York')
-            if d.tzinfo:
-                d = d.astimezone(eastern)
-            now = datetime.now(d.tzinfo)
-            diff_days = (d.date() - now.date()).days
-            hour = d.hour % 12 or 12
-            ampm = "am" if d.hour < 12 else "pm"
-            mins = d.strftime('%M')
-            # Same day: show time only
-            if diff_days == 0:
-                return f"Today {hour}:{mins}{ampm} ET"
-            # Within 7 days: show day + time
-            if 0 < diff_days <= 7:
-                return f"{d.strftime('%b')} {d.day}, {hour}:{mins}{ampm} ET"
-            # Far future: just show date
-            return f"{d.strftime('%b')} {d.day}"
-        # date only
-        return d.strftime("%b %d")
+        # Get just the date portion
+        if hasattr(d, 'date') and callable(d.date):
+            day = d.date()
+        elif isinstance(d, _d):
+            day = d
+        else:
+            return "Open"
+        from datetime import date as _today_cls
+        today = _today_cls.today()
+        if day == today:
+            return "Today"
+        # Format: "Apr 9" or "Apr 25"
+        return day.strftime("%b %-d")
     except:
-        try: return d.strftime("%b %d") if d else "Open"
-        except: return "Open"
+        try:
+            if hasattr(d, 'strftime'): return d.strftime("%b %d")
+        except: pass
+        return "Open"
 
 def fmt_pct(v):
     try:
@@ -861,11 +852,10 @@ def fetch_all():
 
     df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
-        # Prefer kickoff_dt (has time), fall back to game_date (date only)
-        kdt = row.get("_kickoff_dt")
-        if kdt: return fmt_date(kdt)
+        # Use game_date (parsed from ticker) — most reliable
         gd = row.get("_game_date")
         if gd: return fmt_date(gd)
+        # Fallback: sort_dt date
         d = row.get("_mkt_dt")
         return fmt_date(d) if d else "Open"
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
@@ -1144,48 +1134,42 @@ st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALS
 
 # ── Real-time JS countdown via components ────────────────────────────────────
 import streamlit.components.v1 as _components
-_components.html("""
-<script>
-(function() {
-    function fmtCountdown(secs) {
-        if (secs <= 0) return "\ud83d\udd34 Live";
-        var d = Math.floor(secs / 86400);
-        var h = Math.floor((secs % 86400) / 3600);
-        var m = Math.floor((secs % 3600) / 60);
-        var s = secs % 60;
-        if (d > 1)   return "Begins in " + d + "d";
-        if (d === 1) return "Begins in 1d " + h + "h";
-        if (h > 0)   return "Begins in " + h + "h " + m + "m " + s + "s";
-        if (m > 0)   return "Begins in " + m + "m " + s + "s";
-        return "Begins in " + s + "s";
-    }
-
-    function tick() {
-        var now = Math.floor(Date.now() / 1000);
-        // Target the parent document since we are inside an iframe
-        var doc = window.parent.document;
-        var elems = doc.querySelectorAll(".countdown[data-kickoff]");
-        elems.forEach(function(el) {
-            var kickoff = parseInt(el.getAttribute("data-kickoff") || "0", 10);
-            var isLive  = el.getAttribute("data-live") === "true";
-            if (isLive) {
-                el.textContent = "\ud83d\udd34 Live";
-                return;
-            }
-            if (!kickoff) return;
-            var diff = kickoff - now;
-            el.textContent = fmtCountdown(diff);
-            el.style.color = "#10b981";
-            el.style.fontWeight = "600";
-        });
-    }
-
-    tick();
-    setInterval(tick, 1000);
-
-    // Also watch for DOM changes (Streamlit re-renders)
-    var observer = new MutationObserver(tick);
-    observer.observe(window.parent.document.body, { childList: true, subtree: true });
-})();
-</script>
-""", height=0)
+_LIVE_EMOJI = "🔴"  # red circle
+_countdown_html = (
+    "<script>"
+    "(function(){"
+    "function fmt(s){"
+    "if(s<=0)return'" + "🔴" + " Live';"
+    "var d=Math.floor(s/86400);"
+    "var h=Math.floor((s%86400)/3600);"
+    "var m=Math.floor((s%3600)/60);"
+    "var s2=s%60;"
+    "if(d>1)return'Begins in '+d+'d';"
+    "if(d===1)return'Begins in 1d '+h+'h';"
+    "if(h>0)return'Begins in '+h+'h '+m+'m '+s2+'s';"
+    "if(m>0)return'Begins in '+m+'m '+s2+'s';"
+    "return'Begins in '+s2+'s';"
+    "}"
+    "function tick(){"
+    "var now=Math.floor(Date.now()/1000);"
+    "var doc=window.parent.document;"
+    "var els=doc.querySelectorAll('.countdown[data-kickoff]');"
+    "els.forEach(function(el){"
+    "var k=parseInt(el.getAttribute('data-kickoff')||'0',10);"
+    "var live=el.getAttribute('data-live')==='true';"
+    "if(live||k===-1){el.textContent='" + "🔴" + " Live';el.style.color='#10b981';return;}"
+    "if(!k)return;"
+    "var diff=k-now;"
+    "el.textContent=fmt(diff);"
+    "el.style.color='#10b981';"
+    "el.style.fontWeight='600';"
+    "});"
+    "}"
+    "tick();"
+    "setInterval(tick,1000);"
+    "var ob=new MutationObserver(tick);"
+    "ob.observe(window.parent.document.body,{childList:true,subtree:true});"
+    "})();"
+    "</script>"
+)
+_components.html(_countdown_html, height=0)
