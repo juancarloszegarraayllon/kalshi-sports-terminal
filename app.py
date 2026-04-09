@@ -104,4 +104,29 @@ if not df.empty:
     if not filtered.empty:
         st.write(f"Showing **{len(filtered)}** Sport Events")
         cols = st.columns(4)
-        for i, (_, row) in enumerate
+        for i, (_, row) in enumerate(filtered.iterrows()):
+            with cols[i % 4]:
+                # Title Cleanup
+                title = row['title'].split(':')[-1].replace('Will the ', '').split('?')[0].strip()
+                
+                # Dynamic Icon
+                ticker = row['event_ticker'].upper()
+                icon = "🏀" if "NBA" in ticker else "⚾" if "MLB" in ticker else "🏒" if "NHL" in ticker else "🏟️"
+                
+                # Format Date Badge
+                display_date = row['clean_date'].strftime("%b %d")
+
+                st.markdown(f"""
+                    <div class="market-card">
+                        <div class="badge-row">
+                            <span class="sport-badge">KALSHI</span>
+                            <span class="date-badge">{display_date}</span>
+                        </div>
+                        <div class="card-title">{icon} {title}</div>
+                        <div class="ticker-footer">
+                            {row['event_ticker']}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+else:
+    st.info("No active sports data found. The API might be resetting for the day.")
