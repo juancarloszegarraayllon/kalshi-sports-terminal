@@ -1191,45 +1191,54 @@ import streamlit.components.v1 as _cv1
 _cv1.html("""
 <script>
 (function() {
-  function fixButtons() {
-    var doc = window.parent ? window.parent.document : document;
-    // Target every button inside stButton wrappers
-    doc.querySelectorAll('button').forEach(function(btn) {
-      // Apply to all buttons - remove all chrome
-      btn.style.setProperty('background', 'transparent', 'important');
-      btn.style.setProperty('background-color', 'transparent', 'important');
-      btn.style.setProperty('border', 'none', 'important');
-      btn.style.setProperty('border-color', 'transparent', 'important');
-      btn.style.setProperty('box-shadow', 'none', 'important');
-      btn.style.setProperty('outline', 'none', 'important');
-      btn.style.setProperty('color', '#ffffff', 'important');
-      btn.style.setProperty('font-family', 'Helvetica, Arial, sans-serif', 'important');
-      btn.style.setProperty('font-size', '13px', 'important');
-      btn.style.setProperty('text-align', 'left', 'important');
-      btn.style.setProperty('justify-content', 'flex-start', 'important');
-      btn.style.setProperty('align-items', 'center', 'important');
-      btn.style.setProperty('padding', '3px 0', 'important');
-      btn.style.setProperty('margin', '0', 'important');
-      btn.style.setProperty('width', '100%', 'important');
-      btn.style.setProperty('border-radius', '0', 'important');
-      btn.style.setProperty('min-height', '28px', 'important');
-      btn.style.setProperty('display', 'flex', 'important');
-      // Also fix the parent div
-      var parent = btn.parentElement;
-      if (parent) {
-        parent.style.setProperty('display', 'flex', 'important');
-        parent.style.setProperty('justify-content', 'flex-start', 'important');
-        parent.style.setProperty('align-items', 'center', 'important');
-        parent.style.setProperty('width', '100%', 'important');
+  var doc = window.parent ? window.parent.document : document;
+
+  function styleBtn(btn) {
+    btn.style.setProperty('background', 'transparent', 'important');
+    btn.style.setProperty('background-color', 'transparent', 'important');
+    btn.style.setProperty('border', 'none', 'important');
+    btn.style.setProperty('box-shadow', 'none', 'important');
+    btn.style.setProperty('outline', 'none', 'important');
+    btn.style.setProperty('color', '#ffffff', 'important');
+    btn.style.setProperty('font-family', 'Helvetica, Arial, sans-serif', 'important');
+    btn.style.setProperty('font-size', '13px', 'important');
+    btn.style.setProperty('text-align', 'left', 'important');
+    btn.style.setProperty('justify-content', 'flex-start', 'important');
+    btn.style.setProperty('align-items', 'center', 'important');
+    btn.style.setProperty('padding', '3px 0', 'important');
+    btn.style.setProperty('margin', '0', 'important');
+    btn.style.setProperty('width', '100%', 'important');
+    btn.style.setProperty('border-radius', '0', 'important');
+    btn.style.setProperty('min-height', '0', 'important');
+    btn.style.setProperty('display', 'flex', 'important');
+    // Fix parent wrapper too
+    var p = btn.parentElement;
+    while (p && p !== doc.body) {
+      var tn = (p.getAttribute('data-testid') || '');
+      if (tn === 'stButton' || tn === 'stBaseButton-secondary') {
+        p.style.setProperty('display', 'block', 'important');
+        p.style.setProperty('text-align', 'left', 'important');
       }
-    });
+      p = p.parentElement;
+    }
   }
-  fixButtons();
-  setInterval(fixButtons, 300);
-  new MutationObserver(fixButtons).observe(
-    window.parent ? window.parent.document.body : document.body,
-    {childList:true, subtree:true}
-  );
+
+  function fixAll() {
+    doc.querySelectorAll('button').forEach(styleBtn);
+  }
+
+  // Run immediately and on every DOM change
+  fixAll();
+  var ob = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      m.addedNodes.forEach(function(n) {
+        if (n.querySelectorAll) n.querySelectorAll('button').forEach(styleBtn);
+        if (n.tagName === 'BUTTON') styleBtn(n);
+      });
+    });
+    fixAll();
+  });
+  ob.observe(doc.body, {childList: true, subtree: true});
 })();
 </script>
 """, height=0)
