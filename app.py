@@ -104,6 +104,27 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
+/* Sports nav column - plain text buttons, no rectangles */
+[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"],
+[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"]:hover,
+[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"]:focus,
+[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"]:active {
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    outline:none!important;
+    text-align:left!important;
+    justify-content:flex-start!important;
+    padding:3px 0!important;
+    margin:0!important;
+    color:#ffffff!important;
+    font-family:Helvetica,Arial,sans-serif!important;
+    font-size:13px!important;
+    font-weight:400!important;
+    width:100%!important;
+    border-radius:0!important;
+    min-height:28px!important;
+}
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
