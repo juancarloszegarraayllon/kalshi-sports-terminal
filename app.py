@@ -35,7 +35,7 @@ h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;co
 .pill-science{background:#1e2e1a;color:#86efac;border-color:#14532d;}
 .pill-health{background:#2e1a2e;color:#e879f9;border-color:#701a75;}
 .pill-default{background:#1e1e32;color:#94a3b8;border-color:#2d2d55;}
-.date-text{font-size:11px;color:#6b7280;}.begins-text{font-size:10px;color:#10b981;margin-top:2px;display:block;}.card-dates{display:flex;flex-direction:column;align-items:flex-end;}
+.date-text{font-size:11px;color:#6b7280;}.begins-text{font-size:10px;color:#10b981;font-weight:600;}.live-text{font-size:10px;color:#ef4444;font-weight:700;letter-spacing:.04em;}.card-dates{display:flex;flex-direction:row;align-items:center;gap:2px;flex-wrap:wrap;justify-content:flex-end;}
 .card-icon{font-size:20px;margin-bottom:6px;display:block;}
 .card-title{font-size:14px;font-weight:500;color:#e2e8f0;line-height:1.45;margin-bottom:12px;min-height:58px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1a1a2e;padding-top:10px;}
@@ -723,63 +723,107 @@ def fetch_all():
     def extract(row):
         mkts = row.get("markets")
         if not isinstance(mkts, list) or not mkts:
-            return "—", "—", None, None, None, []
+            return "—", "—", None, None, None, None, []
 
-        first_mk = mkts[0]
+        first_mk   = mkts[0]
         event_ticker = str(row.get("event_ticker", ""))
-        sub_title    = str(row.get("sub_title", ""))
+        sport        = str(row.get("_sport", ""))
 
-        # ── Game date: parse from event ticker (most reliable) ──
+        # ── Game date from ticker (most reliable) ──
         game_date = parse_game_date_from_ticker(event_ticker)
 
-        # ── open_time: when betting opened (NOT game time) ──
-        open_dt = safe_dt(first_mk.get("open_time"))
+        # ── Collect all time fields from market ──
+        open_dt              = safe_dt(first_mk.get("open_time"))
+        close_dt             = safe_dt(first_mk.get("close_time"))
+        exp_dt               = safe_dt(first_mk.get("expected_expiration_time"))
 
-        # ── close_time: settlement deadline (NOT game time for sports games) ──
-        close_dt   = safe_dt(first_mk.get("close_time"))
-        close_date = close_dt.date() if close_dt else None
+        # ── Estimate kickoff time ──
+        # For game events, expected_expiration_time is set to ~game end
+        # Subtract sport-specific duration to get kickoff estimate
+        # Soccer: 90min + stoppage ≈ 105min → subtract 2h from exp_dt
+        # Baseball: ~3h → subtract 3h
+        # Basketball/Hockey: ~2.5h → subtract 2.5h
+        # Football: ~3h → subtract 3h
+        # Default: subtract 2h
+        from datetime import timedelta as _td
+        DURATION = {
+            "Soccer": _td(hours=2), "Baseball": _td(hours=3),
+            "Basketball": _td(hours=2, minutes=30),
+            "Hockey": _td(hours=2, minutes=30),
+            "Football": _td(hours=3),
+            "Cricket": _td(hours=4),
+        }
+        duration = DURATION.get(sport, _td(hours=2))
+        kickoff_dt = None
+        if game_date and exp_dt:
+            # Use exp_dt - duration as kickoff estimate
+            kickoff_dt = exp_dt - duration
+        elif game_date and close_dt:
+            kickoff_dt = close_dt - duration
 
-        # ── Determine event status ──
-        # For game events: game_date is the display date
-        # If game_date is today or in past and close_dt is future → Live
-        # open_time is when betting opened (could be days ago)
+        # ── sort date ──
+        sort_dt = game_date if game_date else (close_dt.date() if close_dt else None)
+
+        # ── Begins / Live status ──
         from datetime import date as _date, datetime as _dt
         today = _date.today()
         now   = _dt.now(UTC)
 
-        is_game = game_date is not None
-        sort_dt = game_date if is_game else (close_date or (open_dt.date() if open_dt else None))
-
-        # ── Begins in / Live ──
-        # For game events: compare game_date to today
-        # Live if game_date <= today and close_dt > now (still settling)
-        if is_game:
+        begins = ""
+        if game_date:
             if game_date < today:
                 begins = "🔴 Live"
             elif game_date == today:
-                begins = "🔴 Live"
+                # Check if kickoff is in future
+                if kickoff_dt and kickoff_dt > now:
+                    diff = kickoff_dt - now
+                    secs = int(diff.total_seconds())
+                    h, rem = divmod(secs, 3600)
+                    m, s   = divmod(rem, 60)
+                    if h > 0:
+                        begins = f"⏱ {h}h {m}m {s}s"
+                    elif m > 0:
+                        begins = f"⏱ {m}m {s}s"
+                    else:
+                        begins = f"⏱ {s}s"
+                else:
+                    begins = "🔴 Live"
             else:
                 days = (game_date - today).days
                 if days == 1:
                     begins = "⏱ Tomorrow"
                 elif days <= 7:
+                    # Show countdown with hours if within 2 days
+                    if kickoff_dt and kickoff_dt > now:
+                        diff = kickoff_dt - now
+                        secs = int(diff.total_seconds())
+                        h, rem = divmod(secs, 3600)
+                        m, _   = divmod(rem, 60)
+                        if h < 48:
+                            begins = f"⏱ {h}h {m}m"
+                        else:
+                            begins = f"⏱ {days}d"
+                    else:
+                        begins = f"⏱ {days}d"
+                elif days <= 30:
                     begins = f"⏱ {days}d"
                 else:
                     begins = ""
         else:
-            # Futures/outright: use close_dt for Live detection
-            if close_dt:
+            # Futures — use close_dt
+            if close_dt and close_dt > now:
                 diff = int((close_dt - now).total_seconds())
                 if diff <= 600:
                     begins = "🔴 Live"
+                elif diff < 3600:
+                    m = diff // 60
+                    begins = f"⏱ {m}m"
                 elif diff < 86400:
                     h = diff // 3600
                     m = (diff % 3600) // 60
                     begins = f"⏱ {h}h {m}m" if m else f"⏱ {h}h"
                 else:
                     begins = ""
-            else:
-                begins = ""
 
         # ── Outcome labels from yes_sub_title ──
         outcomes = []
@@ -809,14 +853,17 @@ def fetch_all():
             no     = f"{int(round(nf*100))}¢"  if nf is not None else "—"
             outcomes.append((label[:35], chance, yes, no))
 
-        return "—", "—", sort_dt, game_date, begins, outcomes
+        return "—", "—", sort_dt, game_date, kickoff_dt, begins, outcomes
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_game_date"] = info[3]; df["_begins"] = info[4]; df["_outcomes"] = info[5]
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_game_date"] = info[3]; df["_kickoff_dt"] = info[4]; df["_begins"] = info[5]; df["_outcomes"] = info[6]
 
 
 
     df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
+        # Prefer kickoff_dt (has time), fall back to game_date (date only)
+        kdt = row.get("_kickoff_dt")
+        if kdt: return fmt_date(kdt)
         gd = row.get("_game_date")
         if gd: return fmt_date(gd)
         d = row.get("_mkt_dt")
@@ -967,7 +1014,7 @@ def render_cards(data):
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             html += f"""<div class="market-card">
-<div class="card-top"><span class="cat-pill {pill}">{label}</span><div class="card-dates"><span class="date-text">📅 {dt}</span>{f'<span class="begins-text">{begins}</span>' if begins else ""}</div></div>
+<div class="card-top"><span class="cat-pill {pill}">{label}</span><div class="card-dates">{f'<span class="begins-text">{begins} · </span>' if begins and begins != "🔴 Live" else ('<span class="live-text">🔴 Live</span>' if begins == "🔴 Live" else "")}<span class="date-text">{dt}</span></div></div>
 <span class="card-icon">{icon}</span>
 <div class="card-title">{title}</div>
 <div class="card-footer">{link_html}
