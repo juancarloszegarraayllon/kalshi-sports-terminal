@@ -1110,7 +1110,7 @@ def filter_data(cat, subcat, subsubcat, data):
                 data = data[data["title"].str.contains(subcat, case=False, na=False)]
     return data
 
-# ── Main layout: top tabs only ───────────────────────────────────────────────
+# ── Main layout: top tabs + left sidebar for Sports ─────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
@@ -1119,115 +1119,157 @@ top_tabs = st.tabs(present_cats)
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
+
         if cat == "All":
             render_cards(filtered)
+
         elif cat == "Sports":
             sdf = filtered[filtered["_is_sport"]].copy()
             sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
 
-            # Session state keys
-            sel_sport_key = "nav_sport"
-            sel_comp_key  = "nav_comp"
-            if sel_sport_key not in st.session_state:
-                st.session_state[sel_sport_key] = "All"
-            if sel_comp_key not in st.session_state:
-                st.session_state[sel_comp_key] = "All"
-
-            sel_sport = st.session_state[sel_sport_key]
-            sel_comp  = st.session_state[sel_comp_key]
+            if "nav_sport" not in st.session_state: st.session_state["nav_sport"] = "All"
+            if "nav_comp"  not in st.session_state: st.session_state["nav_comp"]  = "All"
+            if "nav_exp"   not in st.session_state: st.session_state["nav_exp"]   = None
 
             nav_col, card_col = st.columns([1, 4])
 
             with nav_col:
-                # Build nav HTML for all sports
-                nav_html = "<div style='font-family:Helvetica,Arial,sans-serif;padding:4px 0;'>"
+                st.markdown("""<style>
+                [data-testid="stVerticalBlock"] button{
+                    background:transparent!important;border:none!important;
+                    box-shadow:none!important;outline:none!important;
+                    text-align:left!important;justify-content:flex-start!important;
+                    padding:3px 0!important;margin:0!important;
+                    font-family:Helvetica,Arial,sans-serif!important;
+                    color:#ffffff!important;width:100%!important;
+                    border-radius:0!important;min-height:0!important;font-size:13px!important;
+                }
+                [data-testid="stVerticalBlock"] button:hover{
+                    background:transparent!important;color:#aaaaaa!important;border:none!important;box-shadow:none!important;
+                }
+                [data-testid="stVerticalBlock"] button:focus,
+                [data-testid="stVerticalBlock"] button:active{
+                    background:transparent!important;border:none!important;box-shadow:none!important;outline:none!important;
+                }
+                </style>""", unsafe_allow_html=True)
 
-                # "All sports" item
-                color = "#00ff00" if sel_sport == "All" else "#ffffff"
-                weight = "700" if sel_sport == "All" else "400"
-                cnt_all = len(sdf)
-                nav_html += f"<div style='color:{color};font-weight:{weight};font-size:13px;padding:5px 0;cursor:pointer;'>All sports ({cnt_all})</div>"
+                sel_sport = st.session_state["nav_sport"]
+                sel_comp  = st.session_state["nav_comp"]
+                expanded  = st.session_state["nav_exp"]
+
+                # All sports button
+                lbl = f"**All sports ({len(sdf)})**" if sel_sport=="All" else f"All sports ({len(sdf)})"
+                if st.button(lbl, key="nav_all"):
+                    st.session_state["nav_sport"] = "All"
+                    st.session_state["nav_comp"]  = "All"
+                    st.session_state["nav_exp"]   = None
 
                 for sport in sports_present:
-                    sport_df = sdf[sdf["_sport"]==sport]
+                    sport_df = sdf[sdf["_sport"]==sport].copy()
                     cnt = len(sport_df)
                     is_sel = sel_sport == sport
-                    color  = "#00ff00" if is_sel else "#ffffff"
-                    weight = "700" if is_sel else "400"
+                    is_exp = expanded == sport
 
-                    # Get children
                     if sport == "Soccer":
-                        children = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
+                        children = ["All"] + sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
                     else:
                         tabs_def = SPORT_SUBTABS.get(sport, [])
                         if tabs_def:
                             lookup = SERIES_TO_SUBTAB.get(sport, {})
-                            tmp = sport_df.copy()
-                            tmp["_subtab"] = tmp["_series"].apply(lambda s: lookup.get(s, "Other"))
-                            children = [t for t,_ in tabs_def if (tmp["_subtab"]==t).any()]
+                            sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s,"Other"))
+                            children = ["All"] + [t for t,_ in tabs_def if (sport_df["_subtab"]==t).any()]
                         else:
                             children = []
 
-                    arrow = " ▾" if (is_sel and children) else (" ▸" if children else "")
-                    nav_html += f"<div style='color:{color};font-weight:{weight};font-size:13px;padding:5px 0;cursor:pointer;'>{sport} ({cnt}){arrow}</div>"
+                    arrow = " ▾" if (is_exp and children) else (" ▸" if children else "")
+                    lbl   = f"**{sport} ({cnt}){arrow}**" if is_sel else f"{sport} ({cnt}){arrow}"
+                    if st.button(lbl, key=f"nav_{sport}"):
+                        st.session_state["nav_sport"] = sport
+                        st.session_state["nav_comp"]  = "All"
+                        st.session_state["nav_exp"]   = None if is_exp else (sport if children else None)
 
-                    # Show children if this sport is selected
-                    if is_sel and children:
-                        all_color = "#00ff00" if sel_comp == "All" else "#888888"
-                        nav_html += f"<div style='color:{all_color};font-size:12px;padding:3px 0 3px 14px;cursor:pointer;'>All</div>"
+                    if is_exp and children:
                         for child in children:
-                            cc = "#00ff00" if sel_comp == child else "#888888"
-                            nav_html += f"<div style='color:{cc};font-size:12px;padding:3px 0 3px 14px;cursor:pointer;'>{child}</div>"
-
-                nav_html += "</div>"
-                st.markdown(nav_html, unsafe_allow_html=True)
-
-                # Actual clickable selectbox hidden below (for interaction)
-                sport_options = ["All"] + sports_present
-                chosen_sport = st.selectbox("Sport", sport_options,
-                    index=sport_options.index(sel_sport) if sel_sport in sport_options else 0,
-                    label_visibility="collapsed", key="sb_sport")
-                if chosen_sport != sel_sport:
-                    st.session_state[sel_sport_key] = chosen_sport
-                    st.session_state[sel_comp_key] = "All"
-
-                # Comp selectbox (only when a sport with children is selected)
-                if sel_sport != "All":
-                    sport_df2 = sdf[sdf["_sport"]==sel_sport].copy()
-                    if sel_sport == "Soccer":
-                        comp_options = ["All"] + sorted([c for c in sport_df2["_soccer_comp"].unique() if c and c not in ("Other","")])
-                    else:
-                        tabs_def = SPORT_SUBTABS.get(sel_sport, [])
-                        if tabs_def:
-                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
-                            sport_df2["_subtab"] = sport_df2["_series"].apply(lambda s: lookup.get(s, "Other"))
-                            comp_options = ["All"] + [t for t,_ in tabs_def if (sport_df2["_subtab"]==t).any()]
-                        else:
-                            comp_options = ["All"]
-                    if len(comp_options) > 1:
-                        chosen_comp = st.selectbox("Competition", comp_options,
-                            index=comp_options.index(sel_comp) if sel_comp in comp_options else 0,
-                            label_visibility="collapsed", key="sb_comp")
-                        if chosen_comp != sel_comp:
-                            st.session_state[sel_comp_key] = chosen_comp
+                            is_c = sel_comp == child
+                            clbl = f"  **▸ {child}**" if is_c else f"    {child}"
+                            if st.button(clbl, key=f"nav_{sport}_{child}"):
+                                st.session_state["nav_sport"] = sport
+                                st.session_state["nav_comp"]  = child
 
             with card_col:
-                sel_sport = st.session_state[sel_sport_key]
-                sel_comp  = st.session_state[sel_comp_key]
-                if sel_sport == "All":
+                s = st.session_state["nav_sport"]
+                c = st.session_state["nav_comp"]
+                if s == "All":
                     view = sdf
                 else:
-                    view = sdf[sdf["_sport"]==sel_sport].copy()
-                    if sel_comp and sel_comp != "All":
-                        if sel_sport == "Soccer":
-                            view = view[view["_soccer_comp"]==sel_comp]
+                    view = sdf[sdf["_sport"]==s].copy()
+                    if c and c != "All":
+                        if s == "Soccer":
+                            view = view[view["_soccer_comp"]==c]
                         else:
-                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
-                            view["_subtab"] = view["_series"].apply(lambda s: lookup.get(s, "Other"))
-                            view = view[view["_subtab"]==sel_comp]
+                            lookup = SERIES_TO_SUBTAB.get(s, {})
+                            view["_subtab"] = view["_series"].apply(lambda x: lookup.get(x,"Other"))
+                            view = view[view["_subtab"]==c]
                 render_cards(view)
 
         else:
             render_cards(filtered[filtered["category"]==cat].copy())
 
-st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>ODDSIQ · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+# JS to fix button styles at runtime
+import streamlit.components.v1 as _cv1
+_cv1.html("""
+<script>
+(function() {
+  var doc = window.parent ? window.parent.document : document;
+
+  function styleBtn(btn) {
+    btn.style.setProperty('background', 'transparent', 'important');
+    btn.style.setProperty('background-color', 'transparent', 'important');
+    btn.style.setProperty('border', 'none', 'important');
+    btn.style.setProperty('box-shadow', 'none', 'important');
+    btn.style.setProperty('outline', 'none', 'important');
+    btn.style.setProperty('color', '#ffffff', 'important');
+    btn.style.setProperty('font-family', 'Helvetica, Arial, sans-serif', 'important');
+    btn.style.setProperty('font-size', '13px', 'important');
+    btn.style.setProperty('text-align', 'left', 'important');
+    btn.style.setProperty('justify-content', 'flex-start', 'important');
+    btn.style.setProperty('align-items', 'center', 'important');
+    btn.style.setProperty('padding', '3px 0', 'important');
+    btn.style.setProperty('margin', '0', 'important');
+    btn.style.setProperty('width', '100%', 'important');
+    btn.style.setProperty('border-radius', '0', 'important');
+    btn.style.setProperty('min-height', '0', 'important');
+    btn.style.setProperty('display', 'flex', 'important');
+    // Fix parent wrapper too
+    var p = btn.parentElement;
+    while (p && p !== doc.body) {
+      var tn = (p.getAttribute('data-testid') || '');
+      if (tn === 'stButton' || tn === 'stBaseButton-secondary') {
+        p.style.setProperty('display', 'block', 'important');
+        p.style.setProperty('text-align', 'left', 'important');
+      }
+      p = p.parentElement;
+    }
+  }
+
+  function fixAll() {
+    doc.querySelectorAll('button').forEach(styleBtn);
+  }
+
+  // Run immediately and on every DOM change
+  fixAll();
+  var ob = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      m.addedNodes.forEach(function(n) {
+        if (n.querySelectorAll) n.querySelectorAll('button').forEach(styleBtn);
+        if (n.tagName === 'BUTTON') styleBtn(n);
+      });
+    });
+    fixAll();
+  });
+  ob.observe(doc.body, {childList: true, subtree: true});
+})();
+</script>
+""", height=0)
+
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
