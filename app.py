@@ -764,14 +764,12 @@ def fetch_all():
         sample = df[df["_is_sport"] & df["_outcomes"].apply(lambda x: len(x) > 0 if isinstance(x, list) else False)]
         if not sample.empty:
             row0 = sample.iloc[0]
-            mkts = row0.get("markets") or []
-            if mkts:
+            mkts = row0["markets"] if "markets" in row0.index else []
+            if isinstance(mkts, list) and mkts:
                 mk0 = mkts[0]
-                df.attrs["_debug_mkt_keys"] = list(mk0.keys())
-                df.attrs["_debug_mkt_sample"] = {k: str(v)[:80] for k, v in mk0.items() if v not in (None, "", [], {})}
-                df.attrs["_debug_ev_keys"] = [k for k in row0.index if not k.startswith("_")]
-                df.attrs["_debug_ev_sample"] = {k: str(row0.get(k))[:80] for k in row0.index 
-                                                  if not k.startswith("_") and row0.get(k) not in (None, "", [], {})}
+                df.attrs["_debug_mkt_sample"] = {k: str(v)[:80] for k, v in mk0.items() if v is not None and v != "" and v != []}
+            ev_keys = [k for k in row0.index if not str(k).startswith("_")]
+            df.attrs["_debug_ev_sample"] = {k: str(row0[k])[:80] for k in ev_keys if row0[k] is not None and str(row0[k]) not in ("", "nan", "None", "[]", "{}")}
     prog.progress(1.0); prog.empty()
     return df
 
