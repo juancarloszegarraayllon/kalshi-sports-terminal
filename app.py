@@ -712,6 +712,11 @@ def fetch_all():
     df["_series"]  = df.get("series_ticker", pd.Series("", index=df.index)).fillna("").str.upper()
     df["_sport"]   = df["_series"].apply(get_sport)
     df["_is_sport"]= df["_sport"] != ""
+
+    # Ensure markets column exists and is always a list
+    if "markets" not in df.columns:
+        df["markets"] = [[] for _ in range(len(df))]
+    df["markets"] = df["markets"].apply(lambda x: x if isinstance(x, list) else [])
     df["_soccer_comp"] = df.apply(
         lambda r: SOCCER_COMP.get(r["_series"],"Other") if r["_sport"]=="Soccer" else "", axis=1
     )
