@@ -232,9 +232,14 @@ def fetch_all_events():
         return row.get("_close_date")
 
     df["_sort_date"]    = df.apply(get_sort_date, axis=1)
-    df["_display_date"] = df["_sort_date"].apply(
-        lambda d: d.strftime("%b %d, %Y") if d is not None else "Open"
-    )
+    def fmt_date(d):
+        try:
+            if d is None or str(d) in ("NaT", "None", "nan"):
+                return "Open"
+            return d.strftime("%b %d, %Y")
+        except Exception:
+            return "Open"
+    df["_display_date"] = df["_sort_date"].apply(fmt_date)
 
     return df
 
