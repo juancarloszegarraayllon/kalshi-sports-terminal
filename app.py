@@ -49,15 +49,15 @@ hr { border-color: #1e1e32 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Timezone-safe date converter (no zoneinfo needed) ─────────────────────────
 UTC = timezone.utc
 
-def to_utc_date(ts):
-    """Convert a pandas Timestamp (UTC-aware) to a plain date in UTC."""
+def parse_date_safe(val):
+    """Parse any date string/value to a plain date object, or None."""
     try:
-        if pd.isna(ts):
+        if val is None or val == "" or (isinstance(val, float) and pd.isna(val)):
             return None
-        return ts.astimezone(UTC).date()
+        ts = pd.to_datetime(val, utc=True)
+        return ts.to_pydatetime().astimezone(UTC).date()
     except Exception:
         return None
 
@@ -81,7 +81,7 @@ def get_client():
 
 client = get_client()
 
-# ── Fetch ALL events with rate-limit-safe pagination ──────────────────────────
+# ── Fetch ALL events with pagination ──────────────────────────────────────────
 @st.cache_data(ttl=600)
 def fetch_all():
     all_events = []
@@ -140,19 +140,28 @@ def fetch_all():
         return pd.DataFrame()
 
     df = pd.DataFrame(all_events)
+
     if "event_ticker" in df.columns:
         df = df.drop_duplicates(subset=["event_ticker"])
 
-    # Parse dates — try multiple fields
-    df["_parsed_date"] = pd.NaT
-    for col in ["strike_date", "end_date", "close_time", "expiration_time"]:
-        if col in df.columns:
-            parsed = pd.to_datetime(df[col], errors="coerce", utc=True)
-            mask = df["_parsed_date"].isna() & parsed.notna()
-            df.loc[mask, "_parsed_date"] = parsed[mask]
+    # Parse date — try each date column independently, pick first that works
+    # Store as plain Python date objects in a regular object column (no dtype issues)
+    date_cols = ["strike_date", "end_date", "close_time", "expiration_time"]
+    
+    def get_best_date(row):
+        for col in date_cols:
+            val = row.get(col)
+            d = parse_date_safe(val)
+            if d is not None:
+                return d
+        return None
 
-    # Convert to plain UTC date — no zoneinfo dependency
-    df["_local_date"] = df["_parsed_date"].apply(to_utc_date)
+    df["_local_date"] = df.apply(get_best_date, axis=1)
+
+    # Display string
+    df["_display_date"] = df["_local_date"].apply(
+        lambda d: d.strftime("%b %d") if d is not None else "Open"
+    )
 
     if "category" not in df.columns:
         df["category"] = "Other"
@@ -288,16 +297,14 @@ def render_cards(data):
     cards_html = '<div class="card-grid">'
     for _, row in data.iterrows():
         try:
-            ticker    = str(row.get("event_ticker", "")).upper()
-            category  = str(row.get("category", "Other"))
-            title_raw = str(row.get("title", "Unknown"))
-            title     = title_raw.split(":")[-1].replace("Will the ", "").split("?")[0].strip() or title_raw[:80]
-            icon      = get_icon(ticker, category)
-            pill_cls  = get_pill_class(category)
-            cat_label = category[:14]
-
-            d = row.get("_local_date")
-            display_date = d.strftime("%b %d") if d else "Open"
+            ticker       = str(row.get("event_ticker", "")).upper()
+            category     = str(row.get("category", "Other"))
+            title_raw    = str(row.get("title", "Unknown"))
+            title        = title_raw.split(":")[-1].replace("Will the ", "").split("?")[0].strip() or title_raw[:80]
+            icon         = get_icon(ticker, category)
+            pill_cls     = get_pill_class(category)
+            cat_label    = category[:14]
+            display_date = str(row.get("_display_date", "Open"))
 
             cards_html += f"""
             <div class="market-card">
