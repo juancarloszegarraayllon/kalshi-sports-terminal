@@ -104,6 +104,16 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
+/* Nav column buttons - plain text */
+.nav-col-btn button{background:transparent!important;border:none!important;box-shadow:none!important;
+    outline:none!important;text-align:left!important;justify-content:flex-start!important;
+    padding:3px 0!important;margin:0!important;font-family:Helvetica,Arial,sans-serif!important;
+    color:#ffffff!important;width:100%!important;border-radius:0!important;
+    min-height:0!important;font-size:13px!important;font-weight:400!important;}
+.nav-col-btn button:hover{background:transparent!important;color:#aaaaaa!important;
+    border:none!important;box-shadow:none!important;}
+.nav-col-btn button:focus,.nav-col-btn button:active{background:transparent!important;
+    border:none!important;box-shadow:none!important;outline:none!important;}
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
@@ -1149,7 +1159,35 @@ for i, tab in enumerate(top_tabs):
                     background:transparent!important;color:#aaaaaa!important;border:none!important;box-shadow:none!important;
                 }
                 </style>
-                <div class="nav-sports-col">""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
+                # JS to style only these nav buttons
+                import streamlit.components.v1 as _c
+                _c.html("""<script>
+                (function(){
+                  var doc=window.parent?window.parent.document:document;
+                  function fix(){
+                    doc.querySelectorAll('[data-testid="stVerticalBlock"] button').forEach(function(b){
+                      // Skip tab buttons (they have role=tab or are inside tab-list)
+                      if(b.closest('[role="tablist"]'))return;
+                      if(b.getAttribute('role')==='tab')return;
+                      b.style.setProperty('background','transparent','important');
+                      b.style.setProperty('border','none','important');
+                      b.style.setProperty('box-shadow','none','important');
+                      b.style.setProperty('color','#ffffff','important');
+                      b.style.setProperty('text-align','left','important');
+                      b.style.setProperty('justify-content','flex-start','important');
+                      b.style.setProperty('padding','3px 0','important');
+                      b.style.setProperty('border-radius','0','important');
+                      b.style.setProperty('min-height','0','important');
+                      b.style.setProperty('font-size','13px','important');
+                      b.style.setProperty('font-family','Helvetica,Arial,sans-serif','important');
+                    });
+                  }
+                  fix();
+                  new MutationObserver(fix).observe(doc.body,{childList:true,subtree:true});
+                })();
+                </script>""", height=0)
 
                 sel_sport = st.session_state["nav_sport"]
                 sel_comp  = st.session_state["nav_comp"]
@@ -1193,8 +1231,6 @@ for i, tab in enumerate(top_tabs):
                             if st.button(clbl, key=f"nav_{sport}_{child}"):
                                 st.session_state["nav_sport"] = sport
                                 st.session_state["nav_comp"]  = child
-
-                st.markdown("</div>", unsafe_allow_html=True)
 
             with card_col:
                 s = st.session_state["nav_sport"]
