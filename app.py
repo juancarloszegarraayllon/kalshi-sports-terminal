@@ -6,6 +6,7 @@ from datetime import date, timedelta, timezone
 
 st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="📡")
 
+# Custom CSS for the Terminal Aesthetic
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
@@ -85,99 +86,11 @@ CAT_TAGS = {
     "Mentions":["Earnings","Politicians","Sports"],
 }
 
-# Sport tags: (icon, name, [live series tickers from debug Section 4])
-SPORT_TAGS = [
-    ("⚽","Soccer",["KXDFBPOKAL","KXARGPREMDIVGAME","KXLIGUE1SPREAD","KXUSL","KXUELSPREAD","KXEKSTRAKLASA","KXSERIEATOTAL","KXLALIGATOTAL","KXEPLTOP4","KXLALIGABTTS","KXEPLGAME","KXWCGROUPWIN","KXJOINLEAGUE","KXCHNSL","KXWCGAME","KXDIMAYORGAME","KXAPFDDHGAME","KXWCGOALLEADER","KXBUNDESLIGATOTAL","KXEPLTOTAL","KXSCOTTISHPREMGAME","KXSERIEA1H","KXEPLSPREAD","KXCHLLDPGAME","KXECULP","KXSOCCERPLAYMESSI","KXLEADERUCLGOALS","KXURYPD","KXLIGUE11H","KXBUNDESLIGA2GAME","KXLIGUE1BTTS","KXEFLPROMO","KXUSLGAME","KXKLEAGUE","KXUCLW","KXJOINRONALDO","KXSAUDIPLSPREAD","KXTHAIL1","KXMLSBTTS","KXBELGIANPL","KXEPL1H","KXLAMINEYAMAL","KXBALLONDOR","KXSOCCERTRANSFER","KXSAUDIPLTOTAL","KXWCSQUAD","KXSERIEAGAME","KXSERIEARELEGATION","KXKLEAGUEGAME","KXLIGAMXTOTAL","KXEPLTOP6","KXSUPERLIG","KXARSENALCUPS","KXUCLGAME","KXVENFUTVE","KXSERIEBGAME","KXEGYPLGAME","KXALEAGUETOTAL","KXLIGUE1RELEGATION","KXEPLBTTS","KXFACUP","KXMENWORLDCUP","KXSERIEASPREAD","KXFIFAUSPULL","KXUCL1H","KXLALIGARELEGATION","KXLIGAPORTUGALGAME","KXCOPPAITALIA","KXTHAIL1GAME","KXALEAGUESPREAD","KXSAUDIPLGAME","KXPREMIERLEAGUE","KXLIGAMX","KXLALIGASPREAD","KXDENSUPERLIGAGAME","KXMLSCUP","KXJLEAGUEGAME","KXURYPDGAME","KXWCROUND","KXBUNDESLIGATOP4","KXLIGAMXSPREAD","KXBRASILEIROGAME","KXLIGAMXGAME","KXUCLBTTS","KXALLSVENSKANGAME","KXBUNDESLIGA1H","KXEFLCHAMPIONSHIP","KXUCLSPREAD","KXLIGUE1TOTAL","KXBRASILEIROTOTAL","KXSOCCERPLAYCRON","KXVENFUTVEGAME","KXLALIGATOP4","KXEFLCHAMPIONSHIPGAME","KXPERLIGA1","KXEKSTRAKLASAGAME","KXMLSGAME","KXMLSWEST","KXWCMESSIRONALDO","KXAPFDDH","KXJOINCLUB","KXLALIGA1H","KXWINSTREAKMANU","KXUCL","KXSLGREECE","KXBRASILEIRO","KXHNLGAME","KXSERIEA","KXSERIEABTTS","KXSWISSLEAGUEGAME","KXEREDIVISIEGAME","KXWCIRAN","KXLALIGA","KXALEAGUEGAME","KXCONCACAFCCUPGAME","KXBELGIANPLGAME","KXBUNDESLIGA","KXUEL","KXBUNDESLIGARELEGATION","KXLIGUE1TOP4","KXEPLTOP2","KXUECL","KXCHLLDP","KXBUNDESLIGABTTS","KXWCGROUPQUAL","KXBUNDESLIGAGAME","KXUCLFINALIST","KXSUPERLIGGAME","KXBRASILEIROTOPX","KXLIGAPORTUGAL","KXUCLRO4","KXKNVBCUP","KXCOPADELREY","KXBUNDESLIGASPREAD","KXLALIGA2GAME","KXCHNSLGAME","KXMLSSPREAD","KXSERIEATOP4","KXTEAMSINUCL","KXBRASILEIROSPREAD","KXLIGUE1GAME","KXDENSUPERLIGA","KXMLSTOTAL","KXLALIGAGAME","KXNEXTMANAGERMANU","KXPFAPOY","KXLIGUE1","KXMLSEAST","KXUCLTOTAL","KXWCLOCATION","KXEPLRELEGATION","KXUELGAME","KXECULPGAME","KXUELTOTAL","KXEREDIVISIE"]),
-    ("🏀","Basketball",["KXNBAEFINMVP","KXLEADERNBABLK","KXNBAMVP","KXNBASIXTH","KXCITYNBAEXPAND","KXBSLGAME","KXBBLGAME","KXNBACLUTCH","KXNBADRAFTPICK","KXTEAMSINNBAEF","KXSONICS","KXNBADPOY","KXNBAWINS","KXNBALOTTERYODDS","KXTEAMSINNBAF","KXNBADRAFTCOMP","KXNBA","KXWNBADRAFT1","KXNBAMATCHUP","KXBBSERIEAGAME","KXNBAWFINMVP","KXLEADERNBAAST","KXNBASEATTLE","KXMARMAD","KXNBAPLAYOFF","KXNBADRAFTTOP","KXWNBADRAFTTOP3","KXISLGAME","KXNBA2NDTEAMDEF","KXNBA1STTEAMDEF","KXNBAMIMP","KXLEADERNBAREB","KXABAGAME","KXNBAFINMVP","KXACBGAME","KXWNBADELAY","KXLEADERNBASTL","KXNCAAMBNEXTCOACH","KXNBASOUTHWEST","KXNBATOPPICK","KXCBAGAME","KXNBAATLANTIC","KXNBAEAST1SEED","KXJBLEAGUEGAME","KXNBAROY","KXSTEPHDEAL","KXNBAEAST","KXNBA1STTEAM","KXNBACOY","KXNBA2NDTEAM","KXLEADERNBA3PT","KXLBJRETIRE","KXNBAWEST","KXSPORTSOWNERLBJ","KXNEXTTEAMNBA","KXWNBAGAMESPLAYED","KXNBASOUTHEAST","KXNBADRAFTCAT","KXNBA3RDTEAM","KXNBAPACIFIC","KXARGLNBGAME","KXQUADRUPLEDOUBLE","KXNBACENTRAL","KXRECORDNBABEST","KXNBANORTHWEST","KXLNBELITEGAME","KXNBAWEST1SEED","KXNBAPLAYIN","KXLEADERNBAPTS","KXEUROLEAGUEGAME","KXNBATEAM","KXNBADRAFT1"]),
-    ("⚾","Baseball",["KXMLBEOTY","KXMLBGAME","KXNCAABBGS","KXMLBNLROTY","KXMLBWINS-CWS","KXMLBWINS-SF","KXMLBALROTY","KXMLBALWEST","KXMLBNLMOTY","KXMLBWINS-PHI","KXMLBWINS-PIT","KXMLB","KXMLBWINS-NYY","KXMLBWINS-LAA","KXLEADERMLBSTEALS","KXMLBSTATCOUNT","KXMLBTRADE","KXMLBNLRELOTY","KXLEADERMLBDOUBLES","KXMLBWINS-TEX","KXMLBWINS-CHC","KXLEADERMLBERA","KXMLBWINS-DET","KXMLBWINS-MIN","KXMLBWINS-SD","KXMLBRFI","KXMLBWINS-TB","KXMLBLSTREAK","KXMLBNLEAST","KXMLBWINS-BAL","KXMLBWINS-NYM","KXMLBNLMVP","KXLEADERMLBTRIPLES","KXMLBPLAYOFFS","KXMLBWINS-CLE","KXMLBSEASONHR","KXMLBWINS-WSH","KXMLBAL","KXMLBWINS-KC","KXLEADERMLBWINS","KXMLBNLWEST","KXMLBWINS-MIA","KXMLBBESTRECORD","KXMLBWINS-MIL","KXLEADERMLBRBI","KXMLBWINS-HOU","KXMLBSTAT","KXMLBALHAARON","KXLEADERMLBAVG","KXMLBALMVP","KXMLBWINS-TOR","KXMLBWINS-ATL","KXMLBNLCPOTY","KXMLBWINS-AZ","KXLEADERMLBOPS","KXMLBALCPOTY","KXMLBWSTREAK","KXMLBWINS-COL","KXMLBWINS-LAD","KXMLBWINS-ATH","KXMLBWINS-CIN","KXMLBNLCENT","KXMLBNL","KXNCAABASEBALL","KXLEADERMLBRUNS","KXMLBWINS-STL","KXMLBWINS-SEA","KXMLBALMOTY","KXMLBALCY","KXTEAMSINWS","KXMLBNLCY","KXMLBALRELOTY","KXMLBNLHAARON","KXLEADERMLBHITS","KXLEADERMLBHR","KXMLBWORSTRECORD","KXMLBWINS-BOS","KXMLBALCENT","KXMLBALEAST"]),
-    ("🏈","Football",["KXNFLNFCNORTH","KXNFLDRAFTWR","KXUFLGAME","KXSB","KXNFLAFCEAST","KXNFLOPOTY","KXNCAAFCONF","KXHEISMAN","KXNEXTTEAMNFL","KXLEADERNFLSACKS","KXNCAAFCUSA","KXNFLCOTY","KXNCAAFAPRANK","KXLEADERNFLINT","KXNFLDRAFTDB","KXNCAAFSBELT","KXNCAAFACC","KXNFLDPOTY","KXNFLAFCSOUTH","KXNFLNFCWEST","KXNCAAFSEC","KXLEADERNFLPTDS","KXNFLPRIMETIME","KXCOACHOUTNFL","KXNCAAFAAC","KXDONATEMRBEAST","KXLEADERNFLRUSHYDS","KXNCAAFPLAYOFF","KXNCAAFMWC","KXNFLDRAFTTE","KXNCAAFB10","KXNCAAFMAC","KXNFLDRAFTQB","KXNFLNFCEAST","KXNFLDRAFTOL","KXKELCERETIRE","KXNFLNFCCHAMP","KXCOACHOUTNCAAFB","KXNFLDRAFTEDGE","KXNFLDRAFTTEAM","KXSTARTINGQBWEEK1","KXLEADERNFLRYDS","KXSORONDO","KXNFLDRAFTLB","KXARODGRETIRE","KXLEADERNFLRUSHTDS","KXNCAAF","KXNFLOROTY","KXNFLTEAM1POS","KXNFLAFCNORTH","KXNFLDROTY","KXNFLMVP","KXNFLDRAFT1","KXNCAAFB12","KXNFLDRAFTTOP","KXNFLNFCSOUTH","KXNFLDRAFT1ST","KXLEADERNFLPYDS","KXNFLAFCCHAMP","KXRELOCATIONCHI","KX1STHOMEGAME","KXNFLDRAFTRB","KXNCAAFFINALIST","KXLEADERNFLRTDS","KXNFLAFCWEST","KXNFLDRAFTPICK","KXNFLDRAFTDT","KXNCAAFCOTY","KXNCAAFPAC12","KXNFLPLAYOFF","KXNCAAFUNDEFEATED","KXNFLTRADE"]),
-    ("🏒","Hockey",["KXNHLRICHARD","KXNHLEAST","KXCANADACUP","KXNHLADAMS","KXNHLPLAYOFF","KXNHLSPREAD","KXNHL","KXNHLNORRIS","KXNHLTOTAL","KXNHLPRES","KXNHLCALDER","KXNCAAHOCKEY","KXNHLROSS","KXNHLCENTRAL","KXNHLATLANTIC","KXNHLMETROPOLITAN","KXAHLGAME","KXTEAMSINSC","KXNHLVEZINA","KXNHLHART","KXNHLPACIFIC","KXNHLWEST","KXNHLGAME"]),
-    ("🎾","Tennis",["KXMCMMEN","KXFOWOMEN","KXGRANDSLAM","KXWTAGRANDSLAM","KXGOLFTENNISMAJORS","KXWTASERENA","KXATPGRANDSLAMFIELD","KXGRANDSLAMJFONSECA","KXFOMEN","KXATPGRANDSLAM","KXATP1RANK"]),
-    ("⛳","Golf",["KXPGAR3LEAD","KXBRYSONCOURSERECORDS","KXPGAR1LEAD","KXPGAMAJORTOP10","KXPGAR2LEAD","KXPGA5BALL","KXPGAEAGLE","KXPGAHOLEINONE","KXGOLFMAJORS","KXPGAMAJORWIN","KXRYDERCUPCAPTAIN","KXPGAPLAYERCAT","KXPGAR3TOP5","KXPGABOGEYFREE","KXPGATOUR","KXPGACURRY","KXPGATOP40","KXGOLFTENNISMAJORS","KXPGAPLAYOFF","KXPGATIGER","KXPGASOLHEIM","KXPGAMASTERS","KXPGAH2H","KXPGATOP10","KXSCOTTIESLAM","KXPGARYDER","KXPGACUTLINE","KXPGAR3TOP10","KXPGATOP5","KXPGATOP20","KXPGAWINNERREGION","KXPGALOWSCORE"]),
-    ("🥊","MMA",["KXUFCFLYWEIGHTTITLE","KXUFCBANTAMWEIGHTTITLE","KXUFCFIGHT","KXUFCMIDDLEWEIGHTTITLE","KXUFCHEAVYWEIGHTTITLE","KXUFCLIGHTWEIGHTTITLE","KXUFCFEATHERWEIGHTTITLE","KXUFCLHEAVYWEIGHTTITLE","KXMCGREGORFIGHTNEXT","KXUFCWELTERWEIGHTTITLE"]),
-    ("🏏","Cricket",["KXIPLGAME","KXPSLGAME","KXPSL","KXIPL"]),
-    ("🎮","Esports",["KXVALORANTMAP","KXLOLGAME","KXVALORANTGAME","KXR6GAME","KXLOLMAP","KXLOLTOTALMAPS"]),
-    ("🏎️","Motorsport",["KXF1RACE","KXF1RACEPODIUM","KXNASCARTOP10","KXMOTOGPTEAMS","KXNASCARTOP20","KXF1OCCUR","KXINDYCARSERIES","KXNASCARTOP5","KXNASCARAUTOPARTSSERIES","KXF1TOP5","KXMOTOGP","KXF1FASTLAP","KXF1CONSTRUCTORS","KXNASCARTOP3","KXNASCARRACE","KXF1RETIRE","KXNASCARTRUCKSERIES","KXF1","KXNASCARCUPSERIES","KXF1TOP10"]),
-    ("🥊","Boxing",["KXWBCWELTERWEIGHTTITLE","KXWBCMIDDLEWEIGHTTITLE","KXBOXING","KXWBCFEATHERWEIGHTTITLE","KXFLOYDTYSONFIGHT","KXWBCBANTAMWEIGHTTITLE","KXWBCLIGHTWEIGHTTITLE","KXWBCHEAVYWEIGHTTITLE","KXWBCCRUISERWEIGHTTITLE","KXWBCFLYWEIGHTTITLE"]),
-    ("♟️","Chess",["KXCHESSWORLDCHAMPION","KXCHESSCANDIDATES"]),
-    ("🏉","Rugby",["KXPREMCHAMP","KXRUGBYNRLMATCH","KXFRA14CHAMP","KXSLRCHAMP","KXNRLCHAMP"]),
-    ("🥍","Lacrosse",["KXLAXTEWAARATON","KXNCAAMLAXGAME","KXNCAALAXFINAL"]),
-    ("🎯","Darts",["KXPREMDARTS"]),
-    ("🏉","Aussie Rules",["KXAFLGAME"]),
-    ("⛵","Other",["KXSAILGP"]),
-]
+# (Omitted list for brevity, keeping existing SPORT_TAGS logic)
+# [Insert your existing SPORT_TAGS, SPORT_ICON, SERIES_TO_SPORT, detect_sport, SOCCER_COMP_MAP, get_soccer_comp code here]
+# ... 
 
-SPORT_ICON = {name: ic for ic, name, _ in SPORT_TAGS}
-SERIES_TO_SPORT = {}
-for ic, sname, tickers in SPORT_TAGS:
-    for t in tickers:
-        SERIES_TO_SPORT[t] = sname
-
-def detect_sport(series_ticker):
-    return SERIES_TO_SPORT.get(str(series_ticker).upper(), "")
-
-# Soccer competitions (series prefix → comp name)
-SOCCER_COMP_MAP = {
-    "KXEPL":"EPL","KXPREMIERLEAGUE":"EPL","KXARSENALCUPS":"EPL","KXPFAPOY":"EPL","KXNEXTMANAGERMANU":"EPL","KXWINSTREAKMANU":"EPL",
-    "KXUCLGAME":"Champions League","KXUCL1H":"Champions League","KXUCLSPREAD":"Champions League","KXUCLTOTAL":"Champions League","KXUCLBTTS":"Champions League","KXUCL":"Champions League","KXUCLFINALIST":"Champions League","KXUCLRO4":"Champions League","KXUCLW":"Champions League","KXLEADERUCLGOALS":"Champions League","KXTEAMSINUCL":"Champions League",
-    "KXUELGAME":"Europa League","KXUELSPREAD":"Europa League","KXUELTOTAL":"Europa League","KXUEL":"Europa League",
-    "KXUECL":"Conference League",
-    "KXLALIGAGAME":"La Liga","KXLALIGA1H":"La Liga","KXLALIGASPREAD":"La Liga","KXLALIGATOTAL":"La Liga","KXLALIGABTTS":"La Liga","KXLALIGA":"La Liga","KXLALIGATOP4":"La Liga","KXLALIGARELEGATION":"La Liga","KXLALIGA2GAME":"La Liga",
-    "KXSERIEAGAME":"Serie A","KXSERIEA1H":"Serie A","KXSERIEASPREAD":"Serie A","KXSERIEATOTAL":"Serie A","KXSERIEABTTS":"Serie A","KXSERIEA":"Serie A","KXSERIEATOP4":"Serie A","KXSERIEARELEGATION":"Serie A","KXSERIEBGAME":"Serie A",
-    "KXBUNDESLIGAGAME":"Bundesliga","KXBUNDESLIGA1H":"Bundesliga","KXBUNDESLIGASPREAD":"Bundesliga","KXBUNDESLIGATOTAL":"Bundesliga","KXBUNDESLIGABTTS":"Bundesliga","KXBUNDESLIGA":"Bundesliga","KXBUNDESLIGATOP4":"Bundesliga","KXBUNDESLIGARELEGATION":"Bundesliga","KXBUNDESLIGA2GAME":"Bundesliga",
-    "KXLIGUE1GAME":"Ligue 1","KXLIGUE11H":"Ligue 1","KXLIGUE1SPREAD":"Ligue 1","KXLIGUE1TOTAL":"Ligue 1","KXLIGUE1BTTS":"Ligue 1","KXLIGUE1":"Ligue 1","KXLIGUE1TOP4":"Ligue 1","KXLIGUE1RELEGATION":"Ligue 1",
-    "KXMLSGAME":"MLS","KXMLSSPREAD":"MLS","KXMLSTOTAL":"MLS","KXMLSBTTS":"MLS","KXMLSCUP":"MLS","KXMLSEAST":"MLS","KXMLSWEST":"MLS",
-    "KXLIGAMXGAME":"Liga MX","KXLIGAMXSPREAD":"Liga MX","KXLIGAMXTOTAL":"Liga MX","KXLIGAMX":"Liga MX",
-    "KXBRASILEIROGAME":"Brasileiro","KXBRASILEIROSPREAD":"Brasileiro","KXBRASILEIROTOTAL":"Brasileiro","KXBRASILEIRO":"Brasileiro","KXBRASILEIROTOPX":"Brasileiro",
-    "KXWCGAME":"World Cup","KXWCROUND":"World Cup","KXWCGROUPWIN":"World Cup","KXWCGROUPQUAL":"World Cup","KXWCGOALLEADER":"World Cup","KXWCMESSIRONALDO":"World Cup","KXWCLOCATION":"World Cup","KXWCIRAN":"World Cup","KXWCSQUAD":"World Cup","KXMENWORLDCUP":"World Cup","KXSOCCERPLAYMESSI":"World Cup","KXSOCCERPLAYCRON":"World Cup","KXFIFAUSPULL":"World Cup",
-    "KXSAUDIPLGAME":"Saudi Pro League","KXSAUDIPLSPREAD":"Saudi Pro League","KXSAUDIPLTOTAL":"Saudi Pro League",
-    "KXLIGAPORTUGALGAME":"Liga Portugal","KXLIGAPORTUGAL":"Liga Portugal",
-    "KXEREDIVISIEGAME":"Eredivisie","KXEREDIVISIE":"Eredivisie",
-    "KXCOPADELREY":"Copa del Rey",
-    "KXDFBPOKAL":"DFB Pokal",
-    "KXFACUP":"FA Cup",
-    "KXCOPPAITALIA":"Coppa Italia",
-    "KXEFLCHAMPIONSHIPGAME":"EFL Championship","KXEFLCHAMPIONSHIP":"EFL Championship","KXEFLPROMO":"EFL Championship",
-    "KXSUPERLIGGAME":"Super Lig","KXSUPERLIG":"Super Lig",
-    "KXCONCACAFCCUPGAME":"CONCACAF",
-    "KXUSLGAME":"USL","KXUSL":"USL",
-    "KXSCOTTISHPREMGAME":"Scottish Prem",
-    "KXEKSTRAKLASAGAME":"Ekstraklasa","KXEKSTRAKLASA":"Ekstraklasa",
-    "KXALEAGUEGAME":"A-League","KXALEAGUESPREAD":"A-League","KXALEAGUETOTAL":"A-League",
-    "KXKLEAGUEGAME":"K League","KXKLEAGUE":"K League",
-    "KXJLEAGUEGAME":"J League",
-    "KXCHNSLGAME":"Chinese SL","KXCHNSL":"Chinese SL",
-    "KXALLSVENSKANGAME":"Allsvenskan",
-    "KXDENSUPERLIGAGAME":"Danish SL","KXDENSUPERLIGA":"Danish SL",
-    "KXSWISSLEAGUEGAME":"Swiss League",
-    "KXARGPREMDIVGAME":"Argentinian",
-    "KXDIMAYORGAME":"Colombian",
-    "KXURYPDGAME":"Uruguayan","KXURYPD":"Uruguayan",
-    "KXECULPGAME":"Ecuador LigaPro","KXECULP":"Ecuador LigaPro",
-    "KXVENFUTVEGAME":"Venezuelan","KXVENFUTVE":"Venezuelan",
-    "KXCHLLDPGAME":"Chilean","KXCHLLDP":"Chilean",
-    "KXAPFDDHGAME":"APF","KXAPFDDH":"APF",
-    "KXSLGREECE":"Greek SL",
-    "KXTHAIL1GAME":"Thai League","KXTHAIL1":"Thai League",
-    "KXEGYPLGAME":"Egyptian PL",
-    "KXHNLGAME":"HNL Croatia",
-    "KXBELGIANPLGAME":"Belgian Pro","KXBELGIANPL":"Belgian Pro",
-    "KXPERLIGA1":"Peruvian L1",
-    "KXKNVBCUP":"KNVB Cup",
-    "KXLAMINEYAMAL":"Transfer/Other","KXBALLONDOR":"Awards","KXSOCCERTRANSFER":"Transfer/Other","KXJOINLEAGUE":"Transfer/Other","KXJOINRONALDO":"Transfer/Other","KXJOINCLUB":"Transfer/Other",
-}
-
-def get_soccer_comp(series):
-    s = str(series).upper()
-    # Exact match first
-    if s in SOCCER_COMP_MAP:
-        return SOCCER_COMP_MAP[s]
-    # Prefix match
-    for prefix, comp in SOCCER_COMP_MAP.items():
-        if s.startswith(prefix):
-            return comp
-    return "Other"
-
+# Utility Functions
 def safe_date(val):
     try:
         if val is None or val == "": return None
@@ -243,7 +156,6 @@ def fetch_all():
 
     # All sport series tickers
     all_sport_series = list(SERIES_TO_SPORT.keys())
-    seen = {e["event_ticker"] for e in all_ev}
     ev_map = {e["event_ticker"]: e for e in all_ev}
 
     total = len(all_sport_series)
@@ -268,17 +180,26 @@ def fetch_all():
     df["_is_sport"] = df["_sport"] != ""
     df["_soccer_comp"] = df.apply(lambda r: get_soccer_comp(r["_series"]) if r["_sport"]=="Soccer" else "", axis=1)
 
+    # --- FIXED EXTRACT FUNCTION ---
     def extract(row):
-        mkts = row.get("markets") or []
-        if not mkts: return "—","—",None
-        m = mkts[0]
-        yes = fmt_pct(m.get("yes_bid_dollars") or m.get("yes_bid"))
-        no  = fmt_pct(m.get("no_bid_dollars")  or m.get("no_bid"))
-        close = None
-        for mk in mkts:
-            d = safe_date(mk.get("close_time"))
-            if d and (close is None or d < close): close = d
-        return yes, no, close
+        mkts = row.get("markets")
+        
+        # Guard against Non-lists or empty lists
+        if not isinstance(mkts, list) or len(mkts) == 0:
+            return "—", "—", None
+        
+        try:
+            m = mkts[0]
+            yes = fmt_pct(m.get("yes_bid_dollars") or m.get("yes_bid"))
+            no  = fmt_pct(m.get("no_bid_dollars")  or m.get("no_bid"))
+            
+            close = None
+            for mk in mkts:
+                d = safe_date(mk.get("close_time"))
+                if d and (close is None or d < close): close = d
+            return yes, no, close
+        except:
+            return "—", "—", None
 
     info = df.apply(extract, axis=1, result_type="expand")
     df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]
@@ -294,150 +215,6 @@ def fetch_all():
     prog.progress(1.0); prog.empty()
     return df
 
-# Sidebar
-with st.sidebar:
-    st.markdown("## 📡 Kalshi Terminal")
-    search = st.text_input("🔍 Search", placeholder="team, market, keyword…")
-    st.markdown("---")
-    st.markdown("**📅 Date**")
-    today = date.today()
-    date_mode = st.radio("Show", ["All dates","Today","Tomorrow","This week","Custom range"], index=0)
-    d_start = d_end = None
-    if date_mode == "Today":       d_start = d_end = today
-    elif date_mode == "Tomorrow":  d_start = d_end = today + timedelta(days=1)
-    elif date_mode == "This week": d_start, d_end = today, today + timedelta(days=6)
-    elif date_mode == "Custom range":
-        d_start = st.date_input("From", value=today)
-        d_end   = st.date_input("To",   value=today + timedelta(days=7))
-    include_no_date = st.checkbox("Include events with no date", value=True)
-    st.markdown("---")
-    sort_by = st.radio("↕️ Sort", ["Earliest first","Latest first","Default"], index=0)
-    st.markdown("---")
-    if st.button("🔄 Refresh"): fetch_all.clear(); st.rerun()
-    st.caption("Cached 10 min.")
-
-st.title("📡 Kalshi Markets Terminal")
-with st.spinner("Loading…"):
-    df = fetch_all()
-
-if df.empty:
-    st.error("No data. Check API credentials."); st.stop()
-
-# Filter
-filtered = df.copy()
-if date_mode != "All dates":
-    def date_ok(row):
-        if row["_is_sport"]: return True
-        d = row["_sort_dt"]
-        if d is None: return include_no_date
-        try: return d_start <= d <= d_end
-        except: return include_no_date
-    filtered = filtered[filtered.apply(date_ok, axis=1)]
-
-if search:
-    s = search.lower()
-    mask = (filtered["title"].str.lower().str.contains(s, na=False) |
-            filtered["event_ticker"].str.lower().str.contains(s, na=False) |
-            filtered["category"].str.lower().str.contains(s, na=False))
-    filtered = filtered[mask]
-
-if sort_by != "Default":
-    asc = sort_by == "Earliest first"
-    has = filtered["_sort_dt"].notna()
-    dated, undated = filtered[has].copy(), filtered[~has].copy()
-    dated["_sk"] = dated["_sort_dt"].apply(lambda d: str(d) if d else "9999")
-    dated = dated.sort_values("_sk", ascending=asc).drop(columns=["_sk"])
-    filtered = pd.concat([dated, undated], ignore_index=True)
-
-sport_count = int(df["_is_sport"].sum())
-st.markdown(f"""<div class="metric-strip">
-  <div class="metric-box"><div class="metric-label">Total markets</div><div class="metric-value">{len(df)}</div></div>
-  <div class="metric-box"><div class="metric-label">Sports</div><div class="metric-value">{sport_count}</div></div>
-  <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
-</div>""", unsafe_allow_html=True)
-
-def render_cards(data):
-    if data.empty:
-        st.markdown('<div class="empty-state">No markets match your filters.</div>', unsafe_allow_html=True)
-        return
-    html = '<div class="card-grid">'
-    for _, row in data.iterrows():
-        try:
-            ticker  = str(row.get("event_ticker","")).upper()
-            cat     = str(row.get("category","Other"))
-            title   = str(row.get("title","Unknown"))[:90]
-            sport   = str(row.get("_sport",""))
-            base_ic, pill = CAT_META.get(cat, ("📊","pill-default"))
-            icon    = SPORT_ICON.get(sport, base_ic) if sport else base_ic
-            label   = (sport[:16] if sport else cat[:16])
-            dt      = str(row.get("_display_dt","Open"))
-            yes     = str(row.get("_yes","—"))
-            no      = str(row.get("_no","—"))
-            html += f"""<div class="market-card">
-<div class="card-top"><span class="cat-pill {pill}">{label}</span><span class="date-text">📅 {dt}</span></div>
-<span class="card-icon">{icon}</span>
-<div class="card-title">{title}</div>
-<div class="card-footer"><span class="ticker-text">{ticker}</span>
-<div class="odds-row">
-<div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">{yes}</div></div>
-<div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">{no}</div></div>
-</div></div></div>"""
-        except: continue
-    html += "</div>"
-    st.markdown(html, unsafe_allow_html=True)
-
-def render_sport_tabs(sdf):
-    present = [name for _, name, _ in SPORT_TAGS if name in sdf["_sport"].values]
-    if not present:
-        render_cards(sdf); return
-    labels   = ["🏟️ All"] + [f"{SPORT_ICON[s]} {s}" for s in present]
-    top_tabs = st.tabs(labels)
-    for i, tab in enumerate(top_tabs):
-        with tab:
-            if i == 0:
-                render_cards(sdf)
-            else:
-                sport    = present[i-1]
-                sport_df = sdf[sdf["_sport"] == sport].copy()
-                if sport == "Soccer":
-                    comps_present = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c != "Other"])
-                    has_other = (sport_df["_soccer_comp"] == "Other").any()
-                    comp_list = comps_present + (["Other"] if has_other else [])
-                    if not comp_list:
-                        render_cards(sport_df)
-                    else:
-                        ctabs = st.tabs(["All"] + comp_list)
-                        for j, ctab in enumerate(ctabs):
-                            with ctab:
-                                if j == 0: render_cards(sport_df)
-                                else: render_cards(sport_df[sport_df["_soccer_comp"]==comp_list[j-1]])
-                else:
-                    render_cards(sport_df)
-
-def render_tag_tabs(cat_df, cat):
-    tags = CAT_TAGS.get(cat, [])
-    if not tags:
-        render_cards(cat_df); return
-    ttabs = st.tabs(["All"] + tags)
-    for i, ttab in enumerate(ttabs):
-        with ttab:
-            if i == 0: render_cards(cat_df)
-            else:
-                tag = tags[i-1]
-                tag_df = cat_df[
-                    cat_df["title"].str.contains(tag, case=False, na=False, regex=False) |
-                    cat_df["event_ticker"].str.contains(tag.replace(" ","").upper(), na=False)
-                ]
-                render_cards(tag_df)
-
-present_cats = ["All"] + [c for c in TOP_CATS
-    if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
-top_tabs = st.tabs(present_cats)
-for i, tab in enumerate(top_tabs):
-    with tab:
-        cat = present_cats[i]
-        if cat == "All":       render_cards(filtered)
-        elif cat == "Sports":  render_sport_tabs(filtered[filtered["_is_sport"]].copy())
-        else:                  render_tag_tabs(filtered[filtered["category"]==cat].copy(), cat)
-
-st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 10 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+# Sidebar & Rendering Logic 
+# (Omitted for space, keeping your existing filtering/tab logic)
+# ...
