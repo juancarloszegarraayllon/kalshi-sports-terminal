@@ -104,16 +104,6 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Nav column buttons - plain text */
-.nav-col-btn button{background:transparent!important;border:none!important;box-shadow:none!important;
-    outline:none!important;text-align:left!important;justify-content:flex-start!important;
-    padding:3px 0!important;margin:0!important;font-family:Helvetica,Arial,sans-serif!important;
-    color:#ffffff!important;width:100%!important;border-radius:0!important;
-    min-height:0!important;font-size:13px!important;font-weight:400!important;}
-.nav-col-btn button:hover{background:transparent!important;color:#aaaaaa!important;
-    border:none!important;box-shadow:none!important;}
-.nav-col-btn button:focus,.nav-col-btn button:active{background:transparent!important;
-    border:none!important;box-shadow:none!important;outline:none!important;}
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
@@ -1120,7 +1110,7 @@ def filter_data(cat, subcat, subsubcat, data):
                 data = data[data["title"].str.contains(subcat, case=False, na=False)]
     return data
 
-# ── Main layout: top tabs + left sidebar for Sports ─────────────────────────
+# ── Main layout: top tabs, sports nav in sidebar ─────────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
@@ -1141,73 +1131,32 @@ for i, tab in enumerate(top_tabs):
             if "nav_comp"  not in st.session_state: st.session_state["nav_comp"]  = "All"
             if "nav_exp"   not in st.session_state: st.session_state["nav_exp"]   = None
 
+            # LEFT nav column + RIGHT cards
             nav_col, card_col = st.columns([1, 4])
 
             with nav_col:
-                st.markdown("""<style>
-                /* Only target buttons inside the nav column - use stButton class */
-                .nav-sports-col .stButton button{
-                    background:transparent!important;border:none!important;
-                    box-shadow:none!important;outline:none!important;
-                    text-align:left!important;justify-content:flex-start!important;
-                    padding:3px 0!important;margin:0!important;
-                    font-family:Helvetica,Arial,sans-serif!important;
-                    color:#ffffff!important;width:100%!important;
-                    border-radius:0!important;min-height:0!important;font-size:13px!important;
-                }
-                .nav-sports-col .stButton button:hover{
-                    background:transparent!important;color:#aaaaaa!important;border:none!important;box-shadow:none!important;
-                }
-                </style>
-""", unsafe_allow_html=True)
-
-                # JS to style only these nav buttons
-                import streamlit.components.v1 as _c
-                _c.html("""<script>
-                (function(){
-                  var doc=window.parent?window.parent.document:document;
-                  function fix(){
-                    doc.querySelectorAll('[data-testid="stVerticalBlock"] button').forEach(function(b){
-                      // Skip tab buttons (they have role=tab or are inside tab-list)
-                      if(b.closest('[role="tablist"]'))return;
-                      if(b.getAttribute('role')==='tab')return;
-                      b.style.setProperty('background','transparent','important');
-                      b.style.setProperty('border','none','important');
-                      b.style.setProperty('box-shadow','none','important');
-                      b.style.setProperty('color','#ffffff','important');
-                      b.style.setProperty('text-align','left','important');
-                      b.style.setProperty('justify-content','flex-start','important');
-                      b.style.setProperty('padding','3px 0','important');
-                      b.style.setProperty('border-radius','0','important');
-                      b.style.setProperty('min-height','0','important');
-                      b.style.setProperty('font-size','13px','important');
-                      b.style.setProperty('font-family','Helvetica,Arial,sans-serif','important');
-                    });
-                  }
-                  fix();
-                  new MutationObserver(fix).observe(doc.body,{childList:true,subtree:true});
-                })();
-                </script>""", height=0)
-
                 sel_sport = st.session_state["nav_sport"]
                 sel_comp  = st.session_state["nav_comp"]
                 expanded  = st.session_state["nav_exp"]
 
-                # All sports button
-                lbl = f"**All sports ({len(sdf)})**" if sel_sport=="All" else f"All sports ({len(sdf)})"
-                if st.button(lbl, key="nav_all"):
-                    st.session_state["nav_sport"] = "All"
-                    st.session_state["nav_comp"]  = "All"
-                    st.session_state["nav_exp"]   = None
+                # Build full nav as one HTML block — no Streamlit buttons
+                html = "<div style='font-family:Helvetica,Arial,sans-serif;padding:8px 4px;'>"
+
+                # All sports
+                c = "#00ff00" if sel_sport=="All" else "#ffffff"
+                w = "700" if sel_sport=="All" else "400"
+                html += f"<div style='color:{c};font-weight:{w};font-size:13px;padding:5px 0;'><a href='?nav_sport=All&nav_comp=All' style='color:inherit;text-decoration:none;'>All sports ({len(sdf)})</a></div>"
 
                 for sport in sports_present:
                     sport_df = sdf[sdf["_sport"]==sport].copy()
                     cnt = len(sport_df)
                     is_sel = sel_sport == sport
                     is_exp = expanded == sport
+                    c = "#00ff00" if is_sel else "#ffffff"
+                    w = "700" if is_sel else "400"
 
                     if sport == "Soccer":
-                        children = ["All"] + sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
+                        children = ["All"] + sorted([x for x in sport_df["_soccer_comp"].unique() if x and x not in ("Other","")])
                     else:
                         tabs_def = SPORT_SUBTABS.get(sport, [])
                         if tabs_def:
@@ -1218,19 +1167,30 @@ for i, tab in enumerate(top_tabs):
                             children = []
 
                     arrow = " ▾" if (is_exp and children) else (" ▸" if children else "")
-                    lbl   = f"**{sport} ({cnt}){arrow}**" if is_sel else f"{sport} ({cnt}){arrow}"
-                    if st.button(lbl, key=f"nav_{sport}"):
-                        st.session_state["nav_sport"] = sport
-                        st.session_state["nav_comp"]  = "All"
-                        st.session_state["nav_exp"]   = None if is_exp else (sport if children else None)
+                    exp_val = "None" if is_exp else sport
+                    html += f"<div style='color:{c};font-weight:{w};font-size:13px;padding:5px 0;'><a href='?nav_sport={sport}&nav_comp=All&nav_exp={exp_val}' style='color:inherit;text-decoration:none;'>{sport} ({cnt}){arrow}</a></div>"
 
                     if is_exp and children:
                         for child in children:
-                            is_c = sel_comp == child
-                            clbl = f"  **▸ {child}**" if is_c else f"    {child}"
-                            if st.button(clbl, key=f"nav_{sport}_{child}"):
-                                st.session_state["nav_sport"] = sport
-                                st.session_state["nav_comp"]  = child
+                            cc = "#00ff00" if sel_comp==child else "#aaaaaa"
+                            cw = "600" if sel_comp==child else "400"
+                            html += f"<div style='color:{cc};font-weight:{cw};font-size:12px;padding:3px 0 3px 14px;'><a href='?nav_sport={sport}&nav_comp={child}&nav_exp={sport}' style='color:inherit;text-decoration:none;'>{'▸ ' if sel_comp==child else ''}{child}</a></div>"
+
+                html += "</div>"
+                st.markdown(html, unsafe_allow_html=True)
+
+                # Handle query params for navigation
+                qp = st.query_params
+                if "nav_sport" in qp:
+                    new_s = qp["nav_sport"]
+                    new_c = qp.get("nav_comp", "All")
+                    new_e = qp.get("nav_exp", "None")
+                    if new_s != st.session_state["nav_sport"] or new_c != st.session_state["nav_comp"]:
+                        st.session_state["nav_sport"] = new_s
+                        st.session_state["nav_comp"]  = new_c
+                        st.session_state["nav_exp"]   = None if new_e == "None" else new_e
+                        st.query_params.clear()
+                        st.rerun()
 
             with card_col:
                 s = st.session_state["nav_sport"]
@@ -1250,6 +1210,8 @@ for i, tab in enumerate(top_tabs):
 
         else:
             render_cards(filtered[filtered["category"]==cat].copy())
+
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>ODDSIQ · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
 
 # JS to fix button styles at runtime
 import streamlit.components.v1 as _cv1
