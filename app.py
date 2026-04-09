@@ -104,43 +104,36 @@ def fetch_sport_filters():
         return {}, []
 
 # ── Step 2: Fetch all events with pagination ───────────────────────────────────
-@st.cache_data(ttl=600)
-def fetch_all_events():
+def paginate_events(with_markets=False, category=None):
+    """Paginate through Kalshi events. Returns list of raw event dicts."""
     all_events = []
-    cursor = None
-    page = 0
-    MAX_PAGES = 30
-    DELAY = 0.4
+    cursor     = None
+    MAX_PAGES  = 30
+    DELAY      = 0.35
 
-    progress = st.progress(0, text="Fetching page 1…")
-
-    while page < MAX_PAGES:
+    for page in range(MAX_PAGES):
         try:
-            kwargs = {"limit": 200, "status": "open", "with_nested_markets": True}
+            kwargs = {"limit": 200, "status": "open"}
+            if with_markets:
+                kwargs["with_nested_markets"] = True
+            if category:
+                kwargs["category"] = category
             if cursor:
                 kwargs["cursor"] = cursor
 
-            resp = client.get_events(**kwargs)
-            data = resp.to_dict()
+            resp   = client.get_events(**kwargs)
+            data   = resp.to_dict()
             events = data.get("events", [])
-
             if not events:
                 break
 
             all_events.extend(events)
-            page += 1
-
-            progress.progress(
-                min(page / MAX_PAGES, 1.0),
-                text=f"Fetched {len(all_events)} events across {page} pages…"
-            )
 
             cursor = (
                 data.get("cursor") or
                 data.get("next_cursor") or
                 (data.get("pagination") or {}).get("next_cursor")
             )
-
             if not cursor:
                 break
 
@@ -149,14 +142,39 @@ def fetch_all_events():
         except Exception as e:
             err = str(e)
             if "429" in err or "too_many_requests" in err.lower():
-                progress.progress(page / MAX_PAGES, text="Rate limited — waiting 3s…")
                 time.sleep(3)
                 continue
             else:
-                st.warning(f"Stopped at page {page}: {e}")
                 break
 
+    return all_events
+
+
+@st.cache_data(ttl=600)
+def fetch_all_events():
+    progress = st.progress(0, text="Pass 1: fetching all events…")
+
+    # Pass 1 — fetch ALL events fast (no nested markets) for complete coverage
+    all_events = paginate_events(with_markets=False)
+    progress.progress(0.5, text=f"Pass 1 done: {len(all_events)} events. Pass 2: fetching sports odds…")
+
+    # Pass 2 — fetch Sports events WITH nested markets for odds + close_time
+    sports_with_markets = paginate_events(with_markets=True, category="Sports")
+    progress.progress(1.0, text="Done!")
     progress.empty()
+
+    # Build a lookup of event_ticker -> markets from pass 2
+    markets_lookup = {}
+    for e in sports_with_markets:
+        ticker = e.get("event_ticker")
+        if ticker and e.get("markets"):
+            markets_lookup[ticker] = e["markets"]
+
+    # Merge markets into pass 1 events
+    for e in all_events:
+        ticker = e.get("event_ticker")
+        if ticker in markets_lookup:
+            e["markets"] = markets_lookup[ticker]
 
     if not all_events:
         return pd.DataFrame()
@@ -287,6 +305,9 @@ filtered = df.copy()
 
 if date_mode != "All dates":
     def date_ok(row):
+        # Sports events always show — their dates are often missing or in nested markets
+        if row.get("_is_sport"):
+            return True
         d = row.get("_sort_date")
         if d is None:
             return include_no_date
