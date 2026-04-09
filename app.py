@@ -4,7 +4,7 @@ import tempfile
 import time
 from datetime import date, timedelta, timezone
 
-st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="📡")
+st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="")
 
 st.markdown("""
 <style>
