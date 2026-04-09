@@ -176,14 +176,8 @@ def fetch_all_events():
         df["category"] = "Other"
     df["category"] = df["category"].fillna("Other").str.strip()
 
-    # Tag sports using Kalshi's exact category names from /search/filters_by_sport
-    KALSHI_SPORT_CATEGORIES = {
-        "all sports", "basketball", "baseball", "tennis", "soccer", "hockey",
-        "golf", "mma", "cricket", "football", "esports", "motorsport",
-        "aussie rules", "boxing", "lacrosse", "rugby", "darts", "chess",
-        "other", "sports"
-    }
-    df["_is_sport"] = df["category"].str.lower().str.strip().isin(KALSHI_SPORT_CATEGORIES)
+    # Kalshi uses "Sports" as the category for all sports events
+    df["_is_sport"] = df["category"].str.strip() == "Sports"
 
     return df
 
@@ -309,11 +303,7 @@ def get_icon(ticker, category):
     if "health" in c: return "🏥"
     return "📊"
 
-KALSHI_SPORT_CATS = {
-    "all sports", "basketball", "baseball", "tennis", "soccer", "hockey",
-    "golf", "mma", "cricket", "football", "esports", "motorsport",
-    "aussie rules", "boxing", "lacrosse", "rugby", "darts", "chess", "sports"
-}
+KALSHI_SPORT_CATS = {"sports"}
 
 def get_pill_class(category):
     c = str(category).lower().strip()
