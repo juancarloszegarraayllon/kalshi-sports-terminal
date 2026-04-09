@@ -43,6 +43,7 @@ h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0
 .odds-row{display:flex;gap:8px;}
 .odds-yes{flex:1;background:#0d2d1a;border:1px solid #166534;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{flex:1;background:#2d0d0d;border:1px solid #7f1d1d;border-radius:6px;padding:5px 8px;text-align:center;}
+.odds-subtitle{font-size:11px;color:#9ca3af;margin-bottom:6px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .odds-label{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
 .odds-price-yes{font-size:15px;font-weight:500;color:#4ade80;}
 .odds-price-no{font-size:15px;font-weight:500;color:#f87171;}
@@ -618,15 +619,9 @@ def paginate(with_markets=False, category=None, max_pages=30):
 @st.cache_data(ttl=1800)
 def fetch_all():
     prog = st.progress(0, text="Fetching all events…")
-    all_ev = paginate(with_markets=False, max_pages=30)
+    all_ev = paginate(with_markets=True, max_pages=30)
     ev_map = {e["event_ticker"]: e for e in all_ev}
-    prog.progress(0.4, text=f"{len(all_ev)} events. Fetching sports odds…")
-
-    sport_ev = paginate(with_markets=True, category="Sports", max_pages=30)
-    for e in sport_ev:
-        t = e.get("event_ticker","")
-        if t and (t not in ev_map or (e.get("markets") and not ev_map.get(t,{}).get("markets"))):
-            ev_map[t] = e
+    prog.progress(0.7, text=f"{len(all_ev)} events loaded.")
 
     prog.progress(0.85, text="Building dataframe…")
     combined = list(ev_map.values())
@@ -649,18 +644,26 @@ def fetch_all():
 
     def extract(row):
         mkts = row.get("markets")
-        if not isinstance(mkts,list) or not mkts: return "—","—",None
+        if not isinstance(mkts,list) or not mkts: return "—","—",None,""
         m = mkts[0]
         yes = fmt_pct(m.get("yes_bid_dollars") or m.get("yes_bid"))
         no  = fmt_pct(m.get("no_bid_dollars")  or m.get("no_bid"))
+        # Get team/player name from subtitle or market title
+        subtitle = str(m.get("subtitle") or m.get("title") or "").strip()
+        # For game markets, try to get both sides from first two markets
+        if len(mkts) >= 2:
+            s1 = str(mkts[0].get("subtitle") or "").strip()
+            s2 = str(mkts[1].get("subtitle") or "").strip()
+            if s1 and s2 and s1 != s2:
+                subtitle = f"{s1} / {s2}"
         close = None
         for mk in mkts:
             d = safe_date(mk.get("close_time"))
             if d and (close is None or d < close): close = d
-        return yes, no, close
+        return yes, no, close, subtitle
 
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_subtitle"] = info[3]
 
     def best_dt(row):
         for col in ["strike_date","close_time","end_date","expiration_time"]:
@@ -751,11 +754,14 @@ def render_cards(data):
             dt      = str(row.get("_display_dt","Open"))
             yes     = str(row.get("_yes","—"))
             no      = str(row.get("_no","—"))
+            subtitle = str(row.get("_subtitle","")).strip()
+            sub_html = f'<div class="odds-subtitle">{subtitle[:40]}</div>' if subtitle else ""
             html += f"""<div class="market-card">
 <div class="card-top"><span class="cat-pill {pill}">{label}</span><span class="date-text">📅 {dt}</span></div>
 <span class="card-icon">{icon}</span>
 <div class="card-title">{title}</div>
 <div class="card-footer"><span class="ticker-text">{ticker}</span>
+{sub_html}
 <div class="odds-row">
 <div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">{yes}</div></div>
 <div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">{no}</div></div>
