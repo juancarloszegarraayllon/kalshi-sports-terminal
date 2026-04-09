@@ -8,56 +8,64 @@ st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="📡"
 
 st.markdown("""
 <style>
+/* ── Base ── */
+html,body,[class*="css"]{font-family:Helvetica,Arial,sans-serif!important;background:#000000!important;color:#ffffff!important;}
+section[data-testid="stSidebar"]{display:none!important;}
+.stMainBlockContainer{padding-left:2rem!important;padding-right:2rem!important;}
+.stApp{background:#000000!important;}
 
-html,body,[class*="css"]{font-family:Helvetica,Arial,sans-serif;}
-.stApp{background:#0a0a0f;}
-section[data-testid="stSidebar"]{background:#0f0f1a!important;border-right:1px solid #1e1e32;}
-section[data-testid="stSidebar"] label,section[data-testid="stSidebar"] p{color:#6b7280!important;font-size:11px!important;letter-spacing:.08em;text-transform:uppercase;}
-h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#f0f0ff!important;letter-spacing:-.02em;font-size:2.2rem!important;}
-.metric-strip{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;}
-.metric-box{background:#0f0f1a;border:1px solid #1e1e32;border-radius:10px;padding:14px 20px;flex:1;min-width:120px;}
-.metric-label{font-size:10px;color:#4b5563;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
-.metric-value{font-size:22px;font-weight:500;color:#a5b4fc;}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-.market-card{background:#0f0f1a;border:1px solid #1e1e32;border-radius:12px;padding:18px 20px;transition:border-color .2s,transform .15s;}
-.market-card:hover{border-color:#4f46e5;transform:translateY(-2px);}
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
-.cat-pill{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:4px;border:1px solid;white-space:nowrap;}
-.pill-sports{background:#1a2e1a;color:#4ade80;border-color:#166534;}
-.pill-elections{background:#2e1a1e;color:#f472b6;border-color:#9d174d;}
-.pill-politics{background:#1e1a2e;color:#818cf8;border-color:#3730a3;}
-.pill-economics{background:#2e2a1a;color:#fbbf24;border-color:#92400e;}
-.pill-financials{background:#2e2a1a;color:#fb923c;border-color:#9a3412;}
-.pill-crypto{background:#1e2a2e;color:#67e8f9;border-color:#0e7490;}
-.pill-companies{background:#2e1e2e;color:#d8b4fe;border-color:#7e22ce;}
-.pill-entertainment{background:#2e1e1a;color:#fdba74;border-color:#c2410c;}
-.pill-climate{background:#1a2e2e;color:#22d3ee;border-color:#164e63;}
-.pill-science{background:#1e2e1a;color:#86efac;border-color:#14532d;}
-.pill-health{background:#2e1a2e;color:#e879f9;border-color:#701a75;}
-.pill-default{background:#1e1e32;color:#94a3b8;border-color:#2d2d55;}
-.date-text{font-size:11px;color:#6b7280;}.begins-text{font-size:11px;color:#10b981;font-weight:600;}.live-text{font-size:11px;color:#10b981;font-weight:700;letter-spacing:.02em;}.date-text{font-size:11px;color:#6b7280;}.card-timing{display:flex;flex-direction:row;align-items:center;gap:2px;flex-wrap:wrap;margin-bottom:8px;}.card-dates{display:flex;flex-direction:row;align-items:center;gap:2px;}
-.card-icon{font-size:20px;margin-bottom:6px;display:block;}
-.card-title{font-size:14px;font-weight:500;color:#e2e8f0;line-height:1.45;margin-bottom:12px;min-height:58px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-.card-footer{border-top:1px solid #1a1a2e;padding-top:10px;}
-.ticker-text{font-size:10px;color:#374151;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;}
-.odds-row{display:flex;gap:8px;}
-.odds-yes{flex:1;background:#0d2d1a;border:1px solid #166534;border-radius:6px;padding:5px 8px;text-align:center;}
-.odds-no{flex:1;background:#2d0d0d;border:1px solid #7f1d1d;border-radius:6px;padding:5px 8px;text-align:center;}
+/* ── Title ── */
+h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#00ff00!important;font-size:2rem!important;}
+
+/* ── Metrics ── */
+.metric-strip{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+.metric-box{background:#0a0a0a;border:1px solid #00ff00;border-radius:8px;padding:14px 20px;flex:1;min-width:120px;}
+.metric-label{font-size:10px;color:#00ff00;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;opacity:.7;}
+.metric-value{font-size:24px;font-weight:700;color:#00ff00;}
+
+/* ── Cards ── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;}
+.market-card{background:#0a0a0a;border:1px solid #1c1c1c;border-radius:10px;padding:16px 18px;transition:border-color .15s,transform .15s;}
+.market-card:hover{border-color:#00ff00;transform:translateY(-2px);}
+.card-top{display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;}
+.cat-pill{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 10px;border-radius:3px;border:1px solid #00ff00;color:#00ff00;background:transparent;white-space:nowrap;}
+.card-timing{display:flex;flex-direction:row;align-items:center;gap:4px;margin-bottom:8px;}
+.date-text{font-size:11px;color:#ffffff;opacity:.6;}
+.begins-text{font-size:11px;color:#00ff00;font-weight:600;}
+.live-text{font-size:11px;color:#00ff00;font-weight:700;}
+.card-icon{font-size:20px;margin-bottom:4px;display:block;}
+.card-title{font-size:14px;font-weight:600;color:#ffffff;line-height:1.45;margin-bottom:12px;min-height:52px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.card-footer{border-top:1px solid #1c1c1c;padding-top:10px;}
+.ticker-link{font-size:10px;color:#00ff00;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;opacity:.6;}
+.ticker-link:hover{opacity:1;text-decoration:underline;}
+.ticker-text{font-size:10px;color:#00ff00;opacity:.6;display:block;margin-bottom:8px;word-break:break-all;}
+
+/* ── Outcomes ── */
 .outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
-.outcome-label{font-size:11px;color:#9ca3af;font-weight:500;flex:0 0 auto;min-width:80px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.outcome-chance{font-size:13px;font-weight:600;color:#e2e8f0;flex:0 0 auto;min-width:38px;text-align:right;}
+.outcome-label{font-size:11px;color:#ffffff;font-weight:500;flex:0 0 auto;min-width:80px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85;}
+.outcome-chance{font-size:13px;font-weight:700;color:#ffffff;flex:0 0 auto;min-width:38px;text-align:right;}
 .outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
 .outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
-.ticker-link{font-size:10px;color:#4f46e5;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;}
-.ticker-link:hover{color:#818cf8;text-decoration:underline;}
-.odds-label{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;}
-.odds-price-yes{font-size:15px;font-weight:500;color:#4ade80;}
-.odds-price-no{font-size:15px;font-weight:500;color:#f87171;}
-.empty-state{text-align:center;padding:80px 20px;color:#374151;font-size:14px;}
-hr{border-color:#1e1e32!important;}
-.stTabs [data-baseweb="tab-list"]{background:#0f0f1a;border-bottom:1px solid #1e1e32;gap:2px;flex-wrap:wrap;}
-.stTabs [data-baseweb="tab"]{background:transparent;color:#4b5563;border:none;font-size:12px;padding:8px 12px;}
-.stTabs [aria-selected="true"]{background:#1e1e32!important;color:#a5b4fc!important;border-radius:6px 6px 0 0;}
+.odds-yes{background:#001500;border:1px solid #00ff00;border-radius:6px;padding:5px 8px;text-align:center;}
+.odds-no{background:#150000;border:1px solid #ff2222;border-radius:6px;padding:5px 8px;text-align:center;}
+.odds-label{font-size:9px;color:#ffffff;text-transform:uppercase;letter-spacing:.08em;opacity:.5;}
+.odds-price-yes{font-size:15px;font-weight:700;color:#00ff00;}
+.odds-price-no{font-size:15px;font-weight:700;color:#ff2222;}
+.empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
+hr{border-color:#1c1c1c!important;}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
+.stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
+.stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
+
+/* ── Streamlit overrides ── */
+.stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
+.stTextInput input:focus{border-color:#00ff00!important;}
+.stSelectbox select,[data-baseweb="select"]{background:#0a0a0a!important;color:#ffffff!important;}
+.stCheckbox label{color:#ffffff!important;}
+.stRadio label{color:#ffffff!important;}
+button[kind="secondary"],button[kind="primary"]{background:#001500!important;color:#00ff00!important;border:1px solid #00ff00!important;font-family:Helvetica!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -816,9 +824,7 @@ def fetch_all():
     return df
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## 📡 Kalshi Terminal")
-    st.caption("Cached 30 min.")
+
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
