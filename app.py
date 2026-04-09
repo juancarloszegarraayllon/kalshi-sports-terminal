@@ -243,11 +243,15 @@ sport_cats = [c for c in all_cats.index if "sport" in c.lower()]
 filtered = df.copy()
 
 if date_mode != "All dates":
-    def date_ok(d):
+    def date_ok(row):
+        # Always show sports events regardless of date
+        if row.get("_is_sport"):
+            return True
+        d = row.get("_local_date")
         if d is None:
             return include_no_date
         return custom_start <= d <= custom_end
-    filtered = filtered[filtered["_local_date"].apply(date_ok)]
+    filtered = filtered[filtered.apply(date_ok, axis=1)]
 
 if search:
     mask = (
@@ -260,9 +264,11 @@ if search:
 # ── Metrics ────────────────────────────────────────────────────────────────────
 # Count sports using all sport-related categories found
 sport_count    = int(filtered["_is_sport"].sum())
-categories     = sorted(filtered["category"].unique().tolist())
-non_sport_cats = [c for c in categories if c.lower().strip() not in KALSHI_SPORT_CATS]
+# Always build tabs from full dataset so they don't disappear when filters narrow results
+all_categories = sorted(df["category"].unique().tolist())
+non_sport_cats = [c for c in all_categories if c.lower().strip() not in KALSHI_SPORT_CATS]
 tab_labels     = ["All", "Sports"] + non_sport_cats
+categories     = all_categories
 
 st.markdown(f"""
 <div class="metric-strip">
