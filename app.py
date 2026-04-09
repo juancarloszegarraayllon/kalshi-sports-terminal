@@ -58,21 +58,37 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 hr{border-color:#1c1c1c!important;}
 /* Nav panel - plain text buttons */
 .nav-panel{padding:4px 0;}
-/* Hide nav trigger buttons — keep only the HTML text visible */
+/* Nav buttons - plain text style, no rectangles */
 .stButton button{
-    opacity:0!important;
-    height:1px!important;
-    min-height:0!important;
-    padding:0!important;
-    margin:-6px 0 0 0!important;
-    border:none!important;
     background:transparent!important;
+    border:none!important;
     box-shadow:none!important;
-    display:block!important;
+    outline:none!important;
+    color:#ffffff!important;
+    font-family:Helvetica,Arial,sans-serif!important;
+    font-size:13px!important;
+    font-weight:400!important;
+    text-align:left!important;
+    justify-content:flex-start!important;
+    padding:4px 0!important;
+    margin:0!important;
     width:100%!important;
+    border-radius:0!important;
     cursor:pointer!important;
+    min-height:0!important;
 }
-.stButton button:focus{outline:none!important;box-shadow:none!important;}
+.stButton button:hover{
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    color:#aaaaaa!important;
+}
+.stButton button:focus,.stButton button:active{
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    outline:none!important;
+}
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
@@ -1132,17 +1148,10 @@ for i, tab in enumerate(top_tabs):
                     subsubcats = get_subsubcats(cat, sc, filtered)
                     has_children = bool(subsubcats)
                     arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
-                    weight = "bold" if is_active else "normal"
 
-                    # Render label as plain HTML text
-                    st.markdown(
-                        f"<p style='margin:4px 0;padding:0;font-family:Helvetica,sans-serif;"
-                        f"font-size:13px;font-weight:{weight};color:#ffffff;cursor:pointer;'>"
-                        f"{clean} <span style='color:#555;font-size:11px;'>({cnt})</span>{arrow}</p>",
-                        unsafe_allow_html=True
-                    )
-                    # Hidden button overlaid - use zero-size trick
-                    if st.button(f"__{sc}", key=f"sc_{cat}_{sc}"):
+                    # Bold if active, normal otherwise
+                    btn_label = f"**{clean}** ({cnt}){arrow}" if is_active else f"{clean} ({cnt}){arrow}"
+                    if st.button(btn_label, key=f"sc_{cat}_{sc}", use_container_width=True):
                         if has_children:
                             st.session_state[expand_key] = not is_expanded
                         st.session_state[subcat_key] = sc
@@ -1152,19 +1161,13 @@ for i, tab in enumerate(top_tabs):
                     if is_expanded and has_children:
                         for ssc in subsubcats:
                             is_ssc = selected_subsubcat == ssc
-                            ssc_weight = "bold" if is_ssc else "normal"
-                            ssc_color  = "#ffffff" if is_ssc else "#888888"
-                            prefix = "▸ " if is_ssc else ""
-                            st.markdown(
-                                f"<p style='margin:2px 0 2px 14px;padding:0;font-family:Helvetica,sans-serif;"
-                                f"font-size:12px;font-weight:{ssc_weight};color:{ssc_color};'>"
-                                f"{prefix}{ssc}</p>",
-                                unsafe_allow_html=True
-                            )
-                            if st.button(f"__{sc}__{ssc}", key=f"ssc_{cat}_{sc}_{ssc}"):
+                            ssc_label = f"  ▸ **{ssc}**" if is_ssc else f"    {ssc}"
+                            if st.button(ssc_label, key=f"ssc_{cat}_{sc}_{ssc}",
+                                         use_container_width=True):
                                 st.session_state[subcat_key] = sc
                                 st.session_state[subsubcat_key] = ssc
                                 st.rerun()
+
 
             with _right:
                 selected_subcat  = st.session_state.get(subcat_key, subcats[0])
