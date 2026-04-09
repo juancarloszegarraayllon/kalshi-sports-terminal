@@ -968,57 +968,90 @@ def render_cards(data):
         return
     html = '<div class="card-grid">'
     for _, row in data.iterrows():
-        try:
-            ticker  = str(row.get("event_ticker","")).upper()
-            cat     = str(row.get("category","Other"))
-            title   = str(row.get("title",""))[:90]
-            sport   = str(row.get("_sport",""))
-            base_ic, pill = CAT_META.get(cat, ("📊","pill-default"))
-            icon    = SPORT_ICONS.get(sport, base_ic) if sport else base_ic
-            label   = sport[:16] if sport else cat[:16]
-            dt      = str(row.get("_display_dt","Open"))
-            begins  = str(row.get("_begins") or "")
-            yes     = str(row.get("_yes","—"))
-            no      = str(row.get("_no","—"))
-            outcomes = row.get("_outcomes") or []
-            # Build URL: https://kalshi.com/markets/{series_lower}/slug/{ticker_lower}
-            series_lower = str(row.get("series_ticker","")).lower()
-            ticker_lower = ticker.lower()
-            kalshi_url = f"https://kalshi.com/markets/{series_lower}/{series_lower.replace('kx','')}/{ticker_lower}" if series_lower else ""
-            link_html = f'<a class="ticker-link" href="{kalshi_url}" target="_blank">{ticker}</a>' if kalshi_url else f'<span class="ticker-text">{ticker}</span>'
-            # Build outcomes rows
-            if outcomes:
-                odds_html = ""
-                for (olabel, ochance, oyes, ono) in outcomes[:5]:
-                    safe_label = olabel[:30] if olabel else "—"
-                    odds_html += f'''<div class="outcome-row">
-<div class="outcome-label">{safe_label}</div>
-<div class="outcome-chance">{ochance}</div>
-<div class="outcome-odds">
-<div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">{oyes}</div></div>
-<div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">{ono}</div></div>
-</div></div>'''
-            else:
-                odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
-            # Get kickoff epoch for JS countdown
-            kickoff_dt_val = row.get("_kickoff_dt")
-            begins_str     = str(row.get("_begins") or "")
-            is_live_card   = ("Live" in begins_str)
-            if is_live_card:
-                kickoff_epoch = -1  # signals JS to show Live
-            elif kickoff_dt_val:
-                kickoff_epoch = int(kickoff_dt_val.timestamp())
-            else:
-                kickoff_epoch = 0
-            html += f"""<div class="market-card" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">
-<div class="card-top"><span class="cat-pill {pill}">{label}</span></div>
-<div class="card-timing"><span class="begins-text countdown" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">{begins}</span>{f' · <span class="date-text">{dt}</span>' if dt and dt != "Open" else ""}</div>
-<span class="card-icon">{icon}</span>
-<div class="card-title">{title}</div>
-<div class="card-footer">{link_html}
-{odds_html}
-</div></div>"""
-        except: continue
+        ticker   = str(row.get("event_ticker","") or "").upper()
+        cat      = str(row.get("category","Other") or "Other")
+        title    = str(row.get("title","") or "")[:90]
+        sport    = str(row.get("_sport","") or "")
+        base_ic, pill = CAT_META.get(cat, ("📊","pill-default"))
+        icon     = SPORT_ICONS.get(sport, base_ic) if sport else base_ic
+        label    = sport[:16] if sport else cat[:16]
+        dt       = str(row.get("_display_dt","Open") or "Open")
+        begins   = str(row.get("_begins") or "")
+        outcomes = row.get("_outcomes") or []
+
+        # Kalshi URL
+        series_lower = str(row.get("series_ticker","") or "").lower()
+        ticker_lower = ticker.lower()
+        if series_lower:
+            kalshi_url = f"https://kalshi.com/markets/{series_lower}/{series_lower.replace('kx','')}/{ticker_lower}"
+            link_html  = f'<a class="ticker-link" href="{kalshi_url}" target="_blank">{ticker}</a>'
+        else:
+            link_html  = f'<span class="ticker-text">{ticker}</span>'
+
+        # Outcomes HTML
+        odds_html = ""
+        rows_to_show = outcomes[:5] if outcomes else []
+        for (olabel, ochance, oyes, ono) in rows_to_show:
+            safe_label = (olabel or "—")[:30]
+            odds_html += (
+                '<div class="outcome-row">'
+                '<div class="outcome-label">' + safe_label + '</div>'
+                '<div class="outcome-chance">' + ochance + '</div>'
+                '<div class="outcome-odds">'
+                '<div class="odds-yes"><div class="odds-label">YES</div>'
+                '<div class="odds-price-yes">' + oyes + '</div></div>'
+                '<div class="odds-no"><div class="odds-label">NO</div>'
+                '<div class="odds-price-no">' + ono + '</div></div>'
+                '</div></div>'
+            )
+        if not odds_html:
+            odds_html = (
+                '<div class="outcome-row">'
+                '<div class="outcome-label">—</div>'
+                '<div class="outcome-chance">—</div>'
+                '<div class="outcome-odds">'
+                '<div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div>'
+                '<div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div>'
+                '</div></div>'
+            )
+
+        # Kickoff epoch for JS countdown
+        kickoff_dt_val = row.get("_kickoff_dt")
+        is_live_card   = "Live" in begins
+        if is_live_card:
+            kickoff_epoch = -1
+        elif kickoff_dt_val is not None:
+            try: kickoff_epoch = int(kickoff_dt_val.timestamp())
+            except: kickoff_epoch = 0
+        else:
+            kickoff_epoch = 0
+
+        # Timing line: "Begins in Xh Ym · Apr 9, 6:00pm ET"
+        if dt and dt != "Open":
+            timing_date = ' · <span class="date-text">' + dt + '</span>'
+        else:
+            timing_date = ""
+        timing_html = (
+            '<span class="begins-text countdown"'
+            ' data-kickoff="' + str(kickoff_epoch) + '"'
+            ' data-live="' + str(is_live_card).lower() + '">'
+            + begins + '</span>' + timing_date
+        )
+
+        html += (
+            '<div class="market-card"'
+            ' data-kickoff="' + str(kickoff_epoch) + '"'
+            ' data-live="' + str(is_live_card).lower() + '">'
+            '<div class="card-top">'
+            '<span class="cat-pill ' + pill + '">' + label + '</span>'
+            '</div>'
+            '<div class="card-timing">' + timing_html + '</div>'
+            '<span class="card-icon">' + icon + '</span>'
+            '<div class="card-title">' + title + '</div>'
+            '<div class="card-footer">' + link_html + odds_html + '</div>'
+            '</div>'
+        )
+
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
