@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import time
+import requests
 from datetime import date, timedelta, timezone
 
 st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="🏟️")
@@ -49,10 +50,10 @@ hr { border-color: #1e1e32 !important; }
 </style>
 """, unsafe_allow_html=True)
 
+BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
 UTC = timezone.utc
 
 def parse_date_safe(val):
-    """Parse any date string/value to a plain date object, or None."""
     try:
         if val is None or val == "" or (isinstance(val, float) and pd.isna(val)):
             return None
@@ -61,7 +62,7 @@ def parse_date_safe(val):
     except Exception:
         return None
 
-# ── API ────────────────────────────────────────────────────────────────────────
+# ── API client ─────────────────────────────────────────────────────────────────
 @st.cache_resource
 def get_client():
     try:
@@ -81,9 +82,22 @@ def get_client():
 
 client = get_client()
 
-# ── Fetch ALL events with pagination ──────────────────────────────────────────
+# ── Step 1: Get available sports from Kalshi's own filters endpoint ────────────
+@st.cache_data(ttl=3600)
+def fetch_sport_filters():
+    """Call /search/filters_by_sport to get the exact sport names Kalshi uses."""
+    try:
+        resp = requests.get(f"{BASE_URL}/search/filters_by_sport", timeout=10)
+        data = resp.json()
+        filters = data.get("filters_by_sports", {})
+        ordering = data.get("sport_ordering", list(filters.keys()))
+        return filters, ordering
+    except Exception as e:
+        return {}, []
+
+# ── Step 2: Fetch all events with pagination ───────────────────────────────────
 @st.cache_data(ttl=600)
-def fetch_all():
+def fetch_all_events():
     all_events = []
     cursor = None
     page = 0
@@ -140,25 +154,20 @@ def fetch_all():
         return pd.DataFrame()
 
     df = pd.DataFrame(all_events)
-
     if "event_ticker" in df.columns:
         df = df.drop_duplicates(subset=["event_ticker"])
 
-    # Parse date — try each date column independently, pick first that works
-    # Store as plain Python date objects in a regular object column (no dtype issues)
+    # Parse dates row-by-row into plain Python date objects
     date_cols = ["strike_date", "end_date", "close_time", "expiration_time"]
-    
+
     def get_best_date(row):
         for col in date_cols:
-            val = row.get(col)
-            d = parse_date_safe(val)
+            d = parse_date_safe(row.get(col))
             if d is not None:
                 return d
         return None
 
     df["_local_date"] = df.apply(get_best_date, axis=1)
-
-    # Display string
     df["_display_date"] = df["_local_date"].apply(
         lambda d: d.strftime("%b %d") if d is not None else "Open"
     )
@@ -166,6 +175,9 @@ def fetch_all():
     if "category" not in df.columns:
         df["category"] = "Other"
     df["category"] = df["category"].fillna("Other").str.strip()
+
+    # Tag sports using Kalshi's actual category value
+    df["_is_sport"] = df["category"].str.lower().str.contains("sport", na=False)
 
     return df
 
@@ -177,7 +189,6 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("**📅 Date Filter**")
-
     today = date.today()
 
     date_mode = st.radio(
@@ -206,19 +217,27 @@ with st.sidebar:
 
     st.markdown("---")
     if st.button("🔄 Refresh data"):
-        fetch_all.clear()
+        fetch_all_events.clear()
+        fetch_sport_filters.clear()
         st.rerun()
     st.caption("Cached 10 min to avoid rate limits.")
 
 # ── Load ───────────────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
 
-with st.spinner("Loading…"):
-    df = fetch_all()
+# Fetch sport filters to understand what categories exist
+sport_filters, sport_ordering = fetch_sport_filters()
+
+with st.spinner("Loading all markets…"):
+    df = fetch_all_events()
 
 if df.empty:
     st.markdown('<div class="empty-state">No data returned. Check your API credentials.</div>', unsafe_allow_html=True)
     st.stop()
+
+# Show what sport categories were found (helpful for debugging)
+all_cats = df["category"].value_counts()
+sport_cats = [c for c in all_cats.index if "sport" in c.lower()]
 
 # ── Apply filters ──────────────────────────────────────────────────────────────
 filtered = df.copy()
@@ -239,9 +258,10 @@ if search:
     filtered = filtered[mask]
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
+# Count sports using all sport-related categories found
+sport_count = int(filtered["_is_sport"].sum())
 categories  = sorted(filtered["category"].unique().tolist())
-tab_labels  = ["All"] + categories
-sport_count = int((filtered["category"].str.lower() == "sports").sum())
+tab_labels  = ["All", "Sports"] + [c for c in categories if "sport" not in c.lower()]
 
 st.markdown(f"""
 <div class="metric-strip">
@@ -267,6 +287,12 @@ def get_icon(ticker, category):
     if "F1"     in t or "NASCAR" in t: return "🏎️"
     if "NCAAB"  in t: return "🏀"
     if "NCAAF"  in t: return "🏈"
+    if "soccer" in c or "football" in c: return "⚽"
+    if "tennis" in c: return "🎾"
+    if "basketball" in c: return "🏀"
+    if "baseball" in c: return "⚾"
+    if "hockey" in c: return "🏒"
+    if "golf"   in c: return "⛳"
     if "sport"  in c: return "🏟️"
     if "election" in c or "polit" in c: return "🗳️"
     if "financ" in c or "econom" in c: return "📈"
@@ -277,17 +303,18 @@ def get_icon(ticker, category):
     return "📊"
 
 def get_pill_class(category):
+    c = str(category).lower()
+    if "sport" in c: return "cat-Sports"
     mapping = {
-        "Sports":                 "cat-Sports",
-        "Politics":               "cat-Politics",
-        "Elections":              "cat-Elections",
-        "Financials":             "cat-Financials",
-        "Entertainment":          "cat-Entertainment",
-        "Climate and Weather":    "cat-Climate",
-        "Science and Technology": "cat-Science",
-        "Health":                 "cat-Health",
+        "politics":               "cat-Politics",
+        "elections":              "cat-Elections",
+        "financials":             "cat-Financials",
+        "entertainment":          "cat-Entertainment",
+        "climate and weather":    "cat-Climate",
+        "science and technology": "cat-Science",
+        "health":                 "cat-Health",
     }
-    return mapping.get(str(category), "cat-default")
+    return mapping.get(str(category).lower(), "cat-default")
 
 def render_cards(data):
     if data.empty:
@@ -331,10 +358,21 @@ for i, tab in enumerate(tabs):
         cat = tab_labels[i]
         if cat == "All":
             render_cards(filtered)
+        elif cat == "Sports":
+            # Show ALL sport-related categories together
+            render_cards(filtered[filtered["_is_sport"]])
         else:
             render_cards(filtered[filtered["category"] == cat])
 
+# ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("---")
+
+# Show actual category breakdown so we can see what Kalshi calls things
+with st.expander("📊 Category breakdown (click to see all categories from API)"):
+    st.dataframe(all_cats.reset_index().rename(columns={"index": "category", "category": "count"}))
+    if sport_ordering:
+        st.write("**Sports available via Kalshi filters API:**", sport_ordering)
+
 st.markdown(
     "<p style='text-align:center;color:#1f2937;font-size:11px;letter-spacing:.06em;'>"
     "KALSHI TERMINAL · CACHED 10 MIN · NOT FINANCIAL ADVICE</p>",
