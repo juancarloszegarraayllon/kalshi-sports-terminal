@@ -59,35 +59,45 @@ hr{border-color:#1c1c1c!important;}
 /* Nav panel - plain text buttons */
 .nav-panel{padding:4px 0;}
 /* Nav buttons - plain text style, no rectangles */
-.stButton button{
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    outline:none!important;
-    color:#ffffff!important;
-    font-family:Helvetica,Arial,sans-serif!important;
-    font-size:13px!important;
-    font-weight:400!important;
-    text-align:left!important;
-    justify-content:flex-start!important;
-    padding:4px 0!important;
-    margin:0!important;
-    width:100%!important;
-    border-radius:0!important;
-    cursor:pointer!important;
-    min-height:0!important;
+/* Strip ALL button chrome globally */
+button[kind="secondary"], button[kind="primary"],
+div[data-testid="stButton"] button,
+.stButton > div > button,
+.stButton button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: #ffffff !important;
+    font-family: Helvetica, Arial, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 3px 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    min-height: 28px !important;
 }
-.stButton button:hover{
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    color:#aaaaaa!important;
+div[data-testid="stButton"] button:hover,
+.stButton button:hover {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #888888 !important;
 }
-.stButton button:focus,.stButton button:active{
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    outline:none!important;
+div[data-testid="stButton"] button:focus,
+div[data-testid="stButton"] button:active,
+.stButton button:focus,
+.stButton button:active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 /* ── Tabs ── */
@@ -1175,5 +1185,42 @@ for i, tab in enumerate(top_tabs):
                 view = filter_data(cat, selected_subcat, selected_subsubcat, filtered)
                 render_cards(view)
 
+
+# JS to fix button styles at runtime
+import streamlit.components.v1 as _cv1
+_cv1.html("""
+<script>
+(function() {
+  function fixButtons() {
+    var doc = window.parent ? window.parent.document : document;
+    doc.querySelectorAll('.stButton button, [data-testid="stButton"] button').forEach(function(btn) {
+      btn.style.cssText = [
+        'background:transparent!important',
+        'background-color:transparent!important', 
+        'border:none!important',
+        'box-shadow:none!important',
+        'outline:none!important',
+        'color:#ffffff!important',
+        'font-family:Helvetica,Arial,sans-serif!important',
+        'font-size:13px!important',
+        'text-align:left!important',
+        'justify-content:flex-start!important',
+        'padding:3px 0!important',
+        'margin:0!important',
+        'width:100%!important',
+        'border-radius:0!important',
+        'min-height:28px!important'
+      ].join(';');
+    });
+  }
+  fixButtons();
+  setInterval(fixButtons, 500);
+  new MutationObserver(fixButtons).observe(
+    window.parent ? window.parent.document.body : document.body,
+    {childList:true, subtree:true}
+  );
+})();
+</script>
+""", height=0)
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
