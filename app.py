@@ -854,12 +854,14 @@ def fetch_all():
 
     df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
-        # Use game_date (parsed from ticker) — most reliable
+        # kickoff_dt has the full datetime with time → shows "Apr 9, 6:00pm EDT"
+        kdt = row.get("_kickoff_dt")
+        if kdt: return fmt_date(kdt)
+        # game_date is date-only → shows "Apr 9"
         gd = row.get("_game_date")
         if gd: return fmt_date(gd)
-        # Fallback: sort_dt date
         d = row.get("_mkt_dt")
-        return fmt_date(d) if d else "Open"
+        return fmt_date(d) if d else ""
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
 
     # "Begins in" — use open_time or start_date from event or first market
@@ -987,23 +989,12 @@ def render_cards(data):
 </div></div>'''
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
-            # Get kickoff epoch for JS countdown
-            kickoff_dt_val = row.get("_kickoff_dt")
-            begins_str     = str(row.get("_begins") or "")
-            is_live_card   = ("Live" in begins_str)
-            if is_live_card:
-                kickoff_epoch = -1  # signals JS to show Live
-            elif kickoff_dt_val:
-                kickoff_epoch = int(kickoff_dt_val.timestamp())
-            else:
-                kickoff_epoch = 0
-            sep = (' <span class="date-text">' + dt + '</span>') if dt else ""
+            is_live_card = "Live" in begins
+            timing = begins + (' · ' + dt if dt else '')
             html += (
-                '<div class="market-card" data-kickoff="' + str(kickoff_epoch) + '" data-live="' + str(is_live_card).lower() + '">'
+                '<div class="market-card">'
                 '<div class="card-top"><span class="cat-pill ' + pill + '">' + label + '</span></div>'
-                '<div class="card-timing">'
-                '<span class="begins-text countdown" data-kickoff="' + str(kickoff_epoch) + '" data-live="' + str(is_live_card).lower() + '">' + begins + '</span>' + sep +
-                '</div>'
+                '<div class="card-timing"><span class="begins-text">' + timing + '</span></div>'
                 '<span class="card-icon">' + icon + '</span>'
                 '<div class="card-title">' + title + '</div>'
                 '<div class="card-footer">' + link_html + odds_html + '</div>'
@@ -1100,7 +1091,5 @@ for i, tab in enumerate(top_tabs):
         elif cat == "Sports": render_sports(filtered[filtered["_is_sport"]].copy())
         else:                 render_cat_tabs(filtered[filtered["category"]==cat].copy(), cat)
 
-import streamlit.components.v1 as _cv1
-_cv1.html("<script>(function(){var LIVE='🔴 Live';function p(n){return n<10?'0'+n:''+n;}function fmt(s){if(s<=0)return LIVE;var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sc=s%60;if(d>1)return'Begins in '+d+'d';if(d===1)return'Begins in 1d '+h+'h';if(h>0)return'Begins in '+h+'h '+m+'m '+p(sc)+'s';if(m>0)return'Begins in '+m+'m '+p(sc)+'s';return'Begins in '+sc+'s';}function tick(){var now=Math.floor(Date.now()/1000);var doc=window.parent?window.parent.document:document;doc.querySelectorAll('.countdown[data-kickoff]').forEach(function(el){var k=parseInt(el.getAttribute('data-kickoff')||'0',10);var live=el.getAttribute('data-live')==='true';if(live||k===-1){el.textContent=LIVE;el.style.color='#10b981';return;}if(!k)return;var diff=k-now;el.textContent=fmt(diff);el.style.color='#10b981';el.style.fontWeight='600';});}tick();setInterval(tick,1000);var ob=new MutationObserver(function(){tick();});var t=window.parent?window.parent.document.body:document.body;ob.observe(t,{childList:true,subtree:true});})();</script>", height=0)
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
