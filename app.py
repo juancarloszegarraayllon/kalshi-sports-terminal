@@ -368,20 +368,62 @@ for i, tab in enumerate(tabs):
         if cat == "All":
             render_cards(filtered)
         elif cat == "Sports":
-            # Show ALL sport-related categories together
-            render_cards(filtered[filtered["_is_sport"]])
+            sports_df = filtered[filtered["_is_sport"]]
+
+            # Build sub-tabs from sport series_ticker prefixes
+            SPORT_ICONS = {
+                "Basketball": "🏀", "Baseball": "⚾", "Hockey": "🏒",
+                "Football": "🏈", "Soccer": "⚽", "Tennis": "🎾",
+                "Golf": "⛳", "MMA": "🥊", "Cricket": "🏏",
+                "Esports": "🎮", "Motorsport": "🏎️", "Boxing": "🥊",
+                "Rugby": "🏉", "Lacrosse": "🥍", "Darts": "🎯",
+                "Chess": "♟️", "Aussie Rules": "🏉", "Other": "🏟️",
+            }
+
+            # Detect sport type from series_ticker
+            def detect_sport(ticker):
+                t = str(ticker).upper()
+                if "NBA" in t or "NCAAB" in t: return "Basketball"
+                if "MLB" in t or "NCAAB" in t: return "Baseball"
+                if "NHL" in t: return "Hockey"
+                if "NFL" in t or "NCAAF" in t: return "Football"
+                if "SOC" in t or "MLS" in t or "EPL" in t or "UEFA" in t or "FIFA" in t: return "Soccer"
+                if "TEN" in t or "ATP" in t or "WTA" in t: return "Tennis"
+                if "GOLF" in t or "PGA" in t: return "Golf"
+                if "MMA" in t or "UFC" in t: return "MMA"
+                if "CRICKET" in t or "IPL" in t: return "Cricket"
+                if "ESPORT" in t or "LOL" in t or "DOTA" in t or "CSGO" in t: return "Esports"
+                if "F1" in t or "NASCAR" in t or "MOTOR" in t: return "Motorsport"
+                if "BOX" in t: return "Boxing"
+                if "RUGBY" in t: return "Rugby"
+                if "LAX" in t or "LACROSSE" in t: return "Lacrosse"
+                if "DART" in t: return "Darts"
+                if "CHESS" in t: return "Chess"
+                if "AFL" in t or "AUSSIE" in t: return "Aussie Rules"
+                return "Other"
+
+            sports_df = sports_df.copy()
+            sports_df["_sport_type"] = sports_df["event_ticker"].apply(detect_sport)
+
+            # Only show sport types that have events
+            present_sports = sorted(sports_df["_sport_type"].unique().tolist())
+            sport_sub_labels = ["All Sports"] + [
+                f"{SPORT_ICONS.get(s, '🏟️')} {s}" for s in present_sports
+            ]
+
+            sub_tabs = st.tabs(sport_sub_labels)
+            for j, sub_tab in enumerate(sub_tabs):
+                with sub_tab:
+                    if j == 0:
+                        render_cards(sports_df)
+                    else:
+                        sport_name = present_sports[j - 1]
+                        render_cards(sports_df[sports_df["_sport_type"] == sport_name])
         else:
             render_cards(filtered[filtered["category"] == cat])
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("---")
-
-# Show actual category breakdown so we can see what Kalshi calls things
-with st.expander("📊 Category breakdown (click to see all categories from API)"):
-    st.dataframe(all_cats.rename("count").reset_index())
-    if sport_ordering:
-        st.write("**Sports available via Kalshi filters API:**", sport_ordering)
-
 st.markdown(
     "<p style='text-align:center;color:#1f2937;font-size:11px;letter-spacing:.06em;'>"
     "KALSHI TERMINAL · CACHED 10 MIN · NOT FINANCIAL ADVICE</p>",
