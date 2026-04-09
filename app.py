@@ -1022,9 +1022,13 @@ def render_cards(data):
 </div></div>'''
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
-            html += f"""<div class="market-card">
+            # Get kickoff epoch for JS countdown
+            kickoff_dt_val = row.get("_kickoff_dt")
+            kickoff_epoch  = int(kickoff_dt_val.timestamp()) if kickoff_dt_val else 0
+            is_live_card   = (begins == "🔴 Live")
+            html += f"""<div class="market-card" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">
 <div class="card-top"><span class="cat-pill {pill}">{label}</span></div>
-<div class="card-timing">{f'<span class="begins-text">{begins} · </span>' if begins and begins != "🔴 Live" else ('<span class="live-text">🔴 Live · </span>' if begins == "🔴 Live" else "")}<span class="date-text">{dt}</span></div>
+<div class="card-timing"><span class="begins-text countdown" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">{begins}</span>{f' · <span class="date-text">{dt}</span>' if dt and dt != "Open" else ""}</div>
 <span class="card-icon">{icon}</span>
 <div class="card-title">{title}</div>
 <div class="card-footer">{link_html}
@@ -1122,3 +1126,49 @@ for i, tab in enumerate(top_tabs):
         else:                 render_cat_tabs(filtered[filtered["category"]==cat].copy(), cat)
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+
+# ── Real-time JS countdown ────────────────────────────────────────────────────
+st.markdown("""
+<script>
+(function() {
+    function fmtCountdown(secs) {
+        if (secs <= 0) return "🔴 Live";
+        var d = Math.floor(secs / 86400);
+        var h = Math.floor((secs % 86400) / 3600);
+        var m = Math.floor((secs % 3600) / 60);
+        var s = secs % 60;
+        if (d > 1)  return "Begins in " + d + "d";
+        if (d === 1) return "Begins in 1d " + h + "h";
+        if (h > 0)  return "Begins in " + h + "h " + m + "m " + s + "s";
+        if (m > 0)  return "Begins in " + m + "m " + s + "s";
+        return "Begins in " + s + "s";
+    }
+
+    function tick() {
+        var now = Math.floor(Date.now() / 1000);
+        var elems = document.querySelectorAll(".countdown[data-kickoff]");
+        elems.forEach(function(el) {
+            var kickoff = parseInt(el.getAttribute("data-kickoff"), 10);
+            var isLive  = el.getAttribute("data-live") === "true";
+            if (!kickoff) return;
+            var diff = kickoff - now;
+            if (isLive || diff <= 0) {
+                el.textContent = "🔴 Live";
+                el.style.color  = "#10b981";
+            } else {
+                el.textContent  = fmtCountdown(diff);
+                el.style.color  = "#10b981";
+            }
+        });
+    }
+
+    // Run immediately and then every second
+    tick();
+    setInterval(tick, 1000);
+
+    // Re-attach after Streamlit re-renders (it replaces DOM)
+    var observer = new MutationObserver(function() { tick(); });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+""", unsafe_allow_html=True)
