@@ -847,7 +847,7 @@ def fetch_all():
 
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
-st.markdown("<h1 style='text-align:center;font-size:3rem;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1.5rem;'>OddsIQ</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1.5rem;'>OddsIQ</h1>", unsafe_allow_html=True)
 
 # ── Row 1: Search | Sort | Refresh ───────────────────────────────────────────
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
