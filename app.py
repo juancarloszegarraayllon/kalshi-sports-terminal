@@ -86,4 +86,38 @@ if not df.empty:
         filtered = df[df['game_date'].isin(target_dates)]
     elif view_option == "Specific Date":
         user_date = st.sidebar.date_input("Select Date", date.today())
-        filtered = df[df['game_
+        filtered = df[df['game_date'] == user_date]
+    else:
+        filtered = df
+
+    # Search Bar
+    search = st.sidebar.text_input("Search Team/Player")
+    if search:
+        filtered = filtered[filtered['title'].str.contains(search, case=False, na=False)]
+
+    # --- Render Cards ---
+    if filtered.empty:
+        st.warning("No games found for this selection.")
+    else:
+        st.write(f"Showing **{len(filtered)}** Events")
+        cols = st.columns(4)
+        for idx, (_, row) in enumerate(filtered.iterrows()):
+            with cols[idx % 4]:
+                # Clean title: Removes "Will the" and "?" 
+                clean_title = row['title'].replace('Will the ', '').split('?')[0]
+                
+                st.markdown(f"""
+                    <div class="market-card">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span class="badge-kalshi">KALSHI</span>
+                            <span style="color:#94a3b8; font-size:11px;">{row['game_date']}</span>
+                        </div>
+                        <div class="card-title">{clean_title}</div>
+                        <div class="card-footer">
+                            <span>Ticker <span class="footer-val">{row['event_ticker']}</span></span>
+                            <span>{row.get('category', 'Sports')}</span>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+else:
+    st.info("No active sports events found.")
