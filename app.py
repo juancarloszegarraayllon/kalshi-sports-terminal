@@ -268,17 +268,10 @@ def fetch_all():
     df["_is_sport"] = df["_sport"] != ""
     df["_soccer_comp"] = df.apply(lambda r: get_soccer_comp(r["_series"]) if r["_sport"]=="Soccer" else "", axis=1)
 
-    def extract(row):
-        mkts = row.get("markets") or []
-        if not mkts: return "—","—",None
+  def extract(row):
+        mkts = row.get("markets")
+        if not isinstance(mkts, list) or len(mkts) == 0: return "—","—",None
         m = mkts[0]
-        yes = fmt_pct(m.get("yes_bid_dollars") or m.get("yes_bid"))
-        no  = fmt_pct(m.get("no_bid_dollars")  or m.get("no_bid"))
-        close = None
-        for mk in mkts:
-            d = safe_date(mk.get("close_time"))
-            if d and (close is None or d < close): close = d
-        return yes, no, close
 
     info = df.apply(extract, axis=1, result_type="expand")
     df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]
