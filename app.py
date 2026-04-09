@@ -855,11 +855,18 @@ if df.empty:
 filtered = df.copy()
 if date_mode != "All dates":
     def date_ok(row):
-        if row["_is_sport"]: return True
-        d = row["_sort_dt"]
-        if d is None: return include_no_date
-        try: return d_start <= d <= d_end
-        except: return include_no_date
+        kdt = row.get("_kickoff_dt")
+        if kdt is not None:
+            # Has a kickoff date — apply the date filter
+            try:
+                kd = kdt.date() if hasattr(kdt, "date") else kdt
+                return d_start <= kd <= d_end
+            except:
+                return False
+        else:
+            # No kickoff date (futures, non-sport, outrights)
+            # Controlled by "Include undated events" checkbox
+            return include_no_date
     filtered = filtered[filtered.apply(date_ok, axis=1)]
 
 if search:
