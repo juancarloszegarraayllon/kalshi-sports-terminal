@@ -56,14 +56,27 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .odds-price-no{font-size:15px;font-weight:700;color:#ff2222;}
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
-/* Left nav buttons */
-section.main div[data-testid="column"] button{
-    background:transparent!important;border:none!important;
-    text-align:left!important;justify-content:flex-start!important;
-    padding:5px 4px!important;font-size:13px!important;
-    font-family:Helvetica,sans-serif!important;color:#ffffff!important;
-    box-shadow:none!important;border-radius:4px!important;}
-section.main div[data-testid="column"] button:hover{color:#00ff00!important;background:#0a0a0a!important;}
+/* Nav panel - plain text buttons */
+.nav-panel{padding:4px 0;}
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] .stButton button{
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    text-align:left!important;
+    justify-content:flex-start!important;
+    padding:4px 0!important;
+    font-family:Helvetica,sans-serif!important;
+    width:100%!important;
+    border-radius:0!important;
+}
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] .stButton button:hover{
+    background:transparent!important;
+    color:#00ff00!important;
+}
+div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] .stButton button:focus{
+    box-shadow:none!important;
+    outline:none!important;
+}
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
@@ -1104,11 +1117,12 @@ for i, tab in enumerate(top_tabs):
                 selected_subcat    = st.session_state[subcat_key]
                 selected_subsubcat = st.session_state[subsubcat_key]
 
+                st.markdown("<div class='nav-panel'>", unsafe_allow_html=True)
                 for sc in subcats:
                     clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
                     is_active = selected_subcat == sc
 
-                    # Get count
+                    # Count
                     if cat == "Sports" and sc != "All sports":
                         cnt = int((filtered["_sport"] == sc).sum())
                     elif cat == "Sports" and sc == "All sports":
@@ -1116,28 +1130,29 @@ for i, tab in enumerate(top_tabs):
                     else:
                         cnt = len(filtered)
 
-                    # Top-level item — clicking selects it
-                    col_label, col_arrow = st.columns([4,1])
-                    with col_label:
-                        label_md = f"**{clean}** <span style='color:#888;font-size:11px;'>({cnt})</span>" if is_active else f"{clean} <span style='color:#555;font-size:11px;'>({cnt})</span>"
-                        color = "#00ff00" if is_active else "#ffffff"
-                        if st.button(f"{clean} ({cnt})", key=f"sc_{cat}_{sc}",
-                                     use_container_width=True):
-                            st.session_state[subcat_key] = sc
-                            st.session_state[subsubcat_key] = "All"
-                            st.rerun()
+                    # Plain text button - styled via CSS to have no rectangle
+                    color  = "#00ff00" if is_active else "#ffffff"
+                    weight = "700" if is_active else "400"
+                    label  = f'**{clean}** ({cnt})' if is_active else f'{clean} ({cnt})'
+                    btn_style = f"color:{color};font-size:14px;font-weight:{weight};"
+                    if st.button(f"{clean} ({cnt})", key=f"sc_{cat}_{sc}",
+                                 use_container_width=True):
+                        st.session_state[subcat_key] = sc
+                        st.session_state[subsubcat_key] = "All"
+                        st.rerun()
 
-                    # If this sport is selected, show its sub-subcategories inline below
+                    # Sub-subcategories shown inline below active item
                     if is_active:
                         subsubcats = get_subsubcats(cat, sc, filtered)
                         if subsubcats:
                             for ssc in subsubcats:
-                                is_ssc_active = selected_subsubcat == ssc
-                                prefix = "  ▸ " if is_ssc_active else "     "
-                                if st.button(f"{prefix}{ssc}", key=f"ssc_{cat}_{sc}_{ssc}",
+                                is_ssc = selected_subsubcat == ssc
+                                ssc_label = f"▸ {ssc}" if is_ssc else f"  {ssc}"
+                                if st.button(ssc_label, key=f"ssc_{cat}_{sc}_{ssc}",
                                              use_container_width=True):
                                     st.session_state[subsubcat_key] = ssc
                                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
             with _right:
                 selected_subcat  = st.session_state.get(subcat_key, subcats[0])
