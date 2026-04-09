@@ -58,30 +58,42 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 hr{border-color:#1c1c1c!important;}
 /* Nav panel - plain text buttons */
 .nav-panel{padding:4px 0;}
-/* Left nav — plain text, no rectangles */
-div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] .stButton > button{
+/* ALL buttons in the app look like plain text — no rectangles */
+.stButton > button{
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
     text-align:left!important;
     justify-content:flex-start!important;
     align-items:center!important;
-    padding:4px 0px 4px 0px!important;margin-left:0!important;
+    padding:3px 0px!important;
+    margin:0!important;
     font-family:Helvetica,sans-serif!important;
     color:#ffffff!important;
     width:100%!important;
     border-radius:0!important;
     font-size:13px!important;
+    font-weight:400!important;
 }
-div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] .stButton > button:hover{
+.stButton > button:hover{
     background:transparent!important;
-    color:#cccccc!important;
+    color:#aaaaaa!important;
     border:none!important;
+    box-shadow:none!important;
 }
-div[data-testid="stVerticalBlock"] div[data-testid="stVerticalBlock"] .stButton > button:focus{
+.stButton > button:focus, .stButton > button:active{
     box-shadow:none!important;
     outline:none!important;
     border:none!important;
+    background:transparent!important;
+}
+/* Exception: top filter buttons (Refresh) keep some style */
+button[data-testid="baseButton-secondary"]{
+    background:#0a0a0a!important;
+    border:1px solid #333!important;
+    border-radius:6px!important;
+    color:#ffffff!important;
+    padding:6px 16px!important;
 }
 
 /* ── Tabs ── */
