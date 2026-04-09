@@ -97,25 +97,94 @@ SPORT_SUBS = [
 ]
 
 # Detect sport sub-category from ticker
-def detect_sport(ticker):
+def detect_sport(ticker, title=""):
     t = ticker.upper()
-    if any(x in t for x in ["NBA","NCAAB","BBALL","WNBA"]): return "Basketball"
-    if any(x in t for x in ["MLB","NCAAB","BASEBALL"]):     return "Baseball"
-    if any(x in t for x in ["NHL","HOCKEY"]):               return "Hockey"
-    if any(x in t for x in ["NFL","NCAAF","FOOTBALL"]):     return "Football"
-    if any(x in t for x in ["SOC","MLS","EPL","UEFA","FIFA","SOCCER"]): return "Soccer"
-    if any(x in t for x in ["TEN","ATP","WTA","TENNIS"]):   return "Tennis"
-    if any(x in t for x in ["GOLF","PGA","MASTERS","USPGA"]): return "Golf"
-    if any(x in t for x in ["UFC","MMA"]):                  return "MMA"
-    if any(x in t for x in ["CRICKET","IPL","BBL"]):        return "Cricket"
-    if any(x in t for x in ["F1","NASCAR","MOTOR","FORMULA"]): return "Motorsport"
-    if any(x in t for x in ["BOX","BOXING"]):               return "Boxing"
-    if any(x in t for x in ["RUGBY","NRL","SUPER"]):        return "Rugby"
-    if any(x in t for x in ["LAX","LACROSSE","NLL","PLL"]): return "Lacrosse"
-    if any(x in t for x in ["DART","PDC"]):                 return "Darts"
-    if any(x in t for x in ["CHESS","FIDE"]):               return "Chess"
-    if any(x in t for x in ["AFL","AUSSIE","AUSKICK"]):     return "Aussie Rules"
-    if any(x in t for x in ["ESPORT","LOL","DOTA","CSGO","VAL","OVERWATCH"]): return "Esports"
+    ti = title.upper()
+
+    # Use series_ticker prefix — most reliable signal
+    # Kalshi formats: KXNBA-..., KXMLB-..., KXNHL-..., KXNFL-...
+    # Check for exact word-boundary prefixes first to avoid false matches
+
+    # Basketball
+    if any(t.startswith(x) or ("-"+x+"-") in t or t.startswith("KX"+x)
+           for x in ["NBA","NCAAB","WNBA"]):                return "Basketball"
+    if "BASKETBALL" in t or "BASKETBALL" in ti:             return "Basketball"
+
+    # Baseball
+    if any(t.startswith(x) or t.startswith("KX"+x)
+           for x in ["MLB","NCAASB"]):                      return "Baseball"
+    if "BASEBALL" in t or "BASEBALL" in ti:                 return "Baseball"
+
+    # Hockey
+    if any(t.startswith(x) or t.startswith("KX"+x)
+           for x in ["NHL","AHL"]):                         return "Hockey"
+    if "HOCKEY" in t or "HOCKEY" in ti:                     return "Hockey"
+
+    # American Football
+    if any(t.startswith(x) or t.startswith("KX"+x)
+           for x in ["NFL","NCAAF","XFL"]):                 return "Football"
+    if "FOOTBALL" in t or "SUPERBOWL" in t:                 return "Football"
+
+    # Soccer — use full word SOCCER or known league prefixes, NOT "SOC" alone
+    if any(t.startswith(x) or t.startswith("KX"+x)
+           for x in ["MLS","EPL","UCL","LALIGA","SERIEA","BUNDES","LIGUE1","CONCACAF"]):
+                                                            return "Soccer"
+    if "SOCCER" in t or "SOCCER" in ti:                     return "Soccer"
+    if any(x in t for x in ["UEFA","FIFA","CHAMPIONS-LEAGUE","PREMIER-LEAGUE"]): return "Soccer"
+    # Common soccer team name patterns in tickers
+    if any(x in t for x in ["TIGRES","SEATTLE-SOUNDERS","LAFC","ATLUTD","NYCFC",
+                              "INTER-MIAMI","REALMADRID","BARCELONA","CHELSEA",
+                              "ARSENAL","MANCITY","LIVERPOOL","JUVENTUS","ACMILAN"]):
+                                                            return "Soccer"
+
+    # Tennis
+    if any(t.startswith(x) or t.startswith("KX"+x)
+           for x in ["ATP","WTA","ITF","AUSOPEN","FRENCHOPEN","WIMBLEDON","USOPEN-TEN"]):
+                                                            return "Tennis"
+    if "TENNIS" in t or "TENNIS" in ti:                     return "Tennis"
+
+    # Golf
+    if any(t.startswith(x) or t.startswith("KX"+x)
+           for x in ["PGA","LPGA","DPWT","MASTERS","USOPEN-GOLF","THEOPEN"]):
+                                                            return "Golf"
+    if "GOLF" in t or "GOLF" in ti:                         return "Golf"
+
+    # MMA / UFC
+    if any(x in t for x in ["UFC","BELLATOR","ONE-FC","PFL"]):  return "MMA"
+    if "MMA" in t or "MMA" in ti:                           return "MMA"
+
+    # Cricket
+    if any(x in t for x in ["IPL","BBL","CPL","PSL","CRICKET","TEST-MATCH"]):
+                                                            return "Cricket"
+
+    # Motorsport
+    if any(x in t for x in ["FORMULA1","F1-","NASCAR","INDYCAR","MOTOGP","RALLYE"]):
+                                                            return "Motorsport"
+
+    # Boxing
+    if "BOXING" in t or "BOXING" in ti:                     return "Boxing"
+
+    # Rugby
+    if any(x in t for x in ["RUGBY","NRL","SUPERLEAGUE","SIX-NATIONS","WORLDRUGBY"]):
+                                                            return "Rugby"
+
+    # Lacrosse
+    if any(x in t for x in ["NLL","PLL","LACROSSE"]):       return "Lacrosse"
+
+    # Darts
+    if any(x in t for x in ["PDC","DARTSLIVE","DARTS"]):    return "Darts"
+
+    # Chess
+    if any(x in t for x in ["FIDE","CHESS"]):               return "Chess"
+
+    # Aussie Rules
+    if any(x in t for x in ["AFL","AFLW"]):                 return "Aussie Rules"
+
+    # Esports
+    if any(x in t for x in ["ESPORT","CS2","CSGO","DOTA","LEAGUE-OF-LEGENDS",
+                              "VALORANT","OVERWATCH","ROCKETLEAGUE"]):
+                                                            return "Esports"
+
     return "Other"
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -226,7 +295,7 @@ def fetch_all():
 
     df["_sort_dt"]    = df.apply(best_dt, axis=1)
     df["_display_dt"] = df["_sort_dt"].apply(fmt_date)
-    df["_sport_sub"]  = df.apply(lambda r: detect_sport(str(r.get("event_ticker",""))) if r["_is_sport"] else "", axis=1)
+    df["_sport_sub"]  = df.apply(lambda r: detect_sport(str(r.get("event_ticker","")), str(r.get("title",""))) if r["_is_sport"] else "", axis=1)
     return df
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
