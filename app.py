@@ -749,11 +749,12 @@ def fetch_all():
         }
         duration = DURATION.get(sport, _td(hours=2))
         kickoff_dt = None
-        if game_date and exp_dt:
-            # Use exp_dt - duration as kickoff estimate
-            kickoff_dt = exp_dt - duration
-        elif game_date and close_dt:
-            kickoff_dt = close_dt - duration
+        # Only compute kickoff for sport GAME events (must have game_date from ticker AND a known sport)
+        if game_date and sport and sport in DURATION:
+            if exp_dt:
+                kickoff_dt = exp_dt - duration
+            elif close_dt:
+                kickoff_dt = close_dt - duration
 
         # ── sort date ──
         sort_dt = game_date if game_date else (close_dt.date() if close_dt else None)
