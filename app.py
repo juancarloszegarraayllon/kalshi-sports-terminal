@@ -787,13 +787,28 @@ def fetch_all():
         return f"Begins in {d}d"
 
     df["_begins"] = df.apply(fmt_begins, axis=1)
-    # Debug: store sample raw market fields for inspection
+    # Debug: store sample raw market fields — prefer multi-market soccer event
     if not df.empty:
-        sample = df[df["_is_sport"] & df["_outcomes"].apply(lambda x: len(x) > 0 if isinstance(x, list) else False)]
+        # Try to find a soccer game with 2+ markets first
+        multi = df[
+            (df["_sport"] == "Soccer") &
+            df["_outcomes"].apply(lambda x: len(x) >= 2 if isinstance(x, list) else False)
+        ]
+        sample = multi if not multi.empty else df[
+            df["_outcomes"].apply(lambda x: len(x) > 0 if isinstance(x, list) else False)
+        ]
         if not sample.empty:
             row0 = sample.iloc[0]
             mkts = row0["markets"] if "markets" in row0.index else []
             if isinstance(mkts, list) and mkts:
+                # Store ALL markets for this event so we can see each title
+                df.attrs["_debug_ev_title"] = str(row0.get("title",""))
+                df.attrs["_debug_ev_ticker"] = str(row0.get("event_ticker",""))
+                df.attrs["_debug_all_mkts"] = [
+                    {k: str(v)[:60] for k,v in mk.items()
+                     if v is not None and v != "" and v != []}
+                    for mk in mkts[:5]
+                ]
                 mk0 = mkts[0]
                 df.attrs["_debug_mkt_sample"] = {k: str(v)[:80] for k, v in mk0.items() if v is not None and v != "" and v != []}
             ev_keys = [k for k in row0.index if not str(k).startswith("_")]
@@ -861,15 +876,17 @@ st.markdown(f"""<div class="metric-strip">
   <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
 </div>""", unsafe_allow_html=True)
 
-with st.expander("🔍 Debug: Raw API field names (expand to diagnose dates & labels)", expanded=False):
+with st.expander("🔍 Debug: Raw API fields (expand to diagnose)", expanded=False):
+    st.markdown(f"**Event:** {df.attrs.get('_debug_ev_ticker','')} — {df.attrs.get('_debug_ev_title','')}")
+    all_mkts = df.attrs.get("_debug_all_mkts", [])
+    if all_mkts:
+        st.markdown(f"**{len(all_mkts)} markets on this event:**")
+        for i, mk in enumerate(all_mkts):
+            st.markdown(f"Market {i+1}: ticker=`{mk.get('ticker','')}` title=`{mk.get('title','')}` yes_sub=`{mk.get('yes_sub_title','')}` open=`{mk.get('open_time','')}` close=`{mk.get('close_time','')}`")
     dbg_ev = df.attrs.get("_debug_ev_sample", {})
-    dbg_mk = df.attrs.get("_debug_mkt_sample", {})
     if dbg_ev:
-        st.markdown("**Event-level fields:**")
+        st.markdown("**Full event-level fields:**")
         st.json(dbg_ev)
-    if dbg_mk:
-        st.markdown("**Market-level fields (first market of first sports event):**")
-        st.json(dbg_mk)
 
 # ── Render ────────────────────────────────────────────────────────────────────
 def render_cards(data):
