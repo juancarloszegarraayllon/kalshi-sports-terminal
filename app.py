@@ -1122,46 +1122,111 @@ for i, tab in enumerate(top_tabs):
         if cat == "All":
             render_cards(filtered)
         elif cat == "Sports":
-            # Sports subtabs across the top
             sdf = filtered[filtered["_is_sport"]].copy()
             sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
-            sport_labels = ["All"] + sports_present
-            sport_tabs = st.tabs(sport_labels)
-            with sport_tabs[0]:
-                render_cards(sdf)
-            for si, sport in enumerate(sports_present):
-                with sport_tabs[si+1]:
-                    sport_df = sdf[sdf["_sport"]==sport].copy()
+
+            # Session state keys
+            sel_sport_key = "nav_sport"
+            sel_comp_key  = "nav_comp"
+            if sel_sport_key not in st.session_state:
+                st.session_state[sel_sport_key] = "All"
+            if sel_comp_key not in st.session_state:
+                st.session_state[sel_comp_key] = "All"
+
+            sel_sport = st.session_state[sel_sport_key]
+            sel_comp  = st.session_state[sel_comp_key]
+
+            nav_col, card_col = st.columns([1, 4])
+
+            with nav_col:
+                # Build nav HTML for all sports
+                nav_html = "<div style='font-family:Helvetica,Arial,sans-serif;padding:4px 0;'>"
+
+                # "All sports" item
+                color = "#00ff00" if sel_sport == "All" else "#ffffff"
+                weight = "700" if sel_sport == "All" else "400"
+                cnt_all = len(sdf)
+                nav_html += f"<div style='color:{color};font-weight:{weight};font-size:13px;padding:5px 0;cursor:pointer;'>All sports ({cnt_all})</div>"
+
+                for sport in sports_present:
+                    sport_df = sdf[sdf["_sport"]==sport]
+                    cnt = len(sport_df)
+                    is_sel = sel_sport == sport
+                    color  = "#00ff00" if is_sel else "#ffffff"
+                    weight = "700" if is_sel else "400"
+
+                    # Get children
                     if sport == "Soccer":
-                        comps = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
-                        has_other = sport_df["_soccer_comp"].isin(["Other",""]).any()
-                        if comps:
-                            comp_tabs = st.tabs(["All"] + comps + (["Other"] if has_other else []))
-                            with comp_tabs[0]: render_cards(sport_df)
-                            for ci, comp in enumerate(comps):
-                                with comp_tabs[ci+1]:
-                                    render_cards(sport_df[sport_df["_soccer_comp"]==comp])
-                            if has_other:
-                                with comp_tabs[-1]:
-                                    render_cards(sport_df[sport_df["_soccer_comp"].isin(["Other",""])])
-                        else:
-                            render_cards(sport_df)
+                        children = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
                     else:
                         tabs_def = SPORT_SUBTABS.get(sport, [])
                         if tabs_def:
                             lookup = SERIES_TO_SUBTAB.get(sport, {})
-                            sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s, "Other"))
-                            present_tabs = [t for t,_ in tabs_def if (sport_df["_subtab"]==t).any()]
-                            if present_tabs:
-                                sub_tabs = st.tabs(["All"] + present_tabs)
-                                with sub_tabs[0]: render_cards(sport_df)
-                                for ti, tn in enumerate(present_tabs):
-                                    with sub_tabs[ti+1]:
-                                        render_cards(sport_df[sport_df["_subtab"]==tn])
-                            else:
-                                render_cards(sport_df)
+                            tmp = sport_df.copy()
+                            tmp["_subtab"] = tmp["_series"].apply(lambda s: lookup.get(s, "Other"))
+                            children = [t for t,_ in tabs_def if (tmp["_subtab"]==t).any()]
                         else:
-                            render_cards(sport_df)
+                            children = []
+
+                    arrow = " ▾" if (is_sel and children) else (" ▸" if children else "")
+                    nav_html += f"<div style='color:{color};font-weight:{weight};font-size:13px;padding:5px 0;cursor:pointer;'>{sport} ({cnt}){arrow}</div>"
+
+                    # Show children if this sport is selected
+                    if is_sel and children:
+                        all_color = "#00ff00" if sel_comp == "All" else "#888888"
+                        nav_html += f"<div style='color:{all_color};font-size:12px;padding:3px 0 3px 14px;cursor:pointer;'>All</div>"
+                        for child in children:
+                            cc = "#00ff00" if sel_comp == child else "#888888"
+                            nav_html += f"<div style='color:{cc};font-size:12px;padding:3px 0 3px 14px;cursor:pointer;'>{child}</div>"
+
+                nav_html += "</div>"
+                st.markdown(nav_html, unsafe_allow_html=True)
+
+                # Actual clickable selectbox hidden below (for interaction)
+                sport_options = ["All"] + sports_present
+                chosen_sport = st.selectbox("Sport", sport_options,
+                    index=sport_options.index(sel_sport) if sel_sport in sport_options else 0,
+                    label_visibility="collapsed", key="sb_sport")
+                if chosen_sport != sel_sport:
+                    st.session_state[sel_sport_key] = chosen_sport
+                    st.session_state[sel_comp_key] = "All"
+
+                # Comp selectbox (only when a sport with children is selected)
+                if sel_sport != "All":
+                    sport_df2 = sdf[sdf["_sport"]==sel_sport].copy()
+                    if sel_sport == "Soccer":
+                        comp_options = ["All"] + sorted([c for c in sport_df2["_soccer_comp"].unique() if c and c not in ("Other","")])
+                    else:
+                        tabs_def = SPORT_SUBTABS.get(sel_sport, [])
+                        if tabs_def:
+                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
+                            sport_df2["_subtab"] = sport_df2["_series"].apply(lambda s: lookup.get(s, "Other"))
+                            comp_options = ["All"] + [t for t,_ in tabs_def if (sport_df2["_subtab"]==t).any()]
+                        else:
+                            comp_options = ["All"]
+                    if len(comp_options) > 1:
+                        chosen_comp = st.selectbox("Competition", comp_options,
+                            index=comp_options.index(sel_comp) if sel_comp in comp_options else 0,
+                            label_visibility="collapsed", key="sb_comp")
+                        if chosen_comp != sel_comp:
+                            st.session_state[sel_comp_key] = chosen_comp
+
+            with card_col:
+                sel_sport = st.session_state[sel_sport_key]
+                sel_comp  = st.session_state[sel_comp_key]
+                if sel_sport == "All":
+                    view = sdf
+                else:
+                    view = sdf[sdf["_sport"]==sel_sport].copy()
+                    if sel_comp and sel_comp != "All":
+                        if sel_sport == "Soccer":
+                            view = view[view["_soccer_comp"]==sel_comp]
+                        else:
+                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
+                            view["_subtab"] = view["_series"].apply(lambda s: lookup.get(s, "Other"))
+                            view = view[view["_subtab"]==sel_comp]
+                render_cards(view)
+
         else:
             render_cards(filtered[filtered["category"]==cat].copy())
 
