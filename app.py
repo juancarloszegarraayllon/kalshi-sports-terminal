@@ -1159,14 +1159,13 @@ for i, tab in enumerate(top_tabs):
                     has_children = bool(subsubcats)
                     arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
 
-                    # Bold if active, normal otherwise
+                    # Bold if active, normal otherwise — no st.rerun() to keep tab state
                     btn_label = f"**{clean}** ({cnt}){arrow}" if is_active else f"{clean} ({cnt}){arrow}"
                     if st.button(btn_label, key=f"sc_{cat}_{sc}", use_container_width=True):
                         if has_children:
                             st.session_state[expand_key] = not is_expanded
                         st.session_state[subcat_key] = sc
                         st.session_state[subsubcat_key] = "All"
-                        st.rerun()
 
                     if is_expanded and has_children:
                         for ssc in subsubcats:
@@ -1176,7 +1175,6 @@ for i, tab in enumerate(top_tabs):
                                          use_container_width=True):
                                 st.session_state[subcat_key] = sc
                                 st.session_state[subsubcat_key] = ssc
-                                st.rerun()
 
 
             with _right:
@@ -1186,13 +1184,15 @@ for i, tab in enumerate(top_tabs):
                 render_cards(view)
 
 
-# JS to fix button styles at runtime
+# JS to style nav buttons as plain text
 import streamlit.components.v1 as _cv1
 _cv1.html("""
+<style>
+  /* injected into iframe - won't affect parent but let's try parent via JS */
+</style>
 <script>
 (function() {
   var doc = window.parent ? window.parent.document : document;
-
   function styleBtn(btn) {
     btn.style.setProperty('background', 'transparent', 'important');
     btn.style.setProperty('background-color', 'transparent', 'important');
@@ -1204,41 +1204,19 @@ _cv1.html("""
     btn.style.setProperty('font-size', '13px', 'important');
     btn.style.setProperty('text-align', 'left', 'important');
     btn.style.setProperty('justify-content', 'flex-start', 'important');
-    btn.style.setProperty('align-items', 'center', 'important');
     btn.style.setProperty('padding', '3px 0', 'important');
     btn.style.setProperty('margin', '0', 'important');
     btn.style.setProperty('width', '100%', 'important');
     btn.style.setProperty('border-radius', '0', 'important');
     btn.style.setProperty('min-height', '0', 'important');
     btn.style.setProperty('display', 'flex', 'important');
-    // Fix parent wrapper too
-    var p = btn.parentElement;
-    while (p && p !== doc.body) {
-      var tn = (p.getAttribute('data-testid') || '');
-      if (tn === 'stButton' || tn === 'stBaseButton-secondary') {
-        p.style.setProperty('display', 'block', 'important');
-        p.style.setProperty('text-align', 'left', 'important');
-      }
-      p = p.parentElement;
-    }
   }
-
   function fixAll() {
     doc.querySelectorAll('button').forEach(styleBtn);
   }
-
-  // Run immediately and on every DOM change
   fixAll();
-  var ob = new MutationObserver(function(muts) {
-    muts.forEach(function(m) {
-      m.addedNodes.forEach(function(n) {
-        if (n.querySelectorAll) n.querySelectorAll('button').forEach(styleBtn);
-        if (n.tagName === 'BUTTON') styleBtn(n);
-      });
-    });
-    fixAll();
-  });
-  ob.observe(doc.body, {childList: true, subtree: true});
+  var ob = new MutationObserver(function() { fixAll(); });
+  ob.observe(doc.body, {childList:true, subtree:true});
 })();
 </script>
 """, height=0)
