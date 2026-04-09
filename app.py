@@ -39,8 +39,14 @@ h1 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important; co
 .date-text { font-size: 11px; color: #374151; }
 .card-title { font-size: 15px; font-weight: 500; color: #e2e8f0; line-height: 1.45; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card-icon { font-size: 22px; margin-bottom: 8px; display: block; }
-.card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #1a1a2e; padding-top: 10px; }
-.ticker-text { font-size: 10px; color: #374151; letter-spacing: .06em; }
+.card-footer { border-top: 1px solid #1a1a2e; padding-top: 10px; margin-top: auto; }
+.ticker-text { font-size: 10px; color: #374151; letter-spacing: .06em; display: block; margin-bottom: 8px; }
+.odds-row { display: flex; gap: 8px; }
+.odds-yes { flex: 1; background: #0d2d1a; border: 1px solid #166534; border-radius: 6px; padding: 6px 8px; text-align: center; }
+.odds-no  { flex: 1; background: #2d0d0d; border: 1px solid #7f1d1d; border-radius: 6px; padding: 6px 8px; text-align: center; }
+.odds-label { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: .08em; }
+.odds-price-yes { font-size: 16px; font-weight: 500; color: #4ade80; }
+.odds-price-no  { font-size: 16px; font-weight: 500; color: #f87171; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
 .empty-state { text-align: center; padding: 80px 20px; color: #374151; font-size: 14px; }
 hr { border-color: #1e1e32 !important; }
@@ -110,7 +116,7 @@ def fetch_all_events():
 
     while page < MAX_PAGES:
         try:
-            kwargs = {"limit": 200, "status": "open"}
+            kwargs = {"limit": 200, "status": "open", "with_nested_markets": True}
             if cursor:
                 kwargs["cursor"] = cursor
 
@@ -177,9 +183,39 @@ def fetch_all_events():
     if "category" not in df.columns:
         df["category"] = "Other"
     df["category"] = df["category"].fillna("Other").str.strip()
-
-    # Kalshi uses "Sports" as the category for all sports events
     df["_is_sport"] = df["category"].str.strip() == "Sports"
+
+    # Extract odds + close date from nested markets
+    def fmt_price(v):
+        try:
+            f = float(v)
+            cents = int(round(f * 100)) if f <= 1 else int(round(f))
+            return f"{cents}¢"
+        except Exception:
+            return "—"
+
+    def extract_odds(row):
+        markets = row.get("markets") or []
+        if not markets or not isinstance(markets, list):
+            return "—", "—", None
+        m = markets[0]
+        yes = fmt_price(m.get("yes_bid_dollars") or m.get("yes_bid"))
+        no  = fmt_price(m.get("no_bid_dollars")  or m.get("no_bid"))
+        close_date = parse_date_safe(m.get("close_time"))
+        return yes, no, close_date
+
+    odds_info = df.apply(extract_odds, axis=1, result_type="expand")
+    df["_yes_price"]  = odds_info[0]
+    df["_no_price"]   = odds_info[1]
+    df["_close_date"] = odds_info[2]
+
+    def best_date(row):
+        if row["_display_date"] != "Open":
+            return row["_display_date"]
+        if row["_close_date"] is not None:
+            return row["_close_date"].strftime("%b %d")
+        return "Open"
+    df["_display_date"] = df.apply(best_date, axis=1)
 
     return df
 
@@ -341,18 +377,29 @@ def render_cards(data):
             pill_cls     = get_pill_class(category)
             cat_label    = category[:14]
             display_date = str(row.get("_display_date", "Open"))
+            yes_price    = str(row.get("_yes_price", "—"))
+            no_price     = str(row.get("_no_price",  "—"))
 
             cards_html += f"""
             <div class="market-card">
                 <div class="card-top">
                     <span class="cat-pill {pill_cls}">{cat_label}</span>
-                    <span class="date-text">{display_date}</span>
+                    <span class="date-text">📅 {display_date}</span>
                 </div>
                 <span class="card-icon">{icon}</span>
                 <div class="card-title">{title}</div>
                 <div class="card-footer">
                     <span class="ticker-text">{ticker}</span>
-                    <span class="status-dot"></span>
+                    <div class="odds-row">
+                        <div class="odds-yes">
+                            <div class="odds-label">YES</div>
+                            <div class="odds-price-yes">{yes_price}</div>
+                        </div>
+                        <div class="odds-no">
+                            <div class="odds-label">NO</div>
+                            <div class="odds-price-no">{no_price}</div>
+                        </div>
+                    </div>
                 </div>
             </div>"""
         except Exception:
