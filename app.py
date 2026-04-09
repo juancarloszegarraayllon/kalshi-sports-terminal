@@ -28,19 +28,19 @@ h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;co
 .market-card{background:#0a0a0a;border:1px solid #1c1c1c;border-radius:10px;padding:16px 18px;transition:border-color .15s,transform .15s;}
 .market-card:hover{border-color:#00ff00;transform:translateY(-2px);}
 .card-top{display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;}
-.cat-pill{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:4px;border:1px solid;white-space:nowrap;}
-.pill-sports{background:#1a2e1a;color:#4ade80;border-color:#166534;}
-.pill-elections{background:#2e1a1e;color:#f472b6;border-color:#9d174d;}
-.pill-politics{background:#1e1a2e;color:#818cf8;border-color:#3730a3;}
-.pill-economics{background:#2e2a1a;color:#fbbf24;border-color:#92400e;}
-.pill-financials{background:#2e2a1a;color:#fb923c;border-color:#9a3412;}
-.pill-crypto{background:#1e2a2e;color:#67e8f9;border-color:#0e7490;}
-.pill-companies{background:#2e1e2e;color:#d8b4fe;border-color:#7e22ce;}
-.pill-entertainment{background:#2e1e1a;color:#fdba74;border-color:#c2410c;}
-.pill-climate{background:#1a2e2e;color:#22d3ee;border-color:#164e63;}
-.pill-science{background:#1e2e1a;color:#86efac;border-color:#14532d;}
-.pill-health{background:#2e1a2e;color:#e879f9;border-color:#701a75;}
-.pill-default{background:#1e1e32;color:#94a3b8;border-color:#2d2d55;}
+.cat-pill{font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:capitalize;padding:3px 12px;border-radius:4px;border:1px solid;white-space:nowrap;color:#ffffff!important;}
+.pill-sports{background:#1a2e1a;color:#ffffff;border-color:#166534;}
+.pill-elections{background:#2e1a1e;color:#ffffff;border-color:#9d174d;}
+.pill-politics{background:#1e1a2e;color:#ffffff;border-color:#3730a3;}
+.pill-economics{background:#2e2a1a;color:#ffffff;border-color:#92400e;}
+.pill-financials{background:#2e2a1a;color:#ffffff;border-color:#9a3412;}
+.pill-crypto{background:#1e2a2e;color:#ffffff;border-color:#0e7490;}
+.pill-companies{background:#2e1e2e;color:#ffffff;border-color:#7e22ce;}
+.pill-entertainment{background:#2e1e1a;color:#ffffff;border-color:#c2410c;}
+.pill-climate{background:#1a2e2e;color:#ffffff;border-color:#164e63;}
+.pill-science{background:#1e2e1a;color:#ffffff;border-color:#14532d;}
+.pill-health{background:#2e1a2e;color:#ffffff;border-color:#701a75;}
+.pill-default{background:#1e1e32;color:#ffffff;border-color:#2d2d55;}
 .card-timing{display:flex;flex-direction:row;align-items:center;gap:4px;margin-bottom:8px;}
 .date-text{font-size:11px;color:#ffffff;opacity:.6;}
 .begins-text{font-size:11px;color:#00ff00;font-weight:600;}
@@ -78,15 +78,16 @@ hr{border-color:#1c1c1c!important;}
 .stCheckbox label{color:#ffffff!important;}
 .stRadio label{color:#ffffff!important;}
 button[kind="secondary"],button[kind="primary"]{background:#001500!important;color:#00ff00!important;border:1px solid #00ff00!important;font-family:Helvetica!important;}
-/* Green radio dots and checkboxes */
-input[type="radio"]:checked{accent-color:#00ff00!important;}
-input[type="radio"]{accent-color:#00ff00!important;}
-input[type="checkbox"]{accent-color:#00ff00!important;}
-[data-baseweb="radio"] [role="radio"][aria-checked="true"]{background:#00ff00!important;border-color:#00ff00!important;}
-[data-baseweb="radio"] [role="radio"]{border-color:#00ff00!important;}
-[data-testid="stMarkdownContainer"] p{color:#ffffff!important;}
-div[data-testid="stRadio"] > div > label > div:first-child > div{border-color:#00ff00!important;}
-div[data-testid="stRadio"] > div > label > div:first-child > div[aria-checked="true"]{background-color:#00ff00!important;}
+/* Green radio dots and checkboxes - aggressive override */
+input[type="radio"],input[type="checkbox"]{accent-color:#00ff00!important;}
+[data-baseweb="radio"] div[role="radio"]{border-color:#00ff00!important;border-width:2px!important;}
+[data-baseweb="radio"] div[role="radio"][aria-checked="true"]{background-color:#00ff00!important;border-color:#00ff00!important;}
+[data-baseweb="radio"] div[role="radio"][aria-checked="true"]::after{background-color:#000000!important;}
+[data-testid="stRadio"] label span{color:#ffffff!important;}
+[data-testid="stCheckbox"] label span{color:#ffffff!important;}
+[data-testid="stCheckbox"] input[type="checkbox"]{accent-color:#00ff00!important;}
+/* Override Streamlit's internal radio fill color */
+:root{--primary:#00ff00!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -864,24 +865,24 @@ with _c3:
 
 # ── Row 2: Date filters ───────────────────────────────────────────────────────
 today = date.today()
-_d1, _d2, _d3 = st.columns([2, 2, 1])
+d_start = d_end = None
+_d1, _d2 = st.columns([3, 1])
 with _d1:
     date_mode = st.radio("", ["All dates","Today","This week","Custom"],
                          index=0, horizontal=True, label_visibility="collapsed")
 with _d2:
-    d_start = d_end = None
-    if date_mode == "Today":
-        d_start = d_end = today
-    elif date_mode == "This week":
-        d_start, d_end = today, today + timedelta(days=6)
-    elif date_mode == "Custom":
-        _dc1, _dc2 = st.columns(2)
-        with _dc1:
-            d_start = st.date_input("From", value=today, label_visibility="collapsed")
-        with _dc2:
-            d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
-with _d3:
     include_no_date = st.checkbox("Include undated", value=True)
+
+if date_mode == "Today":
+    d_start = d_end = today
+elif date_mode == "This week":
+    d_start, d_end = today, today + timedelta(days=6)
+elif date_mode == "Custom":
+    _dc1, _dc2, _ = st.columns([1, 1, 2])
+    with _dc1:
+        d_start = st.date_input("From", value=today, label_visibility="collapsed")
+    with _dc2:
+        d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
 with st.spinner("Loading…"):
     df = fetch_all()
 
