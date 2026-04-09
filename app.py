@@ -855,17 +855,22 @@ if df.empty:
 filtered = df.copy()
 if date_mode != "All dates":
     def date_ok(row):
+        import pandas as _pd
         kdt = row.get("_kickoff_dt")
-        if kdt is not None:
-            # Has a kickoff date — apply the date filter
+        # Check for None AND pandas NaT/NaN
+        has_kickoff = kdt is not None and not (isinstance(kdt, float) and _pd.isna(kdt))
+        try:
+            has_kickoff = has_kickoff and not _pd.isnull(kdt)
+        except: pass
+        if has_kickoff:
+            # Has a real kickoff datetime — filter by its date
             try:
                 kd = kdt.date() if hasattr(kdt, "date") else kdt
                 return d_start <= kd <= d_end
             except:
                 return False
         else:
-            # No kickoff date (futures, non-sport, outrights)
-            # Controlled by "Include undated events" checkbox
+            # No kickoff date — respect checkbox
             return include_no_date
     filtered = filtered[filtered.apply(date_ok, axis=1)]
 
