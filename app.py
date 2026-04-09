@@ -1123,7 +1123,15 @@ for i, tab in enumerate(top_tabs):
         subcats = get_subcats(cat, filtered)
 
         if not subcats:
-            render_cards(filtered if cat == "All" else filter_data(cat, None, None, filtered))
+            if cat == "All":
+                st.markdown(
+                    "<div style='text-align:center;padding:60px 20px;color:#555;font-size:14px;'>"
+                    "Select a category above to browse markets."
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+            else:
+                render_cards(filter_data(cat, None, None, filtered))
         else:
             # Layout: left column for subcategories, right for cards
             _left, _right = st.columns([1, 4])
