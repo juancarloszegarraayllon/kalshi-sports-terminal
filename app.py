@@ -762,61 +762,17 @@ def fetch_all():
         today = _date.today()
         now   = _dt.now(UTC)
 
+        # begins: only show Live or nothing — no frozen countdown
         begins = ""
         if game_date:
-            if game_date < today:
+            if game_date <= today:
+                # Game is today or in the past → Live
                 begins = "🔴 Live"
-            elif game_date == today:
-                # Check if kickoff is in future
-                if kickoff_dt and kickoff_dt > now:
-                    diff = kickoff_dt - now
-                    secs = int(diff.total_seconds())
-                    h, rem = divmod(secs, 3600)
-                    m, s   = divmod(rem, 60)
-                    if h > 0:
-                        begins = f"Begins in {h}h {m}m {s}s"
-                    elif m > 0:
-                        begins = f"Begins in {m}m {s}s"
-                    else:
-                        begins = f"Begins in {s}s"
-                else:
-                    begins = "🔴 Live"
-            else:
-                days = (game_date - today).days
-                if days == 1:
-                    begins = "Begins in Tomorrow"
-                elif days <= 7:
-                    # Show countdown with hours if within 2 days
-                    if kickoff_dt and kickoff_dt > now:
-                        diff = kickoff_dt - now
-                        secs = int(diff.total_seconds())
-                        h, rem = divmod(secs, 3600)
-                        m, _   = divmod(rem, 60)
-                        if h < 48:
-                            begins = f"Begins in {h}h {m}m"
-                        else:
-                            begins = f"Begins in {days}d"
-                    else:
-                        begins = f"Begins in {days}d"
-                elif days <= 30:
-                    begins = f"Begins in {days}d"
-                else:
-                    begins = ""
+            # Future games: no begins text, date says it all
         else:
-            # Futures — use close_dt
-            if close_dt and close_dt > now:
-                diff = int((close_dt - now).total_seconds())
-                if diff <= 600:
-                    begins = "🔴 Live"
-                elif diff < 3600:
-                    m = diff // 60
-                    begins = f"Begins in {m}m"
-                elif diff < 86400:
-                    h = diff // 3600
-                    m = (diff % 3600) // 60
-                    begins = f"Begins in {h}h {m}m" if m else f"Begins in {h}h"
-                else:
-                    begins = ""
+            # Futures: Live if close_dt already passed
+            if close_dt and close_dt <= now:
+                begins = "🔴 Live"
 
         # ── Outcome labels from yes_sub_title ──
         outcomes = []
@@ -990,7 +946,7 @@ def render_cards(data):
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             is_live_card = "Live" in begins
-            timing = begins + (' · ' + dt if dt else '')
+            timing = (begins + ' · ' + dt) if begins and dt else (begins or dt or '')
             html += (
                 '<div class="market-card">'
                 '<div class="card-top"><span class="cat-pill ' + pill + '">' + label + '</span></div>'
