@@ -15,7 +15,7 @@ section[data-testid="stSidebar"]{display:none!important;}
 .stApp{background:#000000!important;}
 
 /* ── Title ── */
-h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#00ff00!important;font-size:2rem!important;}
+h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#00ff00!important;font-size:120px!important;line-height:1.1!important;}
 
 /* ── Metrics ── */
 .metric-strip{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
@@ -847,7 +847,7 @@ def fetch_all():
 
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
-st.markdown("<h1 style='text-align:center;font-size:500px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1.5rem;'>OddsIQ</h1>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;font-size:120px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1.5rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
 
 # ── Row 1: Search | Sort | Refresh ───────────────────────────────────────────
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
