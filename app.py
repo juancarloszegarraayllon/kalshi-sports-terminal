@@ -811,31 +811,23 @@ def fetch_all():
 
     df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
-        # 1. kickoff_dt — estimated game time (has time component)
+        # Rule 1: if we have a kickoff time, use it (sport game events)
         kdt = row.get("_kickoff_dt")
         if kdt: return fmt_date(kdt)
-        # 2. game_date — parsed from ticker (date only)
-        gd = row.get("_game_date")
-        if gd: return fmt_date(gd)
-        # 3. market expected_expiration_time — closest to actual event date
+
+        # Rule 2: no kickoff → use expected_expiration_time from market
         mkts = row.get("markets") or []
         if mkts:
-            m0 = mkts[0]
-            for mf in ["expected_expiration_time", "expiration_time", "close_time"]:
-                cdt = safe_dt(m0.get(mf))
-                if cdt: return fmt_date(cdt)
-        # 4. event-level fields — try expiration before close
-        for col in ["expected_expiration_time", "expiration_time",
-                    "end_date", "strike_date", "close_time"]:
-            try:
-                v = row.get(col)
-                if v is None: continue
-                cdt = safe_dt(v)  # safe_dt handles NaT/None/strings
-                if cdt: return fmt_date(cdt)
-            except: continue
-        # 5. mkt_dt last resort
-        d = row.get("_mkt_dt")
-        return fmt_date(d) if d else ""
+            cdt = safe_dt(mkts[0].get("expected_expiration_time"))
+            if cdt: return fmt_date(cdt)
+
+        # Rule 3: event-level expected_expiration_time
+        try:
+            cdt = safe_dt(row.get("expected_expiration_time"))
+            if cdt: return fmt_date(cdt)
+        except: pass
+
+        return ""
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
 
     # "Begins in" — use open_time or start_date from event or first market
