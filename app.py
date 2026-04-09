@@ -1135,7 +1135,8 @@ for i, tab in enumerate(top_tabs):
 
             with nav_col:
                 st.markdown("""<style>
-                [data-testid="stVerticalBlock"] button{
+                /* Only target buttons inside the nav column - use stButton class */
+                .nav-sports-col .stButton button{
                     background:transparent!important;border:none!important;
                     box-shadow:none!important;outline:none!important;
                     text-align:left!important;justify-content:flex-start!important;
@@ -1144,14 +1145,11 @@ for i, tab in enumerate(top_tabs):
                     color:#ffffff!important;width:100%!important;
                     border-radius:0!important;min-height:0!important;font-size:13px!important;
                 }
-                [data-testid="stVerticalBlock"] button:hover{
+                .nav-sports-col .stButton button:hover{
                     background:transparent!important;color:#aaaaaa!important;border:none!important;box-shadow:none!important;
                 }
-                [data-testid="stVerticalBlock"] button:focus,
-                [data-testid="stVerticalBlock"] button:active{
-                    background:transparent!important;border:none!important;box-shadow:none!important;outline:none!important;
-                }
-                </style>""", unsafe_allow_html=True)
+                </style>
+                <div class="nav-sports-col">""", unsafe_allow_html=True)
 
                 sel_sport = st.session_state["nav_sport"]
                 sel_comp  = st.session_state["nav_comp"]
@@ -1195,6 +1193,8 @@ for i, tab in enumerate(top_tabs):
                             if st.button(clbl, key=f"nav_{sport}_{child}"):
                                 st.session_state["nav_sport"] = sport
                                 st.session_state["nav_comp"]  = child
+
+                st.markdown("</div>", unsafe_allow_html=True)
 
             with card_col:
                 s = st.session_state["nav_sport"]
