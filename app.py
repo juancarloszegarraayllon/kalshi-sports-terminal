@@ -1,23 +1,31 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-from datetime import datetime, date, timedelta
+import re
+from datetime import datetime, date
 from kalshi_python_sync import Configuration, KalshiClient
 
 # --- Page Setup ---
 st.set_page_config(page_title="Kalshi Sports Terminal", layout="wide", page_icon="🏀")
 
-# Custom CSS for that high-end Terminal look
+# --- Custom CSS (Updated for Date Badges) ---
 st.markdown("""
     <style>
     .market-card {
         background-color: white; border-radius: 12px; padding: 20px;
         border: 1px solid #edf2f7; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 20px; height: 180px; display: flex; flex-direction: column;
+        margin-bottom: 20px; height: 190px; display: flex; flex-direction: column;
+    }
+    .badge-container {
+        display: flex; justify-content: space-between; align-items: center;
     }
     .badge-kalshi {
         background-color: #f0fdf4; color: #166534; padding: 4px 10px;
         border-radius: 6px; font-size: 11px; font-weight: 700;
+    }
+    .badge-date {
+        background-color: #f1f5f9; color: #475569; padding: 4px 10px;
+        border-radius: 6px; font-size: 11px; font-weight: 600;
     }
     .card-title {
         font-size: 17px; font-weight: 700; color: #1e293b;
@@ -49,78 +57,77 @@ try:
 except Exception as e:
     st.error(f"Connect Error: {e}"); st.stop()
 
-# --- Deep Fetch Logic (Pagination) ---
+# --- Helper: Extract Date from Ticker ---
+def get_display_date(row):
+    # Try to find date in ticker (e.g., KXNBA-26APR08)
+    ticker = str(row.get('event_ticker', ''))
+    match = re.search(r'(\d{2})([A-Z]{3})(\d{2})', ticker)
+    if match:
+        return f"{match.group(2)} {match.group(3)}, 20{match.group(1)}"
+    
+    # Fallback to strike_date
+    try:
+        dt = pd.to_datetime(row['strike_date'])
+        return dt.strftime("%b %d, %Y")
+    except:
+        return "Upcoming"
+
+# --- Fetch Data ---
 @st.cache_data(ttl=120)
-def fetch_all_sport_events():
+def fetch_sports():
     all_events = []
     cursor = None
+    for _ in range(3): # Paginate through 600 items
+        try:
+            response = client.get_events(limit=200, status="open", cursor=cursor)
+            data = response.to_dict()
+            batch = data.get("events", [])
+            if not batch: break
+            all_events.extend(batch)
+            cursor = data.get("cursor")
+            if not cursor: break
+        except: break
     
-    # We fetch up to 3 pages (600 events) to make sure we find all sports
-    with st.spinner("Deep-scanning Kalshi feed..."):
-        for _ in range(3):
-            try:
-                response = client.get_events(limit=200, status="open", cursor=cursor)
-                data = response.to_dict()
-                batch = data.get("events", [])
-                if not batch: break
-                
-                all_events.extend(batch)
-                cursor = data.get("cursor")
-                if not cursor: break
-            except:
-                break
-                
     if not all_events: return pd.DataFrame()
-    
     df = pd.DataFrame(all_events)
     
-    # Specific Sport Identifiers
-    sport_keywords = ['NBA', 'MLB', 'NHL', 'NFL', 'SOC', 'TEN', 'KX', 'PLAYER']
-    is_sport = (
-        df['event_ticker'].str.contains('|'.join(sport_keywords), na=False, case=False) |
-        df['category'].str.contains('Sports', na=False, case=False) |
-        df['title'].str.contains(' vs | beat | at ', na=False, case=False)
-    )
-    return df[is_sport].copy()
+    # Keyword filter for sports
+    sport_keys = ['NBA', 'MLB', 'NHL', 'NFL', 'SOC', 'TEN', 'KX', 'PLAYER']
+    mask = (df['event_ticker'].str.contains('|'.join(sport_keys), na=False, case=False) |
+            df['category'].str.contains('Sports', na=False, case=False))
+    return df[mask].copy()
 
-df_sports = fetch_all_sport_events()
+df_sports = fetch_sports()
 
 if not df_sports.empty:
-    # Sidebar Filters
-    st.sidebar.header("Filter Results")
-    search = st.sidebar.text_input("Quick Find (Team/League)")
-    show_all = st.sidebar.toggle("Show all upcoming days", value=True)
-    
-    # Date processing
-    df_sports['game_date'] = pd.to_datetime(df_sports['strike_date']).dt.date
+    search = st.sidebar.text_input("Search Teams")
     
     filtered = df_sports
-    if not show_all:
-        filtered = filtered[filtered['game_date'] == date.today()]
     if search:
         filtered = filtered[filtered['title'].str.contains(search, case=False, na=False)]
 
-    # Display results
-    st.write(f"Found **{len(filtered)}** Sport Events")
+    st.write(f"Showing **{len(filtered)}** Sport Events")
     
     cols = st.columns(4)
     for idx, (_, row) in enumerate(filtered.iterrows()):
         with cols[idx % 4]:
-            # Formatting the title
-            display_title = row['title'].split(':')[-1].replace('Will the ', '').split('?')[0].strip()
+            # Clean Title
+            title = row['title'].split(':')[-1].replace('Will the ', '').split('?')[0].strip()
+            # Get Formatted Date
+            event_date = get_display_date(row)
             
             st.markdown(f"""
                 <div class="market-card">
-                    <div style="display: flex; justify-content: space-between;">
+                    <div class="badge-container">
                         <span class="badge-kalshi">KALSHI</span>
-                        <span style="color:#94a3b8; font-size:11px;">{row['game_date']}</span>
+                        <span class="badge-date">{event_date}</span>
                     </div>
-                    <div class="card-title">{display_title}</div>
+                    <div class="card-title">{title}</div>
                     <div class="card-footer">
-                        <span>{row['event_ticker']}</span>
-                        <span class="footer-val">{row.get('category', 'Sports')}</span>
+                        <span>Ticker: <span class="footer-val">{row['event_ticker']}</span></span>
+                        <span>{row.get('category', 'Sports')}</span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 else:
-    st.info("No active sports found. Note: Kalshi resets many sports tickers at midnight UTC.")
+    st.info("No active sports found. Try refreshing in a few minutes.")
