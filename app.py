@@ -56,6 +56,8 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .odds-price-no{font-size:15px;font-weight:700;color:#ff2222;}
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
+.subcat-panel button{background:transparent!important;border:none!important;text-align:left!important;padding:6px 8px!important;font-size:13px!important;font-family:Helvetica,sans-serif!important;}
+.subcat-panel button:hover{color:#00ff00!important;}
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
@@ -847,7 +849,7 @@ def fetch_all():
 
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
-st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1.5rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
 
 # ── Row 1: Search | Sort | Refresh ───────────────────────────────────────────
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
@@ -1018,84 +1020,109 @@ for sport, tabs in SPORT_SUBTABS.items():
         for s in series_list:
             SERIES_TO_SUBTAB[sport][s] = tab_name
 
-def render_subtabs(sport_df, sport):
-    tabs_def = SPORT_SUBTABS.get(sport)
-    if not tabs_def:
-        render_cards(sport_df); return
-
-    # Map each row to its subtab using series ticker
-    sport_df = sport_df.copy()
-    lookup = SERIES_TO_SUBTAB.get(sport, {})
-    sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s, "Other"))
-
-    # Only show tabs that have data
-    present = []
-    for tab_name, _ in tabs_def:
-        if (sport_df["_subtab"] == tab_name).any():
-            present.append(tab_name)
-    # Add Other if there are uncategorized items
-    other_df = sport_df[~sport_df["_subtab"].isin([t for t,_ in tabs_def])]
-    has_other = not other_df.empty
-
-    if not present and not has_other:
-        render_cards(sport_df); return
-
-    tab_labels = ["All"] + present + (["Other"] if has_other else [])
-    tabs = st.tabs(tab_labels)
-    with tabs[0]: render_cards(sport_df)
-    for i, tab_name in enumerate(present):
-        with tabs[i+1]:
-            render_cards(sport_df[sport_df["_subtab"]==tab_name])
-    if has_other:
-        with tabs[-1]: render_cards(other_df)
-
-def render_soccer(sdf):
-    comps = sorted([c for c in sdf["_soccer_comp"].unique() if c and c != "Other"])
-    has_other = (sdf["_soccer_comp"] == "Other").any() or (sdf["_soccer_comp"] == "").any()
-    if not comps:
-        render_cards(sdf); return
-    tabs = st.tabs(["All"] + comps + (["Other"] if has_other else []))
-    with tabs[0]: render_cards(sdf)
-    for i, comp in enumerate(comps):
-        with tabs[i+1]: render_cards(sdf[sdf["_soccer_comp"]==comp])
-    if has_other:
-        with tabs[-1]: render_cards(sdf[sdf["_soccer_comp"].isin(["Other",""])])
-
-def render_sports(sdf):
-    sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
-    if not sports_present:
-        render_cards(sdf); return
-    labels = ["🏟️ All"] + [f"{SPORT_ICONS.get(s,'🏆')} {s}" for s in sports_present]
-    tabs = st.tabs(labels)
-    with tabs[0]: render_cards(sdf)
-    for i, sport in enumerate(sports_present):
-        with tabs[i+1]:
-            sport_df = sdf[sdf["_sport"]==sport].copy()
-            if sport == "Soccer":
-                render_soccer(sport_df)
-            else:
-                render_subtabs(sport_df, sport)
-
-def render_cat_tabs(cat_df, cat):
+def get_subcats(cat, data):
+    """Return list of subcategory names for a given category."""
+    if cat == "All":
+        return []
+    if cat == "Sports":
+        return ["All sports"] + [s for s in _SPORT_SERIES.keys() if s in data["_sport"].values]
     tags = CAT_TAGS.get(cat, [])
-    if not tags:
-        render_cards(cat_df); return
-    ttabs = st.tabs(["All"] + tags)
-    with ttabs[0]: render_cards(cat_df)
-    for i, tag in enumerate(tags):
-        with ttabs[i+1]:
-            render_cards(cat_df[cat_df["title"].str.contains(tag, case=False, na=False)])
+    return ["All"] + tags if tags else []
 
-# ── Main tabs ─────────────────────────────────────────────────────────────────
+def get_subsubcats(cat, subcat, data):
+    """Return sub-sub-categories (soccer competitions, sport sub-tabs)."""
+    if cat != "Sports" or subcat in ("All sports", "All", ""):
+        return []
+    sport = subcat
+    if sport == "Soccer":
+        comps = sorted([c for c in data["_soccer_comp"].unique() if c and c not in ("Other","")])
+        return ["All"] + comps + (["Other"] if (data["_soccer_comp"].isin(["Other",""])).any() else [])
+    tabs_def = SPORT_SUBTABS.get(sport, [])
+    if not tabs_def: return []
+    lookup = SERIES_TO_SUBTAB.get(sport, {})
+    data2 = data[data["_sport"]==sport].copy()
+    data2["_subtab"] = data2["_series"].apply(lambda s: lookup.get(s, "Other"))
+    present = [t for t,_ in tabs_def if (data2["_subtab"]==t).any()]
+    return ["All"] + present if present else []
+
+def filter_data(cat, subcat, subsubcat, data):
+    """Filter dataframe based on selected category/subcategory."""
+    if cat != "All":
+        if cat == "Sports":
+            data = data[data["_is_sport"]]
+            if subcat and subcat != "All sports":
+                data = data[data["_sport"] == subcat]
+                if subsubcat and subsubcat != "All":
+                    if subcat == "Soccer":
+                        if subsubcat == "Other":
+                            data = data[data["_soccer_comp"].isin(["Other",""])]
+                        else:
+                            data = data[data["_soccer_comp"] == subsubcat]
+                    else:
+                        lookup = SERIES_TO_SUBTAB.get(subcat, {})
+                        data = data.copy()
+                        data["_subtab"] = data["_series"].apply(lambda s: lookup.get(s, "Other"))
+                        data = data[data["_subtab"] == subsubcat]
+        else:
+            data = data[data["category"] == cat]
+            if subcat and subcat != "All":
+                data = data[data["title"].str.contains(subcat, case=False, na=False)]
+    return data
+
+# ── Main layout: top tabs + left sidebar subcategories ────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
+
+# Top category tabs
 top_tabs = st.tabs(present_cats)
+
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
-        if cat == "All":      render_cards(filtered)
-        elif cat == "Sports": render_sports(filtered[filtered["_is_sport"]].copy())
-        else:                 render_cat_tabs(filtered[filtered["category"]==cat].copy(), cat)
+        subcats = get_subcats(cat, filtered)
+
+        if not subcats:
+            render_cards(filtered if cat == "All" else filter_data(cat, None, None, filtered))
+        else:
+            # Layout: left column for subcategories, right for cards
+            _left, _right = st.columns([1, 4])
+
+            with _left:
+                st.markdown("<div class='subcat-panel'>", unsafe_allow_html=True)
+                subcat_key = f"subcat_{cat}"
+                subsubcat_key = f"subsubcat_{cat}"
+                if subcat_key not in st.session_state:
+                    st.session_state[subcat_key] = subcats[0]
+                if subsubcat_key not in st.session_state:
+                    st.session_state[subsubcat_key] = "All"
+
+                for sc in subcats:
+                    is_active = st.session_state[subcat_key] == sc
+                    label = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","").replace("⚾","").replace("🏈","").replace("🏒","").replace("🎾","").replace("⛳","").replace("🥊","").replace("🏏","").replace("🎮","").replace("🏎️","").replace("♟️","").replace("🏉","").replace("🥍","").replace("🎯","").replace("⛵","").strip()
+                    style = "color:#00ff00;font-weight:700;" if is_active else "color:#ffffff;opacity:.7;"
+                    if st.button(label, key=f"sc_{cat}_{sc}", use_container_width=True):
+                        st.session_state[subcat_key] = sc
+                        st.session_state[subsubcat_key] = "All"
+                        st.rerun()
+
+                # Sub-sub-categories
+                selected_subcat = st.session_state[subcat_key]
+                subsubcats = get_subsubcats(cat, selected_subcat, filtered)
+                if subsubcats:
+                    st.markdown("<hr style='border-color:#1c1c1c;margin:8px 0;'>", unsafe_allow_html=True)
+                    for ssc in subsubcats:
+                        is_active2 = st.session_state[subsubcat_key] == ssc
+                        style2 = "color:#00ff00;font-size:11px;font-weight:600;" if is_active2 else "color:#888;font-size:11px;"
+                        if st.button(ssc, key=f"ssc_{cat}_{selected_subcat}_{ssc}", use_container_width=True):
+                            st.session_state[subsubcat_key] = ssc
+                            st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with _right:
+                selected_subcat  = st.session_state.get(subcat_key, subcats[0])
+                selected_subsubcat = st.session_state.get(subsubcat_key, "All")
+                view = filter_data(cat, selected_subcat, selected_subsubcat, filtered)
+                render_cards(view)
 
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
