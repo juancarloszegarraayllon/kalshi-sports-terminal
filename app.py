@@ -586,6 +586,40 @@ def safe_dt(val):
         return ts.to_pydatetime().astimezone(UTC)
     except: return None
 
+def parse_game_date_from_ticker(event_ticker: str):
+    """Extract game date from Kalshi event ticker.
+    e.g. KXEPLGAME-26APR25ARSNEW  -> date(2026, 4, 25)
+         KXCONMEBOLLIBGAME-26APR09UCVLIB -> date(2026, 4, 9)
+    Pattern after first '-': YYMONDD (e.g. 26APR25)
+    """
+    import re
+    from datetime import date as _date
+    MONTHS = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,
+              "JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+    try:
+        # Get the part after the series- prefix, e.g. "26APR25ARSNEW"
+        parts = event_ticker.split("-")
+        if len(parts) < 2: return None
+        seg = parts[1]  # e.g. "26APR25ARSNEW"
+        m = re.match(r"(\d{2})([A-Z]{3})(\d{2})", seg)
+        if not m: return None
+        yy, mon, dd = m.group(1), m.group(2), m.group(3)
+        yr = 2000 + int(yy)
+        mo = MONTHS.get(mon)
+        if not mo: return None
+        return _date(yr, mo, int(dd))
+    except: return None
+
+def get_game_datetime_from_sub_title(sub_title: str):
+    """Parse sub_title like 'ARS vs NEW (Apr 25)' -> month/day hint."""
+    import re
+    try:
+        m = re.search(r"\(([A-Za-z]+)\s+(\d+)\)", sub_title)
+        if m:
+            return m.group(1), int(m.group(2))
+    except: pass
+    return None, None
+
 def fmt_date(d):
     """d can be a date or datetime."""
     from datetime import datetime, timezone as _tz
@@ -689,33 +723,73 @@ def fetch_all():
     def extract(row):
         mkts = row.get("markets")
         if not isinstance(mkts, list) or not mkts:
-            return "—", "—", None, None, []
+            return "—", "—", None, None, None, []
 
         first_mk = mkts[0]
+        event_ticker = str(row.get("event_ticker", ""))
+        sub_title    = str(row.get("sub_title", ""))
 
-        # close_time is the game time / resolution deadline — use for display
+        # ── Game date: parse from event ticker (most reliable) ──
+        game_date = parse_game_date_from_ticker(event_ticker)
+
+        # ── open_time: when betting opened (NOT game time) ──
+        open_dt = safe_dt(first_mk.get("open_time"))
+
+        # ── close_time: settlement deadline (NOT game time for sports games) ──
         close_dt   = safe_dt(first_mk.get("close_time"))
         close_date = close_dt.date() if close_dt else None
 
-        # open_time = when betting opened, use for "Begins in" countdown
-        open_dt = safe_dt(first_mk.get("open_time"))
+        # ── Determine event status ──
+        # For game events: game_date is the display date
+        # If game_date is today or in past and close_dt is future → Live
+        # open_time is when betting opened (could be days ago)
+        from datetime import date as _date, datetime as _dt
+        today = _date.today()
+        now   = _dt.now(UTC)
 
-        # Build outcomes — yes_sub_title is ALWAYS the outcome label
+        is_game = game_date is not None
+        sort_dt = game_date if is_game else (close_date or (open_dt.date() if open_dt else None))
+
+        # ── Begins in / Live ──
+        # For game events: compare game_date to today
+        # Live if game_date <= today and close_dt > now (still settling)
+        if is_game:
+            if game_date < today:
+                begins = "🔴 Live"
+            elif game_date == today:
+                begins = "🔴 Live"
+            else:
+                days = (game_date - today).days
+                if days == 1:
+                    begins = "⏱ Tomorrow"
+                elif days <= 7:
+                    begins = f"⏱ {days}d"
+                else:
+                    begins = ""
+        else:
+            # Futures/outright: use close_dt for Live detection
+            if close_dt:
+                diff = int((close_dt - now).total_seconds())
+                if diff <= 600:
+                    begins = "🔴 Live"
+                elif diff < 86400:
+                    h = diff // 3600
+                    m = (diff % 3600) // 60
+                    begins = f"⏱ {h}h {m}m" if m else f"⏱ {h}h"
+                else:
+                    begins = ""
+            else:
+                begins = ""
+
+        # ── Outcome labels from yes_sub_title ──
         outcomes = []
-        event_title = str(row.get("title", "")).strip()
-
         for mk in mkts:
-            # yes_sub_title is the confirmed outcome label field
             label = str(mk.get("yes_sub_title") or "").strip()
-
-            # Fallback: if no yes_sub_title, try ticker suffix
             if not label:
-                ticker_mk = str(mk.get("ticker") or "")
-                # e.g. KXCONMEBOLLIBGAME-26APR09UCVLIB-T1 -> last segment
-                parts = ticker_mk.rsplit("-", 1)
-                label = parts[-1] if len(parts) > 1 else ticker_mk
+                t = str(mk.get("ticker") or "")
+                parts = t.rsplit("-", 1)
+                label = parts[-1] if len(parts) > 1 else t
 
-            # Prices — yes_bid_dollars is 0.0–1.0 confirmed
             yf = nf = None
             try:
                 yd = mk.get("yes_bid_dollars")
@@ -730,64 +804,27 @@ def fetch_all():
                     if nb is not None: nf = float(nb) / 100
             except: pass
 
-            chance = f"{int(round(yf * 100))}%" if yf is not None else "—"
-            yes    = f"{int(round(yf * 100))}¢"  if yf is not None else "—"
-            no     = f"{int(round(nf * 100))}¢"  if nf is not None else "—"
-
+            chance = f"{int(round(yf*100))}%" if yf is not None else "—"
+            yes    = f"{int(round(yf*100))}¢"  if yf is not None else "—"
+            no     = f"{int(round(nf*100))}¢"  if nf is not None else "—"
             outcomes.append((label[:35], chance, yes, no))
 
-        return "—", "—", close_date, open_dt, outcomes
+        return "—", "—", sort_dt, game_date, begins, outcomes
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_open_dt"] = info[3]; df["_outcomes"] = info[4]
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_game_date"] = info[3]; df["_begins"] = info[4]; df["_outcomes"] = info[5]
 
-    # Recompute close_dt as full datetime for proper display
-    def get_close_dt(row):
-        mkts = row.get("markets")
-        if not isinstance(mkts, list) or not mkts: return None
-        return safe_dt(mkts[0].get("close_time"))
-    df["_close_dt"] = df.apply(get_close_dt, axis=1)
 
-    def best_dt(row):
-        # _mkt_dt = close_time date (game time / deadline) — best for sorting
-        d = row.get("_mkt_dt")
-        if d: return d
-        cdt = row.get("_close_dt")
-        if cdt: return cdt.date() if hasattr(cdt, 'date') else cdt
-        return None
 
-    df["_sort_dt"] = df.apply(best_dt, axis=1)
+    df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
-        # Use close_time (game time / deadline) for display
-        cdt = row.get("_close_dt")
-        if cdt: return fmt_date(cdt)
+        gd = row.get("_game_date")
+        if gd: return fmt_date(gd)
         d = row.get("_mkt_dt")
         return fmt_date(d) if d else "Open"
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
 
     # "Begins in" — use open_time or start_date from event or first market
-    def fmt_begins(row):
-        from datetime import datetime
-        now = datetime.now(UTC)
-        cdt = row.get("_close_dt")
-        if cdt is None: return ""
-        diff = cdt - now
-        total_seconds = int(diff.total_seconds())
-        # Past or within 10 min after close = Live
-        if total_seconds <= 600: return "🔴 Live"
-        # Only show "Begins in" for events happening within 7 days
-        # For far-future markets (futures/outrights) show nothing
-        if total_seconds > 7 * 86400: return ""
-        if total_seconds < 3600:
-            m = total_seconds // 60
-            return f"⏱ {m}m"
-        if total_seconds < 86400:
-            h = total_seconds // 3600
-            m = (total_seconds % 3600) // 60
-            return f"⏱ {h}h {m}m" if m else f"⏱ {h}h"
-        d = total_seconds // 86400
-        return f"⏱ {d}d"
-
-    df["_begins"] = df.apply(fmt_begins, axis=1)
+    # _begins already computed in extract()
     # Debug: store sample raw market fields — find a soccer GAME event
     GAME_SERIES = {"KXEPLGAME","KXUCLGAME","KXSERIEAGAME","KXLALIGAGAME",
                    "KXBUNDESLIGAGAME","KXLIGUE1GAME","KXMLSGAME","KXLIGAMXGAME",
@@ -906,7 +943,7 @@ def render_cards(data):
             icon    = SPORT_ICONS.get(sport, base_ic) if sport else base_ic
             label   = sport[:16] if sport else cat[:16]
             dt      = str(row.get("_display_dt","Open"))
-            begins  = str(row.get("_begins",""))
+            begins  = str(row.get("_begins") or "")
             yes     = str(row.get("_yes","—"))
             no      = str(row.get("_no","—"))
             outcomes = row.get("_outcomes") or []
