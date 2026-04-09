@@ -763,17 +763,8 @@ def fetch_all():
         today = _date.today()
         now   = _dt.now(UTC)
 
-        # begins: only show Live or nothing — no frozen countdown
+        # No begins text — date shown via display_dt
         begins = ""
-        if game_date:
-            if game_date <= today:
-                # Game is today or in the past → Live
-                begins = "🔴 Live"
-            # Future games: no begins text, date says it all
-        else:
-            # Futures: Live if close_dt already passed
-            if close_dt and close_dt <= now:
-                begins = "🔴 Live"
 
         # ── Outcome labels from yes_sub_title ──
         outcomes = []
@@ -811,22 +802,9 @@ def fetch_all():
 
     df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
-        # Rule 1: if we have a kickoff time, use it (sport game events)
+        # Only show date/time for events that have a kickoff estimate
         kdt = row.get("_kickoff_dt")
         if kdt: return fmt_date(kdt)
-
-        # Rule 2: no kickoff → use expected_expiration_time from market
-        mkts = row.get("markets") or []
-        if mkts:
-            cdt = safe_dt(mkts[0].get("expected_expiration_time"))
-            if cdt: return fmt_date(cdt)
-
-        # Rule 3: event-level expected_expiration_time
-        try:
-            cdt = safe_dt(row.get("expected_expiration_time"))
-            if cdt: return fmt_date(cdt)
-        except: pass
-
         return ""
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
 
@@ -956,11 +934,11 @@ def render_cards(data):
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             is_live_card = "Live" in begins
-            timing = (begins + ' · ' + dt) if begins and dt else (begins or dt or '')
+            dt_html = '<div class="card-timing"><span class="date-text">' + dt + '</span></div>' if dt else ''
             html += (
                 '<div class="market-card">'
                 '<div class="card-top"><span class="cat-pill ' + pill + '">' + label + '</span></div>'
-                '<div class="card-timing"><span class="begins-text">' + timing + '</span></div>'
+                + dt_html +
                 '<span class="card-icon">' + icon + '</span>'
                 '<div class="card-title">' + title + '</div>'
                 '<div class="card-footer">' + link_html + odds_html + '</div>'
