@@ -818,34 +818,43 @@ def fetch_all():
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📡 Kalshi Terminal")
-
-    today = date.today()
-    date_mode = st.radio("📅 Date", ["All dates","Today","This week","Custom"], index=0)
-    d_start = d_end = None
-    if date_mode == "Today":     d_start = d_end = today
-    elif date_mode == "This week": d_start, d_end = today, today+timedelta(days=6)
-    elif date_mode == "Custom":
-        d_start = st.date_input("From", value=today)
-        d_end   = st.date_input("To",   value=today+timedelta(days=7))
-    include_no_date = st.checkbox("Include undated events", value=True)
-    st.markdown("---")
     st.caption("Cached 30 min.")
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
 
-# ── Top controls bar ─────────────────────────────────────────────────────────
-_c1, _c2, _c3 = st.columns([3, 1.2, 1.2])
+# ── Row 1: Search | Sort | Refresh ───────────────────────────────────────────
+_c1, _c2, _c3 = st.columns([3, 1.4, 1])
 with _c1:
     search = st.text_input("", placeholder="🔍  Search team, player, market…",
                            label_visibility="collapsed")
 with _c2:
-    sort_by = st.selectbox("Sort", ["Earliest first","Latest first","Default"],
+    sort_by = st.selectbox("", ["Earliest first","Latest first","Default"],
                            index=0, label_visibility="collapsed")
 with _c3:
-    st.markdown("<div style='padding-top:4px'></div>", unsafe_allow_html=True)
-    if st.button("🔄 Refresh data", use_container_width=True):
+    if st.button("🔄 Refresh", use_container_width=True):
         fetch_all.clear(); st.rerun()
+
+# ── Row 2: Date filters ───────────────────────────────────────────────────────
+today = date.today()
+_d1, _d2, _d3 = st.columns([2, 2, 1])
+with _d1:
+    date_mode = st.radio("", ["All dates","Today","This week","Custom"],
+                         index=0, horizontal=True, label_visibility="collapsed")
+with _d2:
+    d_start = d_end = None
+    if date_mode == "Today":
+        d_start = d_end = today
+    elif date_mode == "This week":
+        d_start, d_end = today, today + timedelta(days=6)
+    elif date_mode == "Custom":
+        _dc1, _dc2 = st.columns(2)
+        with _dc1:
+            d_start = st.date_input("From", value=today, label_visibility="collapsed")
+        with _dc2:
+            d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
+with _d3:
+    include_no_date = st.checkbox("Include undated", value=True)
 with st.spinner("Loading…"):
     df = fetch_all()
 
