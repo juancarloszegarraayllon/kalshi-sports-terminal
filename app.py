@@ -85,6 +85,118 @@ CAT_TAGS = {
     "Mentions":["Earnings","Politicians","Sports"],
 }
 
+# Sub-category tags for each sport — used to build drill-down tabs
+# Each entry is (tab_label, search_terms_in_title_or_ticker)
+SPORT_SUBTAGS = {
+    "Basketball": [
+        ("NBA",          ["NBA","KXNBA"]),
+        ("Playoffs",     ["playoff","playin","KXNBAPLAYOFF","KXNBAPLAYIN"]),
+        ("Draft",        ["draft","KXNBADRAFT"]),
+        ("Awards",       ["MVP","ROY","COY","DPOY","KXNBAMVP","KXNBAROY","KXNBACOY","KXNBADPOY","KXNBASIXTH","KXNBAMIMP"]),
+        ("All-Star",     ["all-star","KXNBA1STTEAM","KXNBA2NDTEAM","KXNBA3RDTEAM"]),
+        ("Standings",    ["wins","east","west","atlantic","central","pacific","southeast","southwest","northwest","KXNBAWINS","KXNBAEAST","KXNBAWEST"]),
+        ("International",["euroleague","BSL","BBL","ACB","ISL","ABL","CBA","KXEUROLEAGUEGAME","KXBSLGAME","KXBBLGAME","KXACBGAME","KXISLGAME","KXABAGAME","KXCBAGAME"]),
+        ("NCAAB",        ["NCAAB","NCAAMB","march madness","KXMARMAD","KXNCAAMB"]),
+        ("WNBA",         ["WNBA","KXWNBA"]),
+    ],
+    "Baseball": [
+        ("MLB Games",    ["KXMLBGAME"]),
+        ("Standings",    ["wins","east","west","central","KXMLBWINS","KXMLBALEAST","KXMLBALWEST","KXMLBALCENT","KXMLBNLEAST","KXMLBNLWEST","KXMLBNLCENT"]),
+        ("Awards",       ["MVP","Cy Young","ROY","KXMLBALMVP","KXMLBNLMVP","KXMLBALCY","KXMLBNLCY","KXMLBALROTY","KXMLBNLROTY","KXMLBEOTY","KXMLBALMOTY","KXMLBNLMOTY"]),
+        ("Playoffs",     ["playoff","World Series","KXMLBPLAYOFFS","KXTEAMSINWS"]),
+        ("Stats Leaders",["leader","home run","hits","RBI","ERA","KXLEADERMLB"]),
+        ("NCAA Baseball",["NCAABASEBALL","KXNCAABASEBALL","KXNCAABBGS"]),
+    ],
+    "Football": [
+        ("NFL Games",    ["KXUFLGAME"]),
+        ("Super Bowl",   ["Super Bowl","KXSB"]),
+        ("Playoffs",     ["playoff","AFC champ","NFC champ","KXNFLPLAYOFF","KXNFLAFCCHAMP","KXNFLNFCCHAMP"]),
+        ("Standings",    ["AFC","NFC","east","west","north","south","KXNFLAFCEAST","KXNFLAFCWEST","KXNFLAFCNORTH","KXNFLAFCSOUTH","KXNFLNFCEAST","KXNFLNFCWEST","KXNFLNFCNORTH","KXNFLNFCSOUTH"]),
+        ("Awards",       ["MVP","OPOTY","DPOTY","OROTY","DROTY","COTY","KXNFLMVP","KXNFLOPOTY","KXNFLDPOTY","KXNFLOROTY","KXNFLDROTY","KXNFLCOTY"]),
+        ("Draft",        ["draft","KXNFLDRAFT"]),
+        ("Stats Leaders",["leader","passing","rushing","receiving","sacks","KXLEADERNFL"]),
+        ("NCAAF",        ["NCAAF","Heisman","KXNCAAF","KXHEISMAN"]),
+        ("Trades",       ["trade","KXNFLTRADE","KXNEXTTEAMNFL"]),
+    ],
+    "Hockey": [
+        ("NHL Games",    ["KXNHLGAME"]),
+        ("Stanley Cup",  ["Stanley Cup","KXTEAMSINSC","KXNHLPLAYOFF"]),
+        ("Standings",    ["east","west","atlantic","metropolitan","central","pacific","KXNHLEAST","KXNHLWEST","KXNHLADAMS","KXNHLCENTRAL","KXNHLATLANTIC","KXNHLMETROPOLITAN","KXNHLPACIFIC"]),
+        ("Awards",       ["Hart","Norris","Vezina","Calder","Ross","Richard","Pres","KXNHLHART","KXNHLNORRIS","KXNHLVEZINA","KXNHLCALDER","KXNHLROSS","KXNHLRICHARD","KXNHLPRES"]),
+        ("Spreads/Totals",["KXNHLSPREAD","KXNHLTOTAL"]),
+        ("NCAA Hockey",  ["NCAAHOCKEY","KXNCAAHOCKEY"]),
+        ("Canada Cup",   ["Canada Cup","KXCANADACUP"]),
+    ],
+    "Tennis": [
+        ("Grand Slams",  ["Grand Slam","KXGRANDSLAM","KXATPGRANDSLAM","KXWTAGRANDSLAM","KXATPGRANDSLAMFIELD"]),
+        ("ATP",          ["ATP","KXATP","KXFOMEN","KXMCMMEN"]),
+        ("WTA",          ["WTA","KXWTA","KXFOWOMEN","KXWTASERENA"]),
+        ("Rankings",     ["rank","KXATP1RANK"]),
+        ("Player Props", ["Fonseca","KXGRANDSLAMJFONSECA"]),
+        ("Golf+Tennis",  ["KXGOLFTENNISMAJORS"]),
+    ],
+    "Golf": [
+        ("PGA Tour",     ["PGA","KXPGATOUR","KXPGAH2H","KXPGAMASTERS"]),
+        ("Majors",       ["major","Masters","KXGOLFMAJORS","KXPGAMAJOR"]),
+        ("Round Leaders",["KXPGAR1LEAD","KXPGAR2LEAD","KXPGAR3LEAD","KXPGAR3TOP"]),
+        ("Top Finishes", ["KXPGATOP","KXPGAPLAYOFF","KXPGACUTLINE","KXPGAWINNERREGION","KXPGALOWSCORE"]),
+        ("Prop Bets",    ["eagle","hole in one","bogey","5 ball","KXPGAEAGLE","KXPGAHOLEINONE","KXPGABOGEYFREE","KXPGA5BALL"]),
+        ("Ryder Cup",    ["Ryder","Solheim","KXPGARYDER","KXPGASOLHEIM","KXRYDERCUPCAPTAIN"]),
+        ("Player Props", ["Curry","Tiger","Bryson","KXPGACURRY","KXPGATIGER","KXBRYSONCOURSERECORDS","KXSCOTTIESLAM"]),
+    ],
+    "MMA": [
+        ("UFC Fights",   ["KXUFCFIGHT"]),
+        ("Heavyweight",  ["heavyweight","KXUFCHEAVYWEIGHT"]),
+        ("Light Heavy",  ["light heavy","KXUFCLHEAVY"]),
+        ("Middleweight", ["middleweight","KXUFCMIDDLEWEIGHT"]),
+        ("Welterweight", ["welterweight","KXUFCWELTERWEIGHT"]),
+        ("Lightweight",  ["lightweight","KXUFCLIGHTWEIGHT"]),
+        ("Featherweight",["featherweight","KXUFCFEATHERWEIGHT"]),
+        ("Bantamweight", ["bantamweight","KXUFCBANTAMWEIGHT"]),
+        ("Flyweight",    ["flyweight","KXUFCFLYWEIGHT"]),
+        ("McGregor",     ["McGregor","KXMCGREGOR"]),
+    ],
+    "Motorsport": [
+        ("F1",           ["F1","Formula","KXKF1","KXF1"]),
+        ("NASCAR Cup",   ["NASCAR","cup series","KXNASCARCUPSERIES","KXNASCARRACE"]),
+        ("NASCAR Other", ["truck","auto parts","KXNASCARTRUCKSERIES","KXNASCARAUTOPARTSSERIES"]),
+        ("NASCAR Finish",["KXNASCARTOP"]),
+        ("MotoGP",       ["MotoGP","KXMOTOGP"]),
+        ("IndyCar",      ["IndyCar","KXINDYCARSERIES"]),
+    ],
+    "Cricket": [
+        ("IPL",          ["IPL","KXIPL","KXIPLGAME"]),
+        ("PSL",          ["PSL","KXPSL","KXPSLGAME"]),
+    ],
+    "Esports": [
+        ("Valorant",     ["Valorant","KXVALORANT"]),
+        ("League of Legends",["LOL","league of legends","KXLOL"]),
+        ("Rainbow Six",  ["R6","Rainbow","KXR6"]),
+    ],
+    "Boxing": [
+        ("Heavyweight",  ["heavyweight","KXWBCHEAVY"]),
+        ("Cruiserweight",["cruiserweight","KXWBCCRUISER"]),
+        ("Light Heavy",  ["light heavy"]),
+        ("Middleweight", ["middleweight","KXWBCMIDDLE"]),
+        ("Welterweight", ["welterweight","KXWBCWELTER"]),
+        ("Lightweight",  ["lightweight","KXWBCLIGHT"]),
+        ("Featherweight",["featherweight","KXWBCFEATHER"]),
+        ("Bantamweight", ["bantamweight","KXWBCBANTAM"]),
+        ("Flyweight",    ["flyweight","KXWBCFLY"]),
+        ("Floyd/Tyson",  ["Floyd","Tyson","KXFLOYDTYSON"]),
+    ],
+    "Rugby": [
+        ("NRL",          ["NRL","KXNRL"]),
+        ("Premiership",  ["Premiership","KXPREMCHAMP"]),
+        ("French Top 14",["Top 14","Ligue","KXFRA14"]),
+        ("Super League", ["Super League","KXSLR"]),
+    ],
+    "Lacrosse": [
+        ("NCAA",         ["NCAA","KXNCAAMLAX","KXNCAALAX"]),
+        ("Awards",       ["Tewaaraton","KXLAXTEWAARATON"]),
+    ],
+}
+
 SPORT_TAGS = [
     ("⚽","Soccer",["KXDFBPOKAL","KXARGPREMDIVGAME","KXLIGUE1SPREAD","KXUSL","KXUELSPREAD","KXEKSTRAKLASA","KXSERIEATOTAL","KXLALIGATOTAL","KXEPLTOP4","KXLALIGABTTS","KXEPLGAME","KXWCGROUPWIN","KXJOINLEAGUE","KXCHNSL","KXWCGAME","KXDIMAYORGAME","KXAPFDDHGAME","KXWCGOALLEADER","KXBUNDESLIGATOTAL","KXEPLTOTAL","KXSCOTTISHPREMGAME","KXSERIEA1H","KXEPLSPREAD","KXCHLLDPGAME","KXECULP","KXSOCCERPLAYMESSI","KXLEADERUCLGOALS","KXURYPD","KXLIGUE11H","KXBUNDESLIGA2GAME","KXLIGUE1BTTS","KXEFLPROMO","KXUSLGAME","KXKLEAGUE","KXUCLW","KXJOINRONALDO","KXSAUDIPLSPREAD","KXTHAIL1","KXMLSBTTS","KXBELGIANPL","KXEPL1H","KXLAMINEYAMAL","KXBALLONDOR","KXSOCCERTRANSFER","KXSAUDIPLTOTAL","KXWCSQUAD","KXSERIEAGAME","KXSERIEARELEGATION","KXKLEAGUEGAME","KXLIGAMXTOTAL","KXEPLTOP6","KXSUPERLIG","KXARSENALCUPS","KXUCLGAME","KXVENFUTVE","KXSERIEBGAME","KXEGYPLGAME","KXALEAGUETOTAL","KXLIGUE1RELEGATION","KXEPLBTTS","KXFACUP","KXMENWORLDCUP","KXSERIEASPREAD","KXFIFAUSPULL","KXUCL1H","KXLALIGARELEGATION","KXLIGAPORTUGALGAME","KXCOPPAITALIA","KXTHAIL1GAME","KXALEAGUESPREAD","KXSAUDIPLGAME","KXPREMIERLEAGUE","KXLIGAMX","KXLALIGASPREAD","KXDENSUPERLIGAGAME","KXMLSCUP","KXJLEAGUEGAME","KXURYPDGAME","KXWCROUND","KXBUNDESLIGATOP4","KXLIGAMXSPREAD","KXBRASILEIROGAME","KXLIGAMXGAME","KXUCLBTTS","KXALLSVENSKANGAME","KXBUNDESLIGA1H","KXEFLCHAMPIONSHIP","KXUCLSPREAD","KXLIGUE1TOTAL","KXBRASILEIROTOTAL","KXSOCCERPLAYCRON","KXVENFUTVEGAME","KXLALIGATOP4","KXEFLCHAMPIONSHIPGAME","KXPERLIGA1","KXEKSTRAKLASAGAME","KXMLSGAME","KXMLSWEST","KXWCMESSIRONALDO","KXAPFDDH","KXJOINCLUB","KXLALIGA1H","KXWINSTREAKMANU","KXUCL","KXSLGREECE","KXBRASILEIRO","KXHNLGAME","KXSERIEA","KXSERIEABTTS","KXSWISSLEAGUEGAME","KXEREDIVISIEGAME","KXWCIRAN","KXLALIGA","KXALEAGUEGAME","KXCONCACAFCCUPGAME","KXBELGIANPLGAME","KXBUNDESLIGA","KXUEL","KXBUNDESLIGARELEGATION","KXLIGUE1TOP4","KXEPLTOP2","KXUECL","KXCHLLDP","KXBUNDESLIGABTTS","KXWCGROUPQUAL","KXBUNDESLIGAGAME","KXUCLFINALIST","KXSUPERLIGGAME","KXBRASILEIROTOPX","KXLIGAPORTUGAL","KXUCLRO4","KXKNVBCUP","KXCOPADELREY","KXBUNDESLIGASPREAD","KXLALIGA2GAME","KXCHNSLGAME","KXMLSSPREAD","KXSERIEATOP4","KXTEAMSINUCL","KXBRASILEIROSPREAD","KXLIGUE1GAME","KXDENSUPERLIGA","KXMLSTOTAL","KXLALIGAGAME","KXNEXTMANAGERMANU","KXPFAPOY","KXLIGUE1","KXMLSEAST","KXUCLTOTAL","KXWCLOCATION","KXEPLRELEGATION","KXUELGAME","KXECULPGAME","KXUELTOTAL","KXEREDIVISIE"]),
     ("🏀","Basketball",["KXNBAEFINMVP","KXLEADERNBABLK","KXNBAMVP","KXNBASIXTH","KXCITYNBAEXPAND","KXBSLGAME","KXBBLGAME","KXNBACLUTCH","KXNBADRAFTPICK","KXTEAMSINNBAEF","KXSONICS","KXNBADPOY","KXNBAWINS","KXNBALOTTERYODDS","KXTEAMSINNBAF","KXNBADRAFTCOMP","KXNBA","KXWNBADRAFT1","KXNBAMATCHUP","KXBBSERIEAGAME","KXNBAWFINMVP","KXLEADERNBAAST","KXNBASEATTLE","KXMARMAD","KXNBAPLAYOFF","KXNBADRAFTTOP","KXWNBADRAFTTOP3","KXISLGAME","KXNBA2NDTEAMDEF","KXNBA1STTEAMDEF","KXNBAMIMP","KXLEADERNBAREB","KXABAGAME","KXNBAFINMVP","KXACBGAME","KXWNBADELAY","KXLEADERNBASTL","KXNCAAMBNEXTCOACH","KXNBASOUTHWEST","KXNBATOPPICK","KXCBAGAME","KXNBAATLANTIC","KXNBAEAST1SEED","KXJBLEAGUEGAME","KXNBAROY","KXSTEPHDEAL","KXNBAEAST","KXNBA1STTEAM","KXNBACOY","KXNBA2NDTEAM","KXLEADERNBA3PT","KXLBJRETIRE","KXNBAWEST","KXSPORTSOWNERLBJ","KXNEXTTEAMNBA","KXWNBAGAMESPLAYED","KXNBASOUTHEAST","KXNBADRAFTCAT","KXNBA3RDTEAM","KXNBAPACIFIC","KXARGLNBGAME","KXQUADRUPLEDOUBLE","KXNBACENTRAL","KXRECORDNBABEST","KXNBANORTHWEST","KXLNBELITEGAME","KXNBAWEST1SEED","KXNBAPLAYIN","KXLEADERNBAPTS","KXEUROLEAGUEGAME","KXNBATEAM","KXNBADRAFT1"]),
@@ -212,28 +324,23 @@ def paginate(with_markets=False, category=None, series_ticker=None, max_pages=30
             events.extend(batch)
             cursor = resp.get("cursor") or resp.get("next_cursor")
             if not cursor: break
-            time.sleep(0.1)  # reduced from 0.35
+            time.sleep(0.1)
         except Exception as e:
             if "429" in str(e): time.sleep(3)
             else: break
     return events
 
-@st.cache_data(ttl=1800)  # 30 min cache
+@st.cache_data(ttl=1800)
 def fetch_all():
     prog = st.progress(0, text="Step 1 — Fetching all events…")
-
-    # Step 1: fetch all events without nested markets (fast, no odds)
     all_ev = paginate(with_markets=False, max_pages=30)
     ev_map = {e["event_ticker"]: e for e in all_ev}
     prog.progress(0.35, text=f"{len(all_ev)} events found. Step 2 — Fetching sports odds…")
 
-    # Step 2: ONE bulk fetch for all sports with nested markets
-    # Replaces the old per-series loop (300+ API calls → just a few paginated pages)
     sport_events = paginate(with_markets=True, category="Sports", max_pages=30)
     for e in sport_events:
         t = e.get("event_ticker", "")
         if not t: continue
-        # Prefer the version that has markets data attached
         if t not in ev_map or (e.get("markets") and not ev_map.get(t, {}).get("markets")):
             ev_map[t] = e
 
@@ -251,7 +358,6 @@ def fetch_all():
         lambda r: get_soccer_comp(r["_series"]) if r["_sport"] == "Soccer" else "", axis=1
     )
 
-    # Normalize markets column — pandas fills missing values with NaN (float), not []
     if "markets" not in df.columns:
         df["markets"] = [[] for _ in range(len(df))]
     else:
@@ -378,33 +484,78 @@ def render_cards(data):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
+
+def render_subtag_tabs(sport_df, sport):
+    """Render sub-category tabs for any sport that has SPORT_SUBTAGS defined."""
+    subtags = SPORT_SUBTAGS.get(sport, [])
+    if not subtags:
+        render_cards(sport_df)
+        return
+
+    # Only show tabs whose search terms actually match something in this data
+    def matches(row, terms):
+        title   = str(row.get("title","")).lower()
+        ticker  = str(row.get("event_ticker","")).upper()
+        series  = str(row.get("_series","")).upper()
+        for t in terms:
+            tu = t.upper()
+            if tu in ticker or tu in series or t.lower() in title:
+                return True
+        return False
+
+    present_subtags = []
+    for label, terms in subtags:
+        mask = sport_df.apply(lambda r: matches(r, terms), axis=1)
+        if mask.any():
+            present_subtags.append((label, terms))
+
+    if not present_subtags:
+        render_cards(sport_df)
+        return
+
+    tab_labels = ["All"] + [label for label, _ in present_subtags]
+    tabs = st.tabs(tab_labels)
+    with tabs[0]:
+        render_cards(sport_df)
+    for i, (label, terms) in enumerate(present_subtags):
+        with tabs[i + 1]:
+            mask = sport_df.apply(lambda r: matches(r, terms), axis=1)
+            render_cards(sport_df[mask])
+
+
 def render_sport_tabs(sdf):
     present = [name for _, name, _ in SPORT_TAGS if name in sdf["_sport"].values]
     if not present:
         render_cards(sdf); return
+
     labels   = ["🏟️ All"] + [f"{SPORT_ICON[s]} {s}" for s in present]
     top_tabs = st.tabs(labels)
-    for i, tab in enumerate(top_tabs):
-        with tab:
-            if i == 0:
-                render_cards(sdf)
-            else:
-                sport    = present[i-1]
-                sport_df = sdf[sdf["_sport"] == sport].copy()
-                if sport == "Soccer":
-                    comps_present = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c != "Other"])
-                    has_other = (sport_df["_soccer_comp"] == "Other").any()
-                    comp_list = comps_present + (["Other"] if has_other else [])
-                    if not comp_list:
-                        render_cards(sport_df)
-                    else:
-                        ctabs = st.tabs(["All"] + comp_list)
-                        for j, ctab in enumerate(ctabs):
-                            with ctab:
-                                if j == 0: render_cards(sport_df)
-                                else: render_cards(sport_df[sport_df["_soccer_comp"]==comp_list[j-1]])
-                else:
+
+    with top_tabs[0]:
+        render_cards(sdf)
+
+    for i, sport in enumerate(present):
+        with top_tabs[i + 1]:
+            sport_df = sdf[sdf["_sport"] == sport].copy()
+
+            if sport == "Soccer":
+                # Soccer uses competition map (existing logic)
+                comps_present = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c != "Other"])
+                has_other = (sport_df["_soccer_comp"] == "Other").any()
+                comp_list = comps_present + (["Other"] if has_other else [])
+                if not comp_list:
                     render_cards(sport_df)
+                else:
+                    ctabs = st.tabs(["All"] + comp_list)
+                    with ctabs[0]:
+                        render_cards(sport_df)
+                    for j, comp in enumerate(comp_list):
+                        with ctabs[j + 1]:
+                            render_cards(sport_df[sport_df["_soccer_comp"] == comp])
+            else:
+                # All other sports use SPORT_SUBTAGS
+                render_subtag_tabs(sport_df, sport)
+
 
 def render_tag_tabs(cat_df, cat):
     tags = CAT_TAGS.get(cat, [])
