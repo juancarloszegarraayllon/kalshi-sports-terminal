@@ -810,12 +810,25 @@ def fetch_all():
 
     df["_sort_dt"] = df["_mkt_dt"]  # sort_dt is already set in extract
     def get_display_dt(row):
-        # kickoff_dt has the full datetime with time → shows "Apr 9, 6:00pm EDT"
+        # 1. kickoff_dt — estimated game time (has time component)
         kdt = row.get("_kickoff_dt")
         if kdt: return fmt_date(kdt)
-        # game_date is date-only → shows "Apr 9"
+        # 2. game_date — parsed from ticker (date only)
         gd = row.get("_game_date")
         if gd: return fmt_date(gd)
+        # 3. market close_time — works for futures + non-sport events
+        mkts = row.get("markets") or []
+        if mkts:
+            cdt = safe_dt(mkts[0].get("close_time"))
+            if cdt: return fmt_date(cdt)
+        # 4. event-level date fields (non-sport events without markets)
+        for col in ["close_time", "expected_expiration_time", "expiration_time",
+                    "end_date", "strike_date"]:
+            v = row.get(col)
+            if v is not None and str(v) not in ("", "NaT", "None", "nan"):
+                cdt = safe_dt(v)
+                if cdt: return fmt_date(cdt)
+        # 5. mkt_dt last resort
         d = row.get("_mkt_dt")
         return fmt_date(d) if d else ""
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
