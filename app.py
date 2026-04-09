@@ -689,21 +689,10 @@ def paginate(with_markets=False, category=None, max_pages=30):
 def fetch_all():
     prog = st.progress(0, text="Loading markets…")
 
-    # Pass 1 — all events, NO nested markets (fast, just metadata + titles)
-    all_ev = paginate(with_markets=False, max_pages=30)
-    ev_map = {e["event_ticker"]: e for e in all_ev}
-    prog.progress(0.45, text=f"{len(all_ev)} events. Loading odds…")
-
-    # Pass 2 — Sports only WITH nested markets (for odds + outcomes)
-    sport_ev = paginate(with_markets=True, category="Sports", max_pages=30)
-    for e in sport_ev:
-        t = e.get("event_ticker", "")
-        if t:
-            ev_map[t] = e  # overwrite with richer version
-    prog.progress(0.85, text="Building cards…")
-
-    prog.progress(0.85, text="Building dataframe…")
-    combined = list(ev_map.values())
+    # Single pass — ALL events WITH nested markets (odds + outcomes for everything)
+    all_ev = paginate(with_markets=True, max_pages=30)
+    prog.progress(0.80, text=f"{len(all_ev)} events loaded. Building cards…")
+    combined = all_ev
     if not combined:
         prog.empty(); return pd.DataFrame()
 
