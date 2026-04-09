@@ -577,9 +577,35 @@ def safe_date(val):
         return ts.to_pydatetime().astimezone(UTC).date()
     except: return None
 
+def safe_dt(val):
+    """Return full datetime (timezone-aware) or None."""
+    try:
+        if val is None or val == "": return None
+        ts = pd.to_datetime(val, utc=True)
+        if pd.isna(ts): return None
+        return ts.to_pydatetime().astimezone(UTC)
+    except: return None
+
 def fmt_date(d):
-    try: return d.strftime("%b %d") if d else "Open"
-    except: return "Open"
+    """d can be a date or datetime."""
+    try:
+        if d is None: return "Open"
+        if hasattr(d, 'hour'):  # datetime
+            try:
+                import pytz
+                eastern = pytz.timezone('US/Eastern')
+            except ImportError:
+                from zoneinfo import ZoneInfo
+                eastern = ZoneInfo('America/New_York')
+            if d.tzinfo:
+                d = d.astimezone(eastern)
+            hour = d.hour % 12 or 12
+            ampm = "am" if d.hour < 12 else "pm"
+            return f"{d.strftime('%b')} {d.day}, {hour}:{d.strftime('%M')}{ampm} ET"
+        return d.strftime("%b %d")
+    except:
+        try: return d.strftime("%b %d") if d else "Open"
+        except: return "Open"
 
 def fmt_pct(v):
     try:
@@ -650,100 +676,102 @@ def fetch_all():
 
     def extract(row):
         mkts = row.get("markets")
-        if not isinstance(mkts,list) or not mkts: return "—","—",None,[]
-        close = None
-        open_dt = None
-        for mk in mkts:
-            d = safe_date(mk.get("close_time"))
-            if d and (close is None or d < close): close = d
-            # Store earliest open_time as full datetime for "Begins in"
-            ot_raw = mk.get("open_time")
-            if ot_raw:
-                try:
-                    import pandas as _pd
-                    ts = _pd.to_datetime(ot_raw, utc=True)
-                    if not _pd.isna(ts):
-                        odt = ts.to_pydatetime().astimezone(UTC)
-                        if open_dt is None or odt < open_dt:
-                            open_dt = odt
-                except: pass
-        # Build list of (label, chance, yes, no) for each outcome
-        # Kalshi market fields: subtitle = outcome label (e.g. "Libertad")
-        # yes_bid / yes_bid_dollars = YES price (cents or dollars)
-        # chance = yes_bid interpreted as probability
-        event_title = str(row.get("title","")).strip()
-        outcomes = []
-        for mk in mkts:
-            # subtitle is the outcome label — fall back to ticker suffix if same as event title
-            raw_sub = str(mk.get("subtitle") or "").strip()
-            ticker_mk = str(mk.get("ticker") or "").strip()
-            # If subtitle is identical to event title or empty, derive label from market ticker suffix
-            if not raw_sub or raw_sub == event_title:
-                # e.g. KXCONMEBOLLIBGAME-26APR09UCVLIB-T1 → T1, or use index
-                parts = ticker_mk.rsplit("-", 1)
-                raw_sub = parts[-1] if len(parts) > 1 else ticker_mk
-            label = raw_sub[:30]
-            # YES bid: try dollars first (0-1 float), then cents (0-100 int)
-            yes_raw = mk.get("yes_bid_dollars") or mk.get("yes_bid")
-            no_raw  = mk.get("no_bid_dollars")  or mk.get("no_bid")
-            try:
-                yf = float(yes_raw) if yes_raw is not None else None
-                nf = float(no_raw)  if no_raw  is not None else None
-                # Normalise to 0-1 range
-                if yf is not None and yf > 1: yf = yf / 100
-                if nf is not None and nf > 1: nf = nf / 100
-                chance = f"{int(round(yf*100))}%" if yf is not None else "—"
-                yes    = f"{int(round(yf*100))}¢"  if yf is not None else "—"
-                no     = f"{int(round(nf*100))}¢"  if nf is not None else "—"
-            except:
-                chance, yes, no = "—","—","—"
-            outcomes.append((label, chance, yes, no))
-        return "—","—", close, outcomes, open_dt
+        if not isinstance(mkts, list) or not mkts:
+            return "—", "—", None, None, []
 
+        # --- Dates from MARKET level (not event level) ---
+        # open_time  = when betting opens / game starts
+        # close_time = when betting closes (≈ game start for live events)
+        # Use close_time as the display date (it's the game time)
+        first_mk = mkts[0]
+        close_dt  = safe_dt(first_mk.get("close_time"))   # full datetime
+        open_dt   = safe_dt(first_mk.get("open_time"))    # full datetime
+
+        # For sorting use close_time date
+        close_date = close_dt.date() if close_dt else None
+
+        # --- Outcome labels ---
+        # Multi-market event (e.g. soccer with Win/Draw/Loss):
+        #   each market's "title" is the outcome label (e.g. "UCV wins", "Libertad wins")
+        # Binary market: use yes_sub_title / no_sub_title
+        event_title = str(row.get("title", "")).strip()
+        is_binary   = len(mkts) == 1 or first_mk.get("market_type") == "binary"
+
+        outcomes = []
+        for i, mk in enumerate(mkts):
+            mk_title    = str(mk.get("title") or "").strip()
+            yes_sub     = str(mk.get("yes_sub_title") or "").strip()
+            no_sub      = str(mk.get("no_sub_title")  or "").strip()
+
+            if len(mkts) == 1:
+                # Binary: show yes_sub_title as the label
+                label = yes_sub or mk_title or event_title
+            else:
+                # Multi-outcome: each market title IS the outcome
+                # Strip the event title prefix if present
+                if mk_title and mk_title != event_title:
+                    label = mk_title
+                elif yes_sub and yes_sub != no_sub:
+                    label = yes_sub
+                else:
+                    label = mk_title or f"Option {i+1}"
+
+            # Trim common suffixes like " Winner" or event name repetition
+            for suffix in [" Winner", " wins", " win"]:
+                if label.endswith(suffix):
+                    label = label[:-len(suffix)]
+
+            # Prices — response_price_units tells us the unit
+            # yes_bid_dollars is 0.0–1.0 float already
+            yf = None
+            nf = None
+            try:
+                yd = mk.get("yes_bid_dollars")
+                nd = mk.get("no_bid_dollars")
+                if yd is not None: yf = float(yd)
+                if nd is not None: nf = float(nd)
+                # Fallback to yes_bid (cents 0-100)
+                if yf is None:
+                    yb = mk.get("yes_bid")
+                    if yb is not None: yf = float(yb) / 100
+                if nf is None:
+                    nb = mk.get("no_bid")
+                    if nb is not None: nf = float(nb) / 100
+            except: pass
+
+            chance = f"{int(round(yf * 100))}%" if yf is not None else "—"
+            yes    = f"{int(round(yf * 100))}¢"  if yf is not None else "—"
+            no     = f"{int(round(nf * 100))}¢"  if nf is not None else "—"
+
+            outcomes.append((label[:35], chance, yes, no))
+
+        return "—", "—", close_date, open_dt, outcomes
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_outcomes"] = info[3]; df["_open_dt"] = info[4]
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_open_dt"] = info[3]; df["_outcomes"] = info[4]
 
     def best_dt(row):
-        # Prefer market-level close_time (stored in _mkt_dt) as it's most accurate
-        mkt_dt = row.get("_mkt_dt")
-        if mkt_dt: return mkt_dt
-        for col in ["expected_expiration_time","strike_date","close_time","end_date","expiration_time"]:
-            d = safe_date(row.get(col))
-            if d: return d
+        # _mkt_dt is the market close_time date — most accurate for game events
+        d = row.get("_mkt_dt")
+        if d: return d
+        # Fallback to open_dt date
+        odt = row.get("_open_dt")
+        if odt: return odt.date() if hasattr(odt, 'date') else odt
         return None
 
     df["_sort_dt"] = df.apply(best_dt, axis=1)
-    df["_display_dt"] = df["_sort_dt"].apply(fmt_date)
+    # For display, prefer the full datetime (close_time) so we can show time
+    def get_display_dt(row):
+        odt = row.get("_open_dt")
+        if odt: return fmt_date(odt)
+        d = row.get("_mkt_dt")
+        return fmt_date(d) if d else "Open"
+    df["_display_dt"] = df.apply(get_display_dt, axis=1)
 
     # "Begins in" — use open_time or start_date from event or first market
-    def get_open_time(row):
-        # Try event-level open_time first
-        for col in ["open_time","start_date","opened_date"]:
-            v = row.get(col)
-            if v and str(v).strip() not in ("", "None", "nan"):
-                try:
-                    ts = pd.to_datetime(v, utc=True)
-                    if not pd.isna(ts):
-                        return ts.to_pydatetime().astimezone(UTC)
-                except: pass
-        # Try first market open_time
-        mkts = row.get("markets") or []
-        for mk in mkts:
-            for col in ["open_time","close_time"]:
-                v = mk.get(col)
-                if v and str(v).strip() not in ("", "None", "nan"):
-                    try:
-                        ts = pd.to_datetime(v, utc=True)
-                        if not pd.isna(ts):
-                            return ts.to_pydatetime().astimezone(UTC)
-                    except: pass
-        return None
-
     def fmt_begins(row):
         from datetime import datetime
         now = datetime.now(UTC)
-        # Use pre-parsed open_dt from markets first
-        ot = row.get("_open_dt") or get_open_time(row)
+        ot = row.get("_open_dt")
         if ot is None: return ""
         diff = ot - now
         total_seconds = int(diff.total_seconds())
