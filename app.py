@@ -70,13 +70,13 @@ def get_client():
 client = get_client()
 
 # ── Fetch ALL events with rate-limit-safe pagination ──────────────────────────
-@st.cache_data(ttl=600)  # cache for 10 min so we don't re-paginate constantly
+@st.cache_data(ttl=600)
 def fetch_all():
     all_events = []
     cursor = None
     page = 0
     MAX_PAGES = 30
-    DELAY = 0.4  # 400ms between requests — stays well under rate limit
+    DELAY = 0.4
 
     progress = st.progress(0, text="Fetching page 1…")
 
@@ -96,13 +96,11 @@ def fetch_all():
             all_events.extend(events)
             page += 1
 
-            # Update progress
             progress.progress(
                 min(page / MAX_PAGES, 1.0),
                 text=f"Fetched {len(all_events)} events across {page} pages…"
             )
 
-            # Get next cursor
             cursor = (
                 data.get("cursor") or
                 data.get("next_cursor") or
@@ -110,15 +108,14 @@ def fetch_all():
             )
 
             if not cursor:
-                break  # last page
+                break
 
-            time.sleep(DELAY)  # respect rate limit
+            time.sleep(DELAY)
 
         except Exception as e:
             err = str(e)
             if "429" in err or "too_many_requests" in err.lower():
-                # Back off and retry once
-                progress.progress(page / MAX_PAGES, text=f"Rate limited — waiting 3s then retrying…")
+                progress.progress(page / MAX_PAGES, text="Rate limited — waiting 3s…")
                 time.sleep(3)
                 continue
             else:
@@ -144,7 +141,11 @@ def fetch_all():
     if "_parsed_date" not in df.columns:
         df["_parsed_date"] = pd.NaT
 
-    # Normalize category
+    # Local date column for easy filtering
+    df["_local_date"] = df["_parsed_date"].apply(
+        lambda d: d.tz_convert("US/Eastern").date() if pd.notna(d) else None
+    )
+
     if "category" not in df.columns:
         df["category"] = "Other"
     df["category"] = df["category"].fillna("Other").str.strip()
@@ -154,11 +155,43 @@ def fetch_all():
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📡 Kalshi Terminal")
-    search = st.text_input("Search", placeholder="soccer, tennis, team…")
+
+    search = st.text_input("🔍 Search", placeholder="soccer, tennis, team…")
+
+    st.markdown("---")
+    st.markdown("**📅 Date Filter**")
+
+    today = date.today()
+
+    date_mode = st.radio(
+        "Show markets",
+        ["All dates", "Today", "Tomorrow", "This week", "Custom range"],
+        index=0,
+    )
+
+    custom_start = None
+    custom_end   = None
+
+    if date_mode == "Today":
+        custom_start = today
+        custom_end   = today
+    elif date_mode == "Tomorrow":
+        custom_start = today + timedelta(days=1)
+        custom_end   = today + timedelta(days=1)
+    elif date_mode == "This week":
+        custom_start = today
+        custom_end   = today + timedelta(days=6)
+    elif date_mode == "Custom range":
+        custom_start = st.date_input("From", value=today)
+        custom_end   = st.date_input("To",   value=today + timedelta(days=7))
+
+    include_no_date = st.checkbox("Include markets with no date", value=True)
+
+    st.markdown("---")
     if st.button("🔄 Refresh data"):
         fetch_all.clear()
         st.rerun()
-    st.caption("Data cached for 10 min to avoid rate limits.")
+    st.caption("Cached 10 min to avoid rate limits.")
 
 # ── Load ───────────────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
@@ -170,8 +203,18 @@ if df.empty:
     st.markdown('<div class="empty-state">No data returned. Check your API credentials.</div>', unsafe_allow_html=True)
     st.stop()
 
-# ── Search ─────────────────────────────────────────────────────────────────────
+# ── Apply filters ──────────────────────────────────────────────────────────────
 filtered = df.copy()
+
+# Date filter
+if date_mode != "All dates":
+    def date_ok(d):
+        if d is None:
+            return include_no_date
+        return custom_start <= d <= custom_end
+    filtered = filtered[filtered["_local_date"].apply(date_ok)]
+
+# Search filter
 if search:
     mask = (
         filtered.get("title", pd.Series(dtype=str)).str.contains(search, case=False, na=False) |
@@ -233,7 +276,7 @@ def get_pill_class(category):
 
 def render_cards(data):
     if data.empty:
-        st.markdown('<div class="empty-state">No markets here.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty-state">No markets match your filters.</div>', unsafe_allow_html=True)
         return
 
     cards_html = '<div class="card-grid">'
@@ -247,11 +290,8 @@ def render_cards(data):
             pill_cls  = get_pill_class(category)
             cat_label = category[:14]
 
-            d = row.get("_parsed_date")
-            try:
-                display_date = pd.Timestamp(d).tz_convert("US/Eastern").strftime("%b %d") if pd.notna(d) else "Open"
-            except Exception:
-                display_date = "Open"
+            d = row.get("_local_date")
+            display_date = d.strftime("%b %d") if d else "Open"
 
             cards_html += f"""
             <div class="market-card">
