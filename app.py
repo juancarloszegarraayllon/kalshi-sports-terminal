@@ -105,36 +105,19 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
 /* Sports nav - strip ALL button chrome everywhere EXCEPT tab buttons */
+/* Make nav buttons invisible - text shown via markdown above */
 button:not([role="tab"]) {
-    background:transparent!important;
-    background-color:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    outline:none!important;
-    text-align:left!important;
-    justify-content:flex-start!important;
-    padding:3px 0!important;
-    margin:0!important;
-    color:#ffffff!important;
-    font-family:Helvetica,Arial,sans-serif!important;
-    font-size:13px!important;
-    font-weight:400!important;
-    width:100%!important;
-    border-radius:0!important;
-    min-height:28px!important;
-}
-button:not([role="tab"]):hover {
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    color:#aaaaaa!important;
-}
-button:not([role="tab"]):focus,
-button:not([role="tab"]):active {
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    outline:none!important;
+    opacity: 0!important;
+    height: 4px!important;
+    min-height: 0!important;
+    padding: 0!important;
+    margin: -8px 0 4px 0!important;
+    border: none!important;
+    background: transparent!important;
+    box-shadow: none!important;
+    cursor: pointer!important;
+    display: block!important;
+    width: 100%!important;
 }
 
 /* ── Streamlit overrides ── */
@@ -1179,8 +1162,6 @@ for i, tab in enumerate(top_tabs):
                 selected_subcat    = st.session_state[subcat_key]
                 selected_subsubcat = st.session_state[subsubcat_key]
 
-                # Build entire nav as pure HTML — zero Streamlit buttons
-                nav = "<div style='font-family:Helvetica,Arial,sans-serif;padding:4px 0;'>"
                 for sc in subcats:
                     clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
                     is_active = selected_subcat == sc
@@ -1199,54 +1180,37 @@ for i, tab in enumerate(top_tabs):
                     subsubcats = get_subsubcats(cat, sc, filtered)
                     has_children = bool(subsubcats)
                     arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
-                    color = "#00ff00" if is_active else "#ffffff"
-                    weight = "700" if is_active else "400"
+                    color  = "#00ff00" if is_active else "#ffffff"
+                    weight = "bold" if is_active else "normal"
 
-                    # Encode params for URL
-                    import urllib.parse
-                    params = urllib.parse.urlencode({
-                        "qcat": cat, "qsc": sc,
-                        "qexp": "1" if not is_expanded else "0"
-                    })
-                    nav += (f"<div style='padding:5px 0;'>"
-                            f"<a href='?{params}' style='color:{color};font-weight:{weight};"
-                            f"font-size:13px;text-decoration:none;'>"
-                            f"{clean} ({cnt}){arrow}</a></div>")
+                    # Text via markdown (no button styling issues)
+                    st.markdown(
+                        f"<div style='color:{color};font-weight:{weight};font-size:13px;"
+                        f"margin:2px 0;padding:0;font-family:Helvetica,Arial,sans-serif;"
+                        f"cursor:pointer;'>{clean} ({cnt}){arrow}</div>",
+                        unsafe_allow_html=True
+                    )
+                    # Invisible button for click detection
+                    if st.button("​", key=f"sc_{cat}_{sc}", use_container_width=True):
+                        if has_children:
+                            st.session_state[expand_key] = not is_expanded
+                        st.session_state[subcat_key] = sc
+                        st.session_state[subsubcat_key] = "All"
 
                     if is_expanded and has_children:
                         for ssc in subsubcats:
                             is_ssc = selected_subsubcat == ssc
                             sc2 = "#00ff00" if is_ssc else "#888888"
-                            fw2 = "600" if is_ssc else "400"
                             pre = "▸ " if is_ssc else ""
-                            p2 = urllib.parse.urlencode({
-                                "qcat": cat, "qsc": sc,
-                                "qssc": ssc, "qexp": "1"
-                            })
-                            nav += (f"<div style='padding:3px 0 3px 14px;'>"
-                                    f"<a href='?{p2}' style='color:{sc2};font-weight:{fw2};"
-                                    f"font-size:12px;text-decoration:none;'>"
-                                    f"{pre}{ssc}</a></div>")
-                nav += "</div>"
-                st.markdown(nav, unsafe_allow_html=True)
-
-                # Handle incoming query params
-                qp = st.query_params
-                if "qsc" in qp and qp.get("qcat","") == cat:
-                    new_sc   = qp.get("qsc", subcats[0])
-                    new_ssc  = qp.get("qssc", "All")
-                    new_exp  = qp.get("qexp", "0") == "1"
-                    ek       = f"expand_{cat}_{new_sc}"
-                    changed  = (new_sc != selected_subcat or new_ssc != selected_subsubcat
-                                or st.session_state.get(ek, False) != new_exp)
-                    if changed:
-                        st.session_state[subcat_key]    = new_sc
-                        st.session_state[subsubcat_key] = new_ssc
-                        st.session_state[ek]            = new_exp
-                        st.query_params.clear()
-                        st.rerun()
-
-
+                            st.markdown(
+                                f"<div style='color:{sc2};font-size:12px;margin:1px 0;"
+                                f"padding-left:14px;font-family:Helvetica,Arial,sans-serif;'>"
+                                f"{pre}{ssc}</div>",
+                                unsafe_allow_html=True
+                            )
+                            if st.button("​", key=f"ssc_{cat}_{sc}_{ssc}", use_container_width=True):
+                                st.session_state[subcat_key] = sc
+                                st.session_state[subsubcat_key] = ssc
             with _right:
                 selected_subcat  = st.session_state.get(subcat_key, subcats[0])
                 selected_subsubcat = st.session_state.get(subsubcat_key, "All")
