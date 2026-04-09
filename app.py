@@ -58,43 +58,21 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 hr{border-color:#1c1c1c!important;}
 /* Nav panel - plain text buttons */
 .nav-panel{padding:4px 0;}
-/* ALL buttons in the app look like plain text — no rectangles */
-.stButton > button{
-    background:transparent!important;
+/* Hide nav trigger buttons — keep only the HTML text visible */
+.stButton button{
+    opacity:0!important;
+    height:1px!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:-6px 0 0 0!important;
     border:none!important;
+    background:transparent!important;
     box-shadow:none!important;
-    text-align:left!important;
-    justify-content:flex-start!important;
-    align-items:center!important;
-    padding:3px 0px!important;
-    margin:0!important;
-    font-family:Helvetica,sans-serif!important;
-    color:#ffffff!important;
+    display:block!important;
     width:100%!important;
-    border-radius:0!important;
-    font-size:13px!important;
-    font-weight:400!important;
+    cursor:pointer!important;
 }
-.stButton > button:hover{
-    background:transparent!important;
-    color:#aaaaaa!important;
-    border:none!important;
-    box-shadow:none!important;
-}
-.stButton > button:focus, .stButton > button:active{
-    box-shadow:none!important;
-    outline:none!important;
-    border:none!important;
-    background:transparent!important;
-}
-/* Exception: top filter buttons (Refresh) keep some style */
-button[data-testid="baseButton-secondary"]{
-    background:#0a0a0a!important;
-    border:1px solid #333!important;
-    border-radius:6px!important;
-    color:#ffffff!important;
-    padding:6px 16px!important;
-}
+.stButton button:focus{outline:none!important;box-shadow:none!important;}
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
@@ -1127,6 +1105,7 @@ for i, tab in enumerate(top_tabs):
             with _left:
                 subcat_key    = f"subcat_{cat}"
                 subsubcat_key = f"subsubcat_{cat}"
+                expand_key_prefix = f"expand_{cat}"
                 if subcat_key not in st.session_state:
                     st.session_state[subcat_key] = subcats[0]
                 if subsubcat_key not in st.session_state:
@@ -1135,12 +1114,14 @@ for i, tab in enumerate(top_tabs):
                 selected_subcat    = st.session_state[subcat_key]
                 selected_subsubcat = st.session_state[subsubcat_key]
 
-                st.markdown("<div class='nav-panel'>", unsafe_allow_html=True)
                 for sc in subcats:
                     clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
                     is_active = selected_subcat == sc
+                    expand_key = f"expand_{cat}_{sc}"
+                    if expand_key not in st.session_state:
+                        st.session_state[expand_key] = False
+                    is_expanded = st.session_state[expand_key]
 
-                    # Count
                     if cat == "Sports" and sc != "All sports":
                         cnt = int((filtered["_sport"] == sc).sum())
                     elif cat == "Sports" and sc == "All sports":
@@ -1148,38 +1129,42 @@ for i, tab in enumerate(top_tabs):
                     else:
                         cnt = len(filtered)
 
-                    # Toggle expand/collapse per item
-                    expand_key = f"expand_{cat}_{sc}"
-                    if expand_key not in st.session_state:
-                        st.session_state[expand_key] = False
-                    is_expanded = st.session_state[expand_key]
-
                     subsubcats = get_subsubcats(cat, sc, filtered)
                     has_children = bool(subsubcats)
                     arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
+                    weight = "bold" if is_active else "normal"
 
-                    # Main item button — always white, bold
-                    if st.button(f"{clean} ({cnt}){arrow}", key=f"sc_{cat}_{sc}",
-                                 use_container_width=True):
-                        # Toggle expand/collapse
+                    # Render label as plain HTML text
+                    st.markdown(
+                        f"<p style='margin:4px 0;padding:0;font-family:Helvetica,sans-serif;"
+                        f"font-size:13px;font-weight:{weight};color:#ffffff;cursor:pointer;'>"
+                        f"{clean} <span style='color:#555;font-size:11px;'>({cnt})</span>{arrow}</p>",
+                        unsafe_allow_html=True
+                    )
+                    # Hidden button overlaid - use zero-size trick
+                    if st.button(f"__{sc}", key=f"sc_{cat}_{sc}"):
                         if has_children:
                             st.session_state[expand_key] = not is_expanded
-                        # Also select this as active
                         st.session_state[subcat_key] = sc
                         st.session_state[subsubcat_key] = "All"
                         st.rerun()
 
-                    # Show children only if expanded
                     if is_expanded and has_children:
                         for ssc in subsubcats:
                             is_ssc = selected_subsubcat == ssc
-                            ssc_label = f"  ▸ {ssc}" if is_ssc else f"    {ssc}"
-                            if st.button(ssc_label, key=f"ssc_{cat}_{sc}_{ssc}",
-                                         use_container_width=True):
+                            ssc_weight = "bold" if is_ssc else "normal"
+                            ssc_color  = "#ffffff" if is_ssc else "#888888"
+                            prefix = "▸ " if is_ssc else ""
+                            st.markdown(
+                                f"<p style='margin:2px 0 2px 14px;padding:0;font-family:Helvetica,sans-serif;"
+                                f"font-size:12px;font-weight:{ssc_weight};color:{ssc_color};'>"
+                                f"{prefix}{ssc}</p>",
+                                unsafe_allow_html=True
+                            )
+                            if st.button(f"__{sc}__{ssc}", key=f"ssc_{cat}_{sc}_{ssc}"):
                                 st.session_state[subcat_key] = sc
                                 st.session_state[subsubcat_key] = ssc
                                 st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
 
             with _right:
                 selected_subcat  = st.session_state.get(subcat_key, subcats[0])
