@@ -4,7 +4,7 @@ import tempfile
 import time
 from datetime import date, timedelta, timezone
 
-st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="📡")
+st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="")
 
 st.markdown("""
 <style>
@@ -15,7 +15,7 @@ section[data-testid="stSidebar"]{display:none!important;}
 .stApp{background:#000000!important;}
 
 /* ── Title ── */
-h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#00ff00!important;font-size:2rem!important;}
+h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#00ff00!important;font-size:120px!important;line-height:1.1!important;}
 
 /* ── Metrics ── */
 .metric-strip{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
@@ -28,19 +28,10 @@ h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;co
 .market-card{background:#0a0a0a;border:1px solid #1c1c1c;border-radius:10px;padding:16px 18px;transition:border-color .15s,transform .15s;}
 .market-card:hover{border-color:#00ff00;transform:translateY(-2px);}
 .card-top{display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;}
-.cat-pill{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:4px;border:1px solid;white-space:nowrap;}
-.pill-sports{background:#1a2e1a;color:#4ade80;border-color:#166534;}
-.pill-elections{background:#2e1a1e;color:#f472b6;border-color:#9d174d;}
-.pill-politics{background:#1e1a2e;color:#818cf8;border-color:#3730a3;}
-.pill-economics{background:#2e2a1a;color:#fbbf24;border-color:#92400e;}
-.pill-financials{background:#2e2a1a;color:#fb923c;border-color:#9a3412;}
-.pill-crypto{background:#1e2a2e;color:#67e8f9;border-color:#0e7490;}
-.pill-companies{background:#2e1e2e;color:#d8b4fe;border-color:#7e22ce;}
-.pill-entertainment{background:#2e1e1a;color:#fdba74;border-color:#c2410c;}
-.pill-climate{background:#1a2e2e;color:#22d3ee;border-color:#164e63;}
-.pill-science{background:#1e2e1a;color:#86efac;border-color:#14532d;}
-.pill-health{background:#2e1a2e;color:#e879f9;border-color:#701a75;}
-.pill-default{background:#1e1e32;color:#94a3b8;border-color:#2d2d55;}
+.cat-pill{font-size:20px;font-weight:700;letter-spacing:.02em;text-transform:capitalize;padding:0;border:none;background:transparent;white-space:nowrap;color:#ffffff!important;}
+.pill-sports,.pill-elections,.pill-politics,.pill-economics,.pill-financials,
+.pill-crypto,.pill-companies,.pill-entertainment,.pill-climate,.pill-science,
+.pill-health,.pill-default{background:transparent;border:none;color:#ffffff!important;}
 .card-timing{display:flex;flex-direction:row;align-items:center;gap:4px;margin-bottom:8px;}
 .date-text{font-size:11px;color:#ffffff;opacity:.6;}
 .begins-text{font-size:11px;color:#00ff00;font-weight:600;}
@@ -65,6 +56,49 @@ h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;co
 .odds-price-no{font-size:15px;font-weight:700;color:#ff2222;}
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
+/* Nav panel - plain text buttons */
+.nav-panel{padding:4px 0;}
+/* Nav buttons - plain text style, no rectangles */
+/* Strip ALL button chrome globally */
+button[kind="secondary"], button[kind="primary"],
+div[data-testid="stButton"] button,
+.stButton > div > button,
+.stButton button {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    color: #ffffff !important;
+    font-family: Helvetica, Arial, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    padding: 3px 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    border-radius: 0 !important;
+    min-height: 28px !important;
+}
+div[data-testid="stButton"] button:hover,
+.stButton button:hover {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #888888 !important;
+}
+div[data-testid="stButton"] button:focus,
+div[data-testid="stButton"] button:active,
+.stButton button:focus,
+.stButton button:active {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
@@ -77,16 +111,24 @@ hr{border-color:#1c1c1c!important;}
 .stSelectbox select,[data-baseweb="select"]{background:#0a0a0a!important;color:#ffffff!important;}
 .stCheckbox label{color:#ffffff!important;}
 .stRadio label{color:#ffffff!important;}
-button[kind="secondary"],button[kind="primary"]{background:#001500!important;color:#00ff00!important;border:1px solid #00ff00!important;font-family:Helvetica!important;}
-/* Green radio dots and checkboxes */
-input[type="radio"]:checked{accent-color:#00ff00!important;}
-input[type="radio"]{accent-color:#00ff00!important;}
-input[type="checkbox"]{accent-color:#00ff00!important;}
-[data-baseweb="radio"] [role="radio"][aria-checked="true"]{background:#00ff00!important;border-color:#00ff00!important;}
-[data-baseweb="radio"] [role="radio"]{border-color:#00ff00!important;}
-[data-testid="stMarkdownContainer"] p{color:#ffffff!important;}
-div[data-testid="stRadio"] > div > label > div:first-child > div{border-color:#00ff00!important;}
-div[data-testid="stRadio"] > div > label > div:first-child > div[aria-checked="true"]{background-color:#00ff00!important;}
+/* Date filter buttons */
+button[kind="primary"]{background:#00ff00!important;color:#000000!important;border:1px solid #00ff00!important;font-family:Helvetica,sans-serif!important;font-weight:700!important;}
+button[kind="secondary"]{background:#0a0a0a!important;color:#00ff00!important;border:1px solid #333333!important;font-family:Helvetica,sans-serif!important;}
+button[kind="secondary"]:hover{border-color:#00ff00!important;}
+/* Toggle */
+[data-testid="stToggle"] label{color:#ffffff!important;}
+[data-testid="stToggle"] div[data-checked="true"]{background:#00ff00!important;}
+[data-testid="stToggle"] div{border-color:#00ff00!important;}
+/* Green radio dots and checkboxes - aggressive override */
+input[type="radio"],input[type="checkbox"]{accent-color:#00ff00!important;}
+[data-baseweb="radio"] div[role="radio"]{border-color:#00ff00!important;border-width:2px!important;}
+[data-baseweb="radio"] div[role="radio"][aria-checked="true"]{background-color:#00ff00!important;border-color:#00ff00!important;}
+[data-baseweb="radio"] div[role="radio"][aria-checked="true"]::after{background-color:#000000!important;}
+[data-testid="stRadio"] label span{color:#ffffff!important;}
+[data-testid="stCheckbox"] label span{color:#ffffff!important;}
+[data-testid="stCheckbox"] input[type="checkbox"]{accent-color:#00ff00!important;}
+/* Override Streamlit's internal radio fill color */
+:root{--primary:#00ff00!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -718,9 +760,16 @@ def paginate(with_markets=False, category=None, max_pages=30):
 def fetch_all():
     prog = st.progress(0, text="Loading markets…")
 
-    all_ev = paginate(with_markets=True, max_pages=30)
-    prog.progress(0.80, text=f"{len(all_ev)} events loaded…")
-    combined = all_ev
+    # Fast first pass - no nested markets (quick metadata load)
+    all_ev = paginate(with_markets=False, max_pages=30)
+    prog.progress(0.5, text=f"{len(all_ev)} events. Loading odds…")
+    # Second pass - sports only with markets (for odds/outcomes)
+    sport_ev = paginate(with_markets=True, category="Sports", max_pages=30)
+    ev_map = {e["event_ticker"]: e for e in all_ev}
+    for e in sport_ev:
+        t = e.get("event_ticker","")
+        if t: ev_map[t] = e
+    combined = list(ev_map.values())
     if not combined:
         prog.empty(); return pd.DataFrame()
 
@@ -848,7 +897,7 @@ def fetch_all():
 
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
-st.markdown("<h1 style='text-align:center;font-size:3rem;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1.5rem;'>Kalshi Markets Terminal</h1>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
 
 # ── Row 1: Search | Sort | Refresh ───────────────────────────────────────────
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
@@ -864,24 +913,38 @@ with _c3:
 
 # ── Row 2: Date filters ───────────────────────────────────────────────────────
 today = date.today()
-_d1, _d2, _d3 = st.columns([2, 2, 1])
-with _d1:
-    date_mode = st.radio("", ["All dates","Today","This week","Custom"],
-                         index=0, horizontal=True, label_visibility="collapsed")
-with _d2:
-    d_start = d_end = None
-    if date_mode == "Today":
-        d_start = d_end = today
-    elif date_mode == "This week":
-        d_start, d_end = today, today + timedelta(days=6)
-    elif date_mode == "Custom":
-        _dc1, _dc2 = st.columns(2)
-        with _dc1:
-            d_start = st.date_input("From", value=today, label_visibility="collapsed")
-        with _dc2:
-            d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
-with _d3:
-    include_no_date = st.checkbox("Include undated", value=True)
+d_start = d_end = None
+_df1, _df2, _df3, _df4, _df5 = st.columns([1,1,1,1,2])
+with _df1:
+    if st.button("All dates", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="All dates" else "secondary"):
+        st.session_state["date_mode"] = "All dates"
+with _df2:
+    if st.button("Today", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="Today" else "secondary"):
+        st.session_state["date_mode"] = "Today"
+with _df3:
+    if st.button("This week", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="This week" else "secondary"):
+        st.session_state["date_mode"] = "This week"
+with _df4:
+    if st.button("Custom", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="Custom" else "secondary"):
+        st.session_state["date_mode"] = "Custom"
+with _df5:
+    include_no_date = st.toggle("Include undated", value=True)
+
+date_mode = st.session_state.get("date_mode", "All dates")
+if date_mode == "Today":
+    d_start = d_end = today
+elif date_mode == "This week":
+    d_start, d_end = today, today + timedelta(days=6)
+elif date_mode == "Custom":
+    _dc1, _dc2, _ = st.columns([1, 1, 2])
+    with _dc1:
+        d_start = st.date_input("From", value=today, label_visibility="collapsed")
+    with _dc2:
+        d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
 with st.spinner("Loading…"):
     df = fetch_all()
 
@@ -1005,84 +1068,223 @@ for sport, tabs in SPORT_SUBTABS.items():
         for s in series_list:
             SERIES_TO_SUBTAB[sport][s] = tab_name
 
-def render_subtabs(sport_df, sport):
-    tabs_def = SPORT_SUBTABS.get(sport)
-    if not tabs_def:
-        render_cards(sport_df); return
-
-    # Map each row to its subtab using series ticker
-    sport_df = sport_df.copy()
-    lookup = SERIES_TO_SUBTAB.get(sport, {})
-    sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s, "Other"))
-
-    # Only show tabs that have data
-    present = []
-    for tab_name, _ in tabs_def:
-        if (sport_df["_subtab"] == tab_name).any():
-            present.append(tab_name)
-    # Add Other if there are uncategorized items
-    other_df = sport_df[~sport_df["_subtab"].isin([t for t,_ in tabs_def])]
-    has_other = not other_df.empty
-
-    if not present and not has_other:
-        render_cards(sport_df); return
-
-    tab_labels = ["All"] + present + (["Other"] if has_other else [])
-    tabs = st.tabs(tab_labels)
-    with tabs[0]: render_cards(sport_df)
-    for i, tab_name in enumerate(present):
-        with tabs[i+1]:
-            render_cards(sport_df[sport_df["_subtab"]==tab_name])
-    if has_other:
-        with tabs[-1]: render_cards(other_df)
-
-def render_soccer(sdf):
-    comps = sorted([c for c in sdf["_soccer_comp"].unique() if c and c != "Other"])
-    has_other = (sdf["_soccer_comp"] == "Other").any() or (sdf["_soccer_comp"] == "").any()
-    if not comps:
-        render_cards(sdf); return
-    tabs = st.tabs(["All"] + comps + (["Other"] if has_other else []))
-    with tabs[0]: render_cards(sdf)
-    for i, comp in enumerate(comps):
-        with tabs[i+1]: render_cards(sdf[sdf["_soccer_comp"]==comp])
-    if has_other:
-        with tabs[-1]: render_cards(sdf[sdf["_soccer_comp"].isin(["Other",""])])
-
-def render_sports(sdf):
-    sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
-    if not sports_present:
-        render_cards(sdf); return
-    labels = ["🏟️ All"] + [f"{SPORT_ICONS.get(s,'🏆')} {s}" for s in sports_present]
-    tabs = st.tabs(labels)
-    with tabs[0]: render_cards(sdf)
-    for i, sport in enumerate(sports_present):
-        with tabs[i+1]:
-            sport_df = sdf[sdf["_sport"]==sport].copy()
-            if sport == "Soccer":
-                render_soccer(sport_df)
-            else:
-                render_subtabs(sport_df, sport)
-
-def render_cat_tabs(cat_df, cat):
+def get_subcats(cat, data):
+    """Return list of subcategory names for a given category."""
+    if cat == "All":
+        return []
+    if cat == "Sports":
+        return ["All sports"] + [s for s in _SPORT_SERIES.keys() if s in data["_sport"].values]
     tags = CAT_TAGS.get(cat, [])
-    if not tags:
-        render_cards(cat_df); return
-    ttabs = st.tabs(["All"] + tags)
-    with ttabs[0]: render_cards(cat_df)
-    for i, tag in enumerate(tags):
-        with ttabs[i+1]:
-            render_cards(cat_df[cat_df["title"].str.contains(tag, case=False, na=False)])
+    return ["All"] + tags if tags else []
 
-# ── Main tabs ─────────────────────────────────────────────────────────────────
+def get_subsubcats(cat, subcat, data):
+    """Return sub-sub-categories (soccer competitions, sport sub-tabs)."""
+    if cat != "Sports" or subcat in ("All sports", "All", ""):
+        return []
+    sport = subcat
+    if sport == "Soccer":
+        comps = sorted([c for c in data["_soccer_comp"].unique() if c and c not in ("Other","")])
+        return ["All"] + comps + (["Other"] if (data["_soccer_comp"].isin(["Other",""])).any() else [])
+    tabs_def = SPORT_SUBTABS.get(sport, [])
+    if not tabs_def: return []
+    lookup = SERIES_TO_SUBTAB.get(sport, {})
+    data2 = data[data["_sport"]==sport].copy()
+    data2["_subtab"] = data2["_series"].apply(lambda s: lookup.get(s, "Other"))
+    present = [t for t,_ in tabs_def if (data2["_subtab"]==t).any()]
+    return ["All"] + present if present else []
+
+def filter_data(cat, subcat, subsubcat, data):
+    """Filter dataframe based on selected category/subcategory."""
+    if cat != "All":
+        if cat == "Sports":
+            data = data[data["_is_sport"]]
+            if subcat and subcat != "All sports":
+                data = data[data["_sport"] == subcat]
+                if subsubcat and subsubcat != "All":
+                    if subcat == "Soccer":
+                        if subsubcat == "Other":
+                            data = data[data["_soccer_comp"].isin(["Other",""])]
+                        else:
+                            data = data[data["_soccer_comp"] == subsubcat]
+                    else:
+                        lookup = SERIES_TO_SUBTAB.get(subcat, {})
+                        data = data.copy()
+                        data["_subtab"] = data["_series"].apply(lambda s: lookup.get(s, "Other"))
+                        data = data[data["_subtab"] == subsubcat]
+        else:
+            data = data[data["category"] == cat]
+            if subcat and subcat != "All":
+                data = data[data["title"].str.contains(subcat, case=False, na=False)]
+    return data
+
+# ── Main layout: top tabs, sports nav in sidebar ─────────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
+
 top_tabs = st.tabs(present_cats)
+
+# Track which tab was clicked - don't auto-render All on load
+if "active_cat" not in st.session_state:
+    st.session_state["active_cat"] = None
+
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
-        if cat == "All":      render_cards(filtered)
-        elif cat == "Sports": render_sports(filtered[filtered["_is_sport"]].copy())
-        else:                 render_cat_tabs(filtered[filtered["category"]==cat].copy(), cat)
+        if st.session_state["active_cat"] != cat:
+            st.session_state["active_cat"] = cat
 
+        if cat == "All":
+            if len(filtered) > 0:
+                render_cards(filtered)
+            else:
+                st.markdown("<div class='empty-state'>No markets found.</div>", unsafe_allow_html=True)
+
+        elif cat == "Sports":
+            sdf = filtered[filtered["_is_sport"]].copy()
+            sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
+
+            if "nav_sport" not in st.session_state: st.session_state["nav_sport"] = "All"
+            if "nav_comp"  not in st.session_state: st.session_state["nav_comp"]  = "All"
+            if "nav_exp"   not in st.session_state: st.session_state["nav_exp"]   = None
+
+            # LEFT nav column + RIGHT cards
+            nav_col, card_col = st.columns([1, 4])
+
+            with nav_col:
+                sel_sport = st.session_state.get("nav_sport", "All")
+                sel_comp  = st.session_state.get("nav_comp", "All")
+                expanded  = st.session_state.get("nav_exp", None)
+
+                html = "<div style='font-family:Helvetica,Arial,sans-serif;line-height:1.8;'>"
+                # All sports
+                c = "#00ff00" if sel_sport=="All" else "#ffffff"
+                w = "bold" if sel_sport=="All" else "normal"
+                html += f"<div><a href='?s=All&c=All' style='color:{c};font-weight:{w};text-decoration:none;font-size:13px;'>All sports ({len(sdf)})</a></div>"
+
+                for sport in sports_present:
+                    sport_df2 = sdf[sdf["_sport"]==sport].copy()
+                    cnt = len(sport_df2)
+                    is_sel = sel_sport == sport
+                    is_exp = expanded == sport
+                    c = "#00ff00" if is_sel else "#ffffff"
+                    w = "bold" if is_sel else "normal"
+
+                    if sport == "Soccer":
+                        children = ["All"] + sorted([x for x in sport_df2["_soccer_comp"].unique() if x and x not in ("Other","")])
+                    else:
+                        td = SPORT_SUBTABS.get(sport, [])
+                        if td:
+                            lk = SERIES_TO_SUBTAB.get(sport, {})
+                            sport_df2["_subtab"] = sport_df2["_series"].apply(lambda s: lk.get(s,"Other"))
+                            children = ["All"] + [t for t,_ in td if (sport_df2["_subtab"]==t).any()]
+                        else:
+                            children = []
+
+                    arrow = " ▾" if (is_exp and children) else (" ▸" if children else "")
+                    ne = "None" if is_exp else sport
+                    html += f"<div><a href='?s={sport}&c=All&e={ne}' style='color:{c};font-weight:{w};text-decoration:none;font-size:13px;'>{sport} ({cnt}){arrow}</a></div>"
+
+                    if is_exp and children:
+                        for child in children:
+                            cc = "#00ff00" if sel_comp==child else "#999999"
+                            cw = "bold" if sel_comp==child else "normal"
+                            prefix = "▸ " if sel_comp==child else ""
+                            html += f"<div><a href='?s={sport}&c={child}&e={sport}' style='color:{cc};font-weight:{cw};text-decoration:none;font-size:12px;padding-left:14px;display:block;'>{prefix}{child}</a></div>"
+
+                html += "</div>"
+                st.markdown(html, unsafe_allow_html=True)
+
+                # Handle query params
+                qp = st.query_params
+                qs = qp.get("s", None)
+                qc = qp.get("c", "All")
+                qe = qp.get("e", "None")
+                if qs is not None:
+                    changed = (qs != st.session_state.get("nav_sport","All") or 
+                               qc != st.session_state.get("nav_comp","All"))
+                    st.session_state["nav_sport"] = qs
+                    st.session_state["nav_comp"]  = qc
+                    st.session_state["nav_exp"]   = None if qe=="None" else qe
+                    if changed:
+                        st.query_params.clear()
+                        st.rerun()
+
+            with card_col:
+                s = st.session_state["nav_sport"]
+                c = st.session_state["nav_comp"]
+                if s == "All":
+                    view = sdf
+                else:
+                    view = sdf[sdf["_sport"]==s].copy()
+                    if c and c != "All":
+                        if s == "Soccer":
+                            view = view[view["_soccer_comp"]==c]
+                        else:
+                            lookup = SERIES_TO_SUBTAB.get(s, {})
+                            view["_subtab"] = view["_series"].apply(lambda x: lookup.get(x,"Other"))
+                            view = view[view["_subtab"]==c]
+                render_cards(view)
+
+        else:
+            render_cards(filtered[filtered["category"]==cat].copy())
+
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>ODDSIQ · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+
+# JS to fix button styles at runtime
+import streamlit.components.v1 as _cv1
+_cv1.html("""
+<script>
+(function() {
+  var doc = window.parent ? window.parent.document : document;
+
+  function styleBtn(btn) {
+    btn.style.setProperty('background', 'transparent', 'important');
+    btn.style.setProperty('background-color', 'transparent', 'important');
+    btn.style.setProperty('border', 'none', 'important');
+    btn.style.setProperty('box-shadow', 'none', 'important');
+    btn.style.setProperty('outline', 'none', 'important');
+    btn.style.setProperty('color', '#ffffff', 'important');
+    btn.style.setProperty('font-family', 'Helvetica, Arial, sans-serif', 'important');
+    btn.style.setProperty('font-size', '13px', 'important');
+    btn.style.setProperty('text-align', 'left', 'important');
+    btn.style.setProperty('justify-content', 'flex-start', 'important');
+    btn.style.setProperty('align-items', 'center', 'important');
+    btn.style.setProperty('padding', '3px 0', 'important');
+    btn.style.setProperty('margin', '0', 'important');
+    btn.style.setProperty('width', '100%', 'important');
+    btn.style.setProperty('border-radius', '0', 'important');
+    btn.style.setProperty('min-height', '0', 'important');
+    btn.style.setProperty('display', 'flex', 'important');
+    // Fix parent wrapper too
+    var p = btn.parentElement;
+    while (p && p !== doc.body) {
+      var tn = (p.getAttribute('data-testid') || '');
+      if (tn === 'stButton' || tn === 'stBaseButton-secondary') {
+        p.style.setProperty('display', 'block', 'important');
+        p.style.setProperty('text-align', 'left', 'important');
+      }
+      p = p.parentElement;
+    }
+  }
+
+  function fixAll() {
+    doc.querySelectorAll('button').forEach(styleBtn);
+  }
+
+  // Run immediately and on every DOM change
+  fixAll();
+  var ob = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      m.addedNodes.forEach(function(n) {
+        if (n.querySelectorAll) n.querySelectorAll('button').forEach(styleBtn);
+        if (n.tagName === 'BUTTON') styleBtn(n);
+      });
+    });
+    fixAll();
+  });
+  ob.observe(doc.body, {childList: true, subtree: true});
+})();
+</script>
+""", height=0)
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
