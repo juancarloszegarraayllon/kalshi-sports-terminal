@@ -68,7 +68,14 @@ hr{border-color:#1c1c1c!important;}
 .stSelectbox select,[data-baseweb="select"]{background:#0a0a0a!important;color:#ffffff!important;}
 .stCheckbox label{color:#ffffff!important;}
 .stRadio label{color:#ffffff!important;}
-button[kind="secondary"],button[kind="primary"]{background:#001500!important;color:#00ff00!important;border:1px solid #00ff00!important;font-family:Helvetica!important;}
+/* Date filter buttons */
+button[kind="primary"]{background:#00ff00!important;color:#000000!important;border:1px solid #00ff00!important;font-family:Helvetica,sans-serif!important;font-weight:700!important;}
+button[kind="secondary"]{background:#0a0a0a!important;color:#00ff00!important;border:1px solid #333333!important;font-family:Helvetica,sans-serif!important;}
+button[kind="secondary"]:hover{border-color:#00ff00!important;}
+/* Toggle */
+[data-testid="stToggle"] label{color:#ffffff!important;}
+[data-testid="stToggle"] div[data-checked="true"]{background:#00ff00!important;}
+[data-testid="stToggle"] div{border-color:#00ff00!important;}
 /* Green radio dots and checkboxes - aggressive override */
 input[type="radio"],input[type="checkbox"]{accent-color:#00ff00!important;}
 [data-baseweb="radio"] div[role="radio"]{border-color:#00ff00!important;border-width:2px!important;}
@@ -857,13 +864,27 @@ with _c3:
 # ── Row 2: Date filters ───────────────────────────────────────────────────────
 today = date.today()
 d_start = d_end = None
-_d1, _d2 = st.columns([3, 1])
-with _d1:
-    date_mode = st.radio("", ["All dates","Today","This week","Custom"],
-                         index=0, horizontal=True, label_visibility="collapsed")
-with _d2:
-    include_no_date = st.checkbox("Include undated", value=True)
+_df1, _df2, _df3, _df4, _df5 = st.columns([1,1,1,1,2])
+with _df1:
+    if st.button("All dates", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="All dates" else "secondary"):
+        st.session_state["date_mode"] = "All dates"
+with _df2:
+    if st.button("Today", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="Today" else "secondary"):
+        st.session_state["date_mode"] = "Today"
+with _df3:
+    if st.button("This week", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="This week" else "secondary"):
+        st.session_state["date_mode"] = "This week"
+with _df4:
+    if st.button("Custom", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="Custom" else "secondary"):
+        st.session_state["date_mode"] = "Custom"
+with _df5:
+    include_no_date = st.toggle("Include undated", value=True)
 
+date_mode = st.session_state.get("date_mode", "All dates")
 if date_mode == "Today":
     d_start = d_end = today
 elif date_mode == "This week":
