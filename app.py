@@ -621,28 +621,27 @@ def get_game_datetime_from_sub_title(sub_title: str):
     return None, None
 
 def fmt_date(d):
-    """d can be a date or datetime. Always shows clean date - no fake times."""
-    from datetime import date as _d
+    from datetime import datetime, date as _date
     try:
-        if d is None: return "Open"
-        # Get just the date portion
-        if hasattr(d, 'date') and callable(d.date):
-            day = d.date()
-        elif isinstance(d, _d):
-            day = d
-        else:
-            return "Open"
-        from datetime import date as _today_cls
-        today = _today_cls.today()
-        if day == today:
-            return "Today"
-        # Format: "Apr 9" or "Apr 25"
-        return day.strftime("%b %-d")
+        if d is None: return ""
+        if hasattr(d, 'hour'):
+            try:
+                import pytz
+                eastern = pytz.timezone('US/Eastern')
+            except ImportError:
+                from zoneinfo import ZoneInfo
+                eastern = ZoneInfo('America/New_York')
+            if d.tzinfo:
+                d = d.astimezone(eastern)
+            tz_label = d.strftime('%Z') or "ET"
+            hour = d.hour % 12 or 12
+            ampm = "am" if d.hour < 12 else "pm"
+            return f"{d.strftime('%b')} {d.day}, {hour}:{d.strftime('%M')}{ampm} {tz_label}"
+        return d.strftime("%b %d")
     except:
-        try:
-            if hasattr(d, 'strftime'): return d.strftime("%b %d")
-        except: pass
-        return "Open"
+        try: return d.strftime("%b %d") if d else ""
+        except: return ""
+
 
 def fmt_pct(v):
     try:
@@ -689,9 +688,8 @@ def paginate(with_markets=False, category=None, max_pages=30):
 def fetch_all():
     prog = st.progress(0, text="Loading markets…")
 
-    # Single pass — ALL events WITH nested markets (odds + outcomes for everything)
     all_ev = paginate(with_markets=True, max_pages=30)
-    prog.progress(0.80, text=f"{len(all_ev)} events loaded. Building cards…")
+    prog.progress(0.80, text=f"{len(all_ev)} events loaded…")
     combined = all_ev
     if not combined:
         prog.empty(); return pd.DataFrame()
@@ -999,18 +997,17 @@ def render_cards(data):
                 kickoff_epoch = int(kickoff_dt_val.timestamp())
             else:
                 kickoff_epoch = 0
-            date_part = (" · " + dt) if (dt and dt != "Open") else ""
+            sep = (' <span class="date-text">' + dt + '</span>') if dt else ""
             html += (
-                f'<div class="market-card" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">'
-                f'<div class="card-top"><span class="cat-pill {pill}">{label}</span></div>'
-                f'<div class="card-timing">'
-                f'<span class="begins-text countdown" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">{begins}</span>'
-                f'<span class="date-text">{date_part}</span>'
-                f'</div>'
-                f'<span class="card-icon">{icon}</span>'
-                f'<div class="card-title">{title}</div>'
-                f'<div class="card-footer">{link_html}{odds_html}</div>'
-                f'</div>'
+                '<div class="market-card" data-kickoff="' + str(kickoff_epoch) + '" data-live="' + str(is_live_card).lower() + '">'
+                '<div class="card-top"><span class="cat-pill ' + pill + '">' + label + '</span></div>'
+                '<div class="card-timing">'
+                '<span class="begins-text countdown" data-kickoff="' + str(kickoff_epoch) + '" data-live="' + str(is_live_card).lower() + '">' + begins + '</span>' + sep +
+                '</div>'
+                '<span class="card-icon">' + icon + '</span>'
+                '<div class="card-title">' + title + '</div>'
+                '<div class="card-footer">' + link_html + odds_html + '</div>'
+                '</div>'
             )
         except: continue
     html += "</div>"
@@ -1104,74 +1101,6 @@ for i, tab in enumerate(top_tabs):
         else:                 render_cat_tabs(filtered[filtered["category"]==cat].copy(), cat)
 
 import streamlit.components.v1 as _cv1
-_cv1.html(
-    '<script>'
-    '(function(){'
-    'function fmt(s){'
-    'if(s<=0)return"\U0001F534 Live";'
-    'var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sc=s%60;'
-    'if(d>1)return"Begins in "+d+"d";'
-    'if(d===1)return"Begins in 1d "+h+"h";'
-    'if(h>0)return"Begins in "+h+"h "+m+"m "+(("0"+sc).slice(-2))+"s";'
-    'if(m>0)return"Begins in "+m+"m "+(("0"+sc).slice(-2))+"s";'
-    'return"Begins in "+sc+"s";}'
-    'function tick(){'
-    'var now=Math.floor(Date.now()/1000);'
-    'document.querySelectorAll(".countdown[data-kickoff]").forEach(function(el){'
-    'var k=parseInt(el.getAttribute("data-kickoff"),10);'
-    'var live=el.getAttribute("data-live")==="true";'
-    'if(!k&&!live)return;'
-    'if(live||k===-1||k-now<=0){el.textContent="\U0001F534 Live";}'
-    'else{el.textContent=fmt(k-now);}'
-    '});'
-    '}'
-    'tick();setInterval(tick,1000);'
-    'new MutationObserver(tick).observe(document.body,{childList:true,subtree:true});'
-    '})();'
-    '</script>',
-    height=0
-)
+_cv1.html("<script>(function(){var LIVE='🔴 Live';function p(n){return n<10?'0'+n:''+n;}function fmt(s){if(s<=0)return LIVE;var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sc=s%60;if(d>1)return'Begins in '+d+'d';if(d===1)return'Begins in 1d '+h+'h';if(h>0)return'Begins in '+h+'h '+m+'m '+p(sc)+'s';if(m>0)return'Begins in '+m+'m '+p(sc)+'s';return'Begins in '+sc+'s';}function tick(){var now=Math.floor(Date.now()/1000);var doc=window.parent?window.parent.document:document;doc.querySelectorAll('.countdown[data-kickoff]').forEach(function(el){var k=parseInt(el.getAttribute('data-kickoff')||'0',10);var live=el.getAttribute('data-live')==='true';if(live||k===-1){el.textContent=LIVE;el.style.color='#10b981';return;}if(!k)return;var diff=k-now;el.textContent=fmt(diff);el.style.color='#10b981';el.style.fontWeight='600';});}tick();setInterval(tick,1000);var ob=new MutationObserver(function(){tick();});var t=window.parent?window.parent.document.body:document.body;ob.observe(t,{childList:true,subtree:true});})();</script>", height=0)
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
-
-# ── Real-time JS countdown via components ────────────────────────────────────
-import streamlit.components.v1 as _components
-_LIVE_EMOJI = "🔴"  # red circle
-_countdown_html = (
-    "<script>"
-    "(function(){"
-    "function fmt(s){"
-    "if(s<=0)return'" + "🔴" + " Live';"
-    "var d=Math.floor(s/86400);"
-    "var h=Math.floor((s%86400)/3600);"
-    "var m=Math.floor((s%3600)/60);"
-    "var s2=s%60;"
-    "if(d>1)return'Begins in '+d+'d';"
-    "if(d===1)return'Begins in 1d '+h+'h';"
-    "if(h>0)return'Begins in '+h+'h '+m+'m '+s2+'s';"
-    "if(m>0)return'Begins in '+m+'m '+s2+'s';"
-    "return'Begins in '+s2+'s';"
-    "}"
-    "function tick(){"
-    "var now=Math.floor(Date.now()/1000);"
-    "var doc=window.parent.document;"
-    "var els=doc.querySelectorAll('.countdown[data-kickoff]');"
-    "els.forEach(function(el){"
-    "var k=parseInt(el.getAttribute('data-kickoff')||'0',10);"
-    "var live=el.getAttribute('data-live')==='true';"
-    "if(live||k===-1){el.textContent='" + "🔴" + " Live';el.style.color='#10b981';return;}"
-    "if(!k)return;"
-    "var diff=k-now;"
-    "el.textContent=fmt(diff);"
-    "el.style.color='#10b981';"
-    "el.style.fontWeight='600';"
-    "});"
-    "}"
-    "tick();"
-    "setInterval(tick,1000);"
-    "var ob=new MutationObserver(tick);"
-    "ob.observe(window.parent.document.body,{childList:true,subtree:true});"
-    "})();"
-    "</script>"
-)
-_components.html(_countdown_html, height=0)
