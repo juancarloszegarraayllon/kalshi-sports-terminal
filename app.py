@@ -8,12 +8,12 @@ st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="📡"
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap');
-html,body,[class*="css"]{font-family:'DM Mono',monospace;}
+
+html,body,[class*="css"]{font-family:Helvetica,Arial,sans-serif;}
 .stApp{background:#0a0a0f;}
 section[data-testid="stSidebar"]{background:#0f0f1a!important;border-right:1px solid #1e1e32;}
 section[data-testid="stSidebar"] label,section[data-testid="stSidebar"] p{color:#6b7280!important;font-size:11px!important;letter-spacing:.08em;text-transform:uppercase;}
-h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0ff!important;letter-spacing:-.02em;font-size:2.2rem!important;}
+h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;color:#f0f0ff!important;letter-spacing:-.02em;font-size:2.2rem!important;}
 .metric-strip{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;}
 .metric-box{background:#0f0f1a;border:1px solid #1e1e32;border-radius:10px;padding:14px 20px;flex:1;min-width:120px;}
 .metric-label{font-size:10px;color:#4b5563;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;}
@@ -35,7 +35,7 @@ h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0
 .pill-science{background:#1e2e1a;color:#86efac;border-color:#14532d;}
 .pill-health{background:#2e1a2e;color:#e879f9;border-color:#701a75;}
 .pill-default{background:#1e1e32;color:#94a3b8;border-color:#2d2d55;}
-.date-text{font-size:11px;color:#6b7280;}
+.date-text{font-size:11px;color:#6b7280;}.begins-text{font-size:10px;color:#10b981;margin-top:2px;display:block;}.card-dates{display:flex;flex-direction:column;align-items:flex-end;}
 .card-icon{font-size:20px;margin-bottom:6px;display:block;}
 .card-title{font-size:14px;font-weight:500;color:#e2e8f0;line-height:1.45;margin-bottom:12px;min-height:58px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1a1a2e;padding-top:10px;}
@@ -44,7 +44,7 @@ h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0
 .odds-yes{flex:1;background:#0d2d1a;border:1px solid #166534;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{flex:1;background:#2d0d0d;border:1px solid #7f1d1d;border-radius:6px;padding:5px 8px;text-align:center;}
 .outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
-.outcome-label{font-size:11px;color:#9ca3af;font-weight:500;flex:0 0 auto;min-width:60px;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.outcome-label{font-size:11px;color:#9ca3af;font-weight:500;flex:0 0 auto;min-width:80px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .outcome-chance{font-size:13px;font-weight:600;color:#e2e8f0;flex:0 0 auto;min-width:38px;text-align:right;}
 .outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
 .outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
@@ -652,9 +652,21 @@ def fetch_all():
         mkts = row.get("markets")
         if not isinstance(mkts,list) or not mkts: return "—","—",None,[]
         close = None
+        open_dt = None
         for mk in mkts:
             d = safe_date(mk.get("close_time"))
             if d and (close is None or d < close): close = d
+            # Store earliest open_time as full datetime for "Begins in"
+            ot_raw = mk.get("open_time")
+            if ot_raw:
+                try:
+                    import pandas as _pd
+                    ts = _pd.to_datetime(ot_raw, utc=True)
+                    if not _pd.isna(ts):
+                        odt = ts.to_pydatetime().astimezone(UTC)
+                        if open_dt is None or odt < open_dt:
+                            open_dt = odt
+                except: pass
         # Build list of (label, chance, yes, no) for each outcome
         # Kalshi market fields: subtitle = outcome label (e.g. "Libertad")
         # yes_bid / yes_bid_dollars = YES price (cents or dollars)
@@ -686,19 +698,67 @@ def fetch_all():
             except:
                 chance, yes, no = "—","—","—"
             outcomes.append((label, chance, yes, no))
-        return "—","—", close, outcomes
+        return "—","—", close, outcomes, open_dt
 
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_outcomes"] = info[3]
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_outcomes"] = info[3]; df["_open_dt"] = info[4]
 
     def best_dt(row):
-        for col in ["strike_date","close_time","end_date","expiration_time"]:
+        # Prefer market-level close_time (stored in _mkt_dt) as it's most accurate
+        mkt_dt = row.get("_mkt_dt")
+        if mkt_dt: return mkt_dt
+        for col in ["expected_expiration_time","strike_date","close_time","end_date","expiration_time"]:
             d = safe_date(row.get(col))
             if d: return d
-        return row.get("_mkt_dt")
+        return None
 
-    df["_sort_dt"]    = df.apply(best_dt, axis=1)
+    df["_sort_dt"] = df.apply(best_dt, axis=1)
     df["_display_dt"] = df["_sort_dt"].apply(fmt_date)
+
+    # "Begins in" — use open_time or start_date from event or first market
+    def get_open_time(row):
+        # Try event-level open_time first
+        for col in ["open_time","start_date","opened_date"]:
+            v = row.get(col)
+            if v and str(v).strip() not in ("", "None", "nan"):
+                try:
+                    ts = pd.to_datetime(v, utc=True)
+                    if not pd.isna(ts):
+                        return ts.to_pydatetime().astimezone(UTC)
+                except: pass
+        # Try first market open_time
+        mkts = row.get("markets") or []
+        for mk in mkts:
+            for col in ["open_time","close_time"]:
+                v = mk.get(col)
+                if v and str(v).strip() not in ("", "None", "nan"):
+                    try:
+                        ts = pd.to_datetime(v, utc=True)
+                        if not pd.isna(ts):
+                            return ts.to_pydatetime().astimezone(UTC)
+                    except: pass
+        return None
+
+    def fmt_begins(row):
+        from datetime import datetime
+        now = datetime.now(UTC)
+        # Use pre-parsed open_dt from markets first
+        ot = row.get("_open_dt") or get_open_time(row)
+        if ot is None: return ""
+        diff = ot - now
+        total_seconds = int(diff.total_seconds())
+        if total_seconds <= 0: return "Live"
+        if total_seconds < 3600:
+            m = total_seconds // 60
+            return f"Begins in {m}m"
+        if total_seconds < 86400:
+            h = total_seconds // 3600
+            m = (total_seconds % 3600) // 60
+            return f"Begins in {h}h {m}m" if m else f"Begins in {h}h"
+        d = total_seconds // 86400
+        return f"Begins in {d}d"
+
+    df["_begins"] = df.apply(fmt_begins, axis=1)
     prog.progress(1.0); prog.empty()
     return df
 
@@ -778,6 +838,7 @@ def render_cards(data):
             icon    = SPORT_ICONS.get(sport, base_ic) if sport else base_ic
             label   = sport[:16] if sport else cat[:16]
             dt      = str(row.get("_display_dt","Open"))
+            begins  = str(row.get("_begins",""))
             yes     = str(row.get("_yes","—"))
             no      = str(row.get("_no","—"))
             outcomes = row.get("_outcomes") or []
@@ -790,7 +851,7 @@ def render_cards(data):
             if outcomes:
                 odds_html = ""
                 for (olabel, ochance, oyes, ono) in outcomes[:5]:
-                    safe_label = olabel[:24] if olabel else "—"
+                    safe_label = olabel[:30] if olabel else "—"
                     odds_html += f'''<div class="outcome-row">
 <div class="outcome-label">{safe_label}</div>
 <div class="outcome-chance">{ochance}</div>
@@ -801,7 +862,7 @@ def render_cards(data):
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             html += f"""<div class="market-card">
-<div class="card-top"><span class="cat-pill {pill}">{label}</span><span class="date-text">📅 {dt}</span></div>
+<div class="card-top"><span class="cat-pill {pill}">{label}</span><div class="card-dates"><span class="date-text">📅 {dt}</span>{f'<span class="begins-text">{begins}</span>' if begins else ""}</div></div>
 <span class="card-icon">{icon}</span>
 <div class="card-title">{title}</div>
 <div class="card-footer">{link_html}
