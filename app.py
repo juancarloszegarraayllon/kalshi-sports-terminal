@@ -25,6 +25,7 @@ st.markdown("""
     .card-title {
         font-size: 17px; font-weight: 700; color: #1e293b;
         margin: 5px 0; line-height: 1.3; flex-grow: 1;
+        overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     }
     .ticker-footer {
         font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9;
@@ -51,18 +52,17 @@ try:
 except Exception as e:
     st.error("API connection failed."); st.stop()
 
-# --- Single-Call Fetch (Avoids 429) ---
+# --- Single-Call Fetch ---
 @st.cache_data(ttl=300)
 def fetch_sports_unified():
     try:
-        # Fetch one big batch (200 events) to stay under rate limits
         response = client.get_events(limit=200, status="open")
         all_events = response.to_dict().get("events", [])
         if not all_events: return pd.DataFrame()
         
         df = pd.DataFrame(all_events)
         
-        # Only keep rows that look like sports
+        # Filter for Sports keywords
         sport_keys = ['NBA', 'MLB', 'NHL', 'NFL', 'SOC', 'TEN', 'GOLF', 'KX']
         is_sport = (
             df['event_ticker'].str.contains('|'.join(sport_keys), na=False, case=False) |
@@ -70,25 +70,27 @@ def fetch_sports_unified():
         )
         return df[is_sport].copy()
     except Exception as e:
-        if "429" in str(e):
-            st.error("Rate limit hit. Waiting 10 seconds...")
-            time.sleep(10)
         return pd.DataFrame()
 
 df = fetch_sports_unified()
 
 if not df.empty:
-    # --- Sidebar Filters ---
-    st.sidebar.header("Navigation")
+    # Sidebar Search
     search = st.sidebar.text_input("Search Team")
+    
+    # SAFE DATE PARSING
+    # Errors='coerce' turns bad dates into NaT (Not a Time) instead of crashing
+    df['clean_date'] = pd.to_datetime(df['strike_date'], errors='coerce')
+    
+    # Filter out rows where the date is missing
+    df = df.dropna(subset=['clean_date'])
+    
     # Buffer date for UTC: show Today and Tomorrow by default
     date_buffer = [date.today(), date.today() + timedelta(days=1)]
     
-    # Process Dates
-    df['clean_date'] = pd.to_datetime(df['strike_date']).dt.date
+    # Filter by date window and search query
+    filtered = df[df['clean_date'].dt.date.isin(date_buffer)].copy()
     
-    # Filtering
-    filtered = df[df['clean_date'].isin(date_buffer)]
     if search:
         filtered = filtered[filtered['title'].str.contains(search, case=False, na=False)]
     
@@ -96,7 +98,7 @@ if not df.empty:
     filtered = filtered.drop_duplicates(subset=['event_ticker'])
 
     if filtered.empty:
-        st.warning("No games found for today/tomorrow. Check 'Show All' in sidebar.")
+        st.warning("No games found for today/tomorrow.")
         if st.sidebar.checkbox("Show All Upcoming Games"):
             filtered = df
     
@@ -106,27 +108,30 @@ if not df.empty:
         cols = st.columns(4)
         for i, (_, row) in enumerate(filtered.iterrows()):
             with cols[i % 4]:
-                # Title Cleanup
-                title = row['title'].split(':')[-1].replace('Will the ', '').split('?')[0].strip()
-                
-                # Dynamic Icon
-                ticker = row['event_ticker'].upper()
-                icon = "🏀" if "NBA" in ticker else "⚾" if "MLB" in ticker else "🏒" if "NHL" in ticker else "🏟️"
-                
-                # Format Date Badge
-                display_date = row['clean_date'].strftime("%b %d")
+                try:
+                    # Title Cleanup
+                    title = str(row['title']).split(':')[-1].replace('Will the ', '').split('?')[0].strip()
+                    
+                    # Dynamic Icon
+                    ticker = str(row['event_ticker']).upper()
+                    icon = "🏀" if "NBA" in ticker else "⚾" if "MLB" in ticker else "🏒" if "NHL" in ticker else "🏟️"
+                    
+                    # Safe Date Badge formatting
+                    display_date = row['clean_date'].strftime("%b %d")
 
-                st.markdown(f"""
-                    <div class="market-card">
-                        <div class="badge-row">
-                            <span class="sport-badge">KALSHI</span>
-                            <span class="date-badge">{display_date}</span>
+                    st.markdown(f"""
+                        <div class="market-card">
+                            <div class="badge-row">
+                                <span class="sport-badge">KALSHI</span>
+                                <span class="date-badge">{display_date}</span>
+                            </div>
+                            <div class="card-title">{icon} {title}</div>
+                            <div class="ticker-footer">
+                                {row['event_ticker']}
+                            </div>
                         </div>
-                        <div class="card-title">{icon} {title}</div>
-                        <div class="ticker-footer">
-                            {row['event_ticker']}
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                except Exception:
+                    continue # Skip cards that have weird formatting errors
 else:
-    st.info("No active sports data found. The API might be resetting for the day.")
+    st.info("No active sports data found.")
