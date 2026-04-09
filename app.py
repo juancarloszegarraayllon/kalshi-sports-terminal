@@ -369,7 +369,7 @@ st.markdown("---")
 
 # Show actual category breakdown so we can see what Kalshi calls things
 with st.expander("📊 Category breakdown (click to see all categories from API)"):
-    st.dataframe(all_cats.reset_index().rename(columns={"index": "category", "category": "count"}))
+    st.dataframe(all_cats.rename("count").reset_index())
     if sport_ordering:
         st.write("**Sports available via Kalshi filters API:**", sport_ordering)
 
