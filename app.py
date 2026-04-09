@@ -310,13 +310,18 @@ filtered = df.copy()
 
 if date_mode != "All dates":
     def date_ok(row):
-        # Sports events always show — their dates are often missing or in nested markets
         if row.get("_is_sport"):
             return True
         d = row.get("_sort_date")
-        if d is None:
+        try:
+            if d is None or str(d) in ("NaT", "None", "nan"):
+                return include_no_date
+            # Normalize to plain date object for safe comparison
+            if hasattr(d, "date"):
+                d = d.date()
+            return custom_start <= d <= custom_end
+        except Exception:
             return include_no_date
-        return custom_start <= d <= custom_end
     filtered = filtered[filtered.apply(date_ok, axis=1)]
 
 if search:
@@ -329,11 +334,20 @@ if search:
 
 # ── Sort ──────────────────────────────────────────────────────────────────────
 if sort_by != "Default":
-    ascending    = sort_by == "Date (earliest first)"
-    has_date     = filtered["_sort_date"].notna()
-    with_date    = filtered[has_date].copy().sort_values("_sort_date", ascending=ascending)
-    without_date = filtered[~has_date].copy()
-    filtered     = pd.concat([with_date, without_date], ignore_index=True)
+    ascending = sort_by == "Date (earliest first)"
+    # Convert _sort_date to sortable strings to avoid Timestamp/date comparison issues
+    def to_sort_key(d):
+        try:
+            if d is None or str(d) in ("NaT", "None", "nan"):
+                return "9999-99-99"
+            if hasattr(d, "date"):
+                d = d.date()
+            return str(d)
+        except Exception:
+            return "9999-99-99"
+    filtered = filtered.copy()
+    filtered["_sort_key"] = filtered["_sort_date"].apply(to_sort_key)
+    filtered = filtered.sort_values("_sort_key", ascending=ascending).drop(columns=["_sort_key"])
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
 # Count sports using all sport-related categories found
