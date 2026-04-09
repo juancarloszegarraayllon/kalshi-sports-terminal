@@ -35,7 +35,7 @@ h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;co
 .pill-science{background:#1e2e1a;color:#86efac;border-color:#14532d;}
 .pill-health{background:#2e1a2e;color:#e879f9;border-color:#701a75;}
 .pill-default{background:#1e1e32;color:#94a3b8;border-color:#2d2d55;}
-.date-text{font-size:11px;color:#6b7280;}.begins-text{font-size:10px;color:#10b981;font-weight:600;}.live-text{font-size:10px;color:#ef4444;font-weight:700;letter-spacing:.04em;}.card-dates{display:flex;flex-direction:row;align-items:center;gap:2px;flex-wrap:wrap;justify-content:flex-end;}
+.date-text{font-size:11px;color:#6b7280;}.begins-text{font-size:11px;color:#10b981;font-weight:600;}.live-text{font-size:11px;color:#10b981;font-weight:700;letter-spacing:.02em;}.date-text{font-size:11px;color:#6b7280;}.card-timing{display:flex;flex-direction:row;align-items:center;gap:2px;flex-wrap:wrap;margin-bottom:8px;}.card-dates{display:flex;flex-direction:row;align-items:center;gap:2px;}
 .card-icon{font-size:20px;margin-bottom:6px;display:block;}
 .card-title{font-size:14px;font-weight:500;color:#e2e8f0;line-height:1.45;margin-bottom:12px;min-height:58px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1a1a2e;padding-top:10px;}
@@ -781,17 +781,17 @@ def fetch_all():
                     h, rem = divmod(secs, 3600)
                     m, s   = divmod(rem, 60)
                     if h > 0:
-                        begins = f"⏱ {h}h {m}m {s}s"
+                        begins = f"Begins in {h}h {m}m {s}s"
                     elif m > 0:
-                        begins = f"⏱ {m}m {s}s"
+                        begins = f"Begins in {m}m {s}s"
                     else:
-                        begins = f"⏱ {s}s"
+                        begins = f"Begins in {s}s"
                 else:
                     begins = "🔴 Live"
             else:
                 days = (game_date - today).days
                 if days == 1:
-                    begins = "⏱ Tomorrow"
+                    begins = "Begins in Tomorrow"
                 elif days <= 7:
                     # Show countdown with hours if within 2 days
                     if kickoff_dt and kickoff_dt > now:
@@ -800,13 +800,13 @@ def fetch_all():
                         h, rem = divmod(secs, 3600)
                         m, _   = divmod(rem, 60)
                         if h < 48:
-                            begins = f"⏱ {h}h {m}m"
+                            begins = f"Begins in {h}h {m}m"
                         else:
-                            begins = f"⏱ {days}d"
+                            begins = f"Begins in {days}d"
                     else:
-                        begins = f"⏱ {days}d"
+                        begins = f"Begins in {days}d"
                 elif days <= 30:
-                    begins = f"⏱ {days}d"
+                    begins = f"Begins in {days}d"
                 else:
                     begins = ""
         else:
@@ -817,11 +817,11 @@ def fetch_all():
                     begins = "🔴 Live"
                 elif diff < 3600:
                     m = diff // 60
-                    begins = f"⏱ {m}m"
+                    begins = f"Begins in {m}m"
                 elif diff < 86400:
                     h = diff // 3600
                     m = (diff % 3600) // 60
-                    begins = f"⏱ {h}h {m}m" if m else f"⏱ {h}h"
+                    begins = f"Begins in {h}h {m}m" if m else f"Begins in {h}h"
                 else:
                     begins = ""
 
@@ -905,8 +905,7 @@ def fetch_all():
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📡 Kalshi Terminal")
-    search = st.text_input("🔍 Search", placeholder="team, player, keyword…")
-    st.markdown("---")
+
     today = date.today()
     date_mode = st.radio("📅 Date", ["All dates","Today","This week","Custom"], index=0)
     d_start = d_end = None
@@ -917,13 +916,23 @@ with st.sidebar:
         d_end   = st.date_input("To",   value=today+timedelta(days=7))
     include_no_date = st.checkbox("Include undated events", value=True)
     st.markdown("---")
-    sort_by = st.radio("↕️ Sort", ["Earliest first","Latest first","Default"], index=0)
-    st.markdown("---")
-    if st.button("🔄 Refresh"): fetch_all.clear(); st.rerun()
     st.caption("Cached 30 min.")
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
+
+# ── Top controls bar ─────────────────────────────────────────────────────────
+_c1, _c2, _c3 = st.columns([3, 1.2, 1.2])
+with _c1:
+    search = st.text_input("", placeholder="🔍  Search team, player, market…",
+                           label_visibility="collapsed")
+with _c2:
+    sort_by = st.selectbox("Sort", ["Earliest first","Latest first","Default"],
+                           index=0, label_visibility="collapsed")
+with _c3:
+    st.markdown("<div style='padding-top:4px'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Refresh data", use_container_width=True):
+        fetch_all.clear(); st.rerun()
 with st.spinner("Loading…"):
     df = fetch_all()
 
@@ -1014,7 +1023,8 @@ def render_cards(data):
             else:
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             html += f"""<div class="market-card">
-<div class="card-top"><span class="cat-pill {pill}">{label}</span><div class="card-dates">{f'<span class="begins-text">{begins} · </span>' if begins and begins != "🔴 Live" else ('<span class="live-text">🔴 Live</span>' if begins == "🔴 Live" else "")}<span class="date-text">{dt}</span></div></div>
+<div class="card-top"><span class="cat-pill {pill}">{label}</span></div>
+<div class="card-timing">{f'<span class="begins-text">{begins} · </span>' if begins and begins != "🔴 Live" else ('<span class="live-text">🔴 Live · </span>' if begins == "🔴 Live" else "")}<span class="date-text">{dt}</span></div>
 <span class="card-icon">{icon}</span>
 <div class="card-title">{title}</div>
 <div class="card-footer">{link_html}
