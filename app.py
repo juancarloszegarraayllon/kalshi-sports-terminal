@@ -679,7 +679,7 @@ def paginate(with_markets=False, category=None, max_pages=30):
             events.extend(batch)
             cursor = resp.get("cursor") or resp.get("next_cursor")
             if not cursor: break
-            time.sleep(0.1)
+            time.sleep(0.05)
         except Exception as e:
             if "429" in str(e): time.sleep(3)
             else: break
@@ -687,10 +687,20 @@ def paginate(with_markets=False, category=None, max_pages=30):
 
 @st.cache_data(ttl=1800)
 def fetch_all():
-    prog = st.progress(0, text="Fetching all events…")
-    all_ev = paginate(with_markets=True, max_pages=30)
+    prog = st.progress(0, text="Loading markets…")
+
+    # Pass 1 — all events, NO nested markets (fast, just metadata + titles)
+    all_ev = paginate(with_markets=False, max_pages=30)
     ev_map = {e["event_ticker"]: e for e in all_ev}
-    prog.progress(0.7, text=f"{len(all_ev)} events loaded.")
+    prog.progress(0.45, text=f"{len(all_ev)} events. Loading odds…")
+
+    # Pass 2 — Sports only WITH nested markets (for odds + outcomes)
+    sport_ev = paginate(with_markets=True, category="Sports", max_pages=30)
+    for e in sport_ev:
+        t = e.get("event_ticker", "")
+        if t:
+            ev_map[t] = e  # overwrite with richer version
+    prog.progress(0.85, text="Building cards…")
 
     prog.progress(0.85, text="Building dataframe…")
     combined = list(ev_map.values())
@@ -862,33 +872,7 @@ def fetch_all():
 
     # "Begins in" — use open_time or start_date from event or first market
     # _begins already computed in extract()
-    # Debug: store sample raw market fields — find a soccer GAME event
-    GAME_SERIES = {"KXEPLGAME","KXUCLGAME","KXSERIEAGAME","KXLALIGAGAME",
-                   "KXBUNDESLIGAGAME","KXLIGUE1GAME","KXMLSGAME","KXLIGAMXGAME",
-                   "KXCONMEBOLLIBGAME","KXCONMEBOLSUDGAME","KXUECLGAME","KXUELGAME"}
-    if not df.empty:
-        game = df[df["_series"].isin(GAME_SERIES) & df["_outcomes"].apply(
-            lambda x: len(x) >= 2 if isinstance(x, list) else False)]
-        multi = df[(df["_sport"]=="Soccer") & df["_outcomes"].apply(
-            lambda x: len(x) >= 2 if isinstance(x, list) else False)]
-        sample = game if not game.empty else (multi if not multi.empty else df[
-            df["_outcomes"].apply(lambda x: len(x) > 0 if isinstance(x, list) else False)])
-        if not sample.empty:
-            row0 = sample.iloc[0]
-            mkts = row0["markets"] if "markets" in row0.index else []
-            if isinstance(mkts, list) and mkts:
-                # Store ALL markets for this event so we can see each title
-                df.attrs["_debug_ev_title"] = str(row0.get("title",""))
-                df.attrs["_debug_ev_ticker"] = str(row0.get("event_ticker",""))
-                df.attrs["_debug_all_mkts"] = [
-                    {k: str(v)[:60] for k,v in mk.items()
-                     if v is not None and v != "" and v != []}
-                    for mk in mkts[:5]
-                ]
-                mk0 = mkts[0]
-                df.attrs["_debug_mkt_sample"] = {k: str(v)[:80] for k, v in mk0.items() if v is not None and v != "" and v != []}
-            ev_keys = [k for k in row0.index if not str(k).startswith("_")]
-            df.attrs["_debug_ev_sample"] = {k: str(row0[k])[:80] for k in ev_keys if row0[k] is not None and str(row0[k]) not in ("", "nan", "None", "[]", "{}")}
+
     prog.progress(1.0); prog.empty()
     return df
 
@@ -970,17 +954,7 @@ st.markdown(f"""<div class="metric-strip">
   <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
 </div>""", unsafe_allow_html=True)
 
-with st.expander("🔍 Debug: Raw API fields (expand to diagnose)", expanded=False):
-    st.markdown(f"**Event:** {df.attrs.get('_debug_ev_ticker','')} — {df.attrs.get('_debug_ev_title','')}")
-    all_mkts = df.attrs.get("_debug_all_mkts", [])
-    if all_mkts:
-        st.markdown(f"**{len(all_mkts)} markets on this event:**")
-        for i, mk in enumerate(all_mkts):
-            st.markdown(f"Market {i+1}: ticker=`{mk.get('ticker','')}` title=`{mk.get('title','')}` yes_sub=`{mk.get('yes_sub_title','')}` open=`{mk.get('open_time','')}` close=`{mk.get('close_time','')}`")
-    dbg_ev = df.attrs.get("_debug_ev_sample", {})
-    if dbg_ev:
-        st.markdown("**Full event-level fields:**")
-        st.json(dbg_ev)
+
 
 # ── Render ────────────────────────────────────────────────────────────────────
 def render_cards(data):
