@@ -165,57 +165,58 @@ def fetch_all_events():
     if "event_ticker" in df.columns:
         df = df.drop_duplicates(subset=["event_ticker"])
 
-    # Parse dates row-by-row into plain Python date objects
-    date_cols = ["strike_date", "end_date", "close_time", "expiration_time"]
-
-    def get_best_date(row):
-        for col in date_cols:
-            d = parse_date_safe(row.get(col))
-            if d is not None:
-                return d
-        return None
-
-    df["_local_date"] = df.apply(get_best_date, axis=1)
-    df["_display_date"] = df["_local_date"].apply(
-        lambda d: d.strftime("%b %d, %Y") if d is not None else "Open"
-    )
-
     if "category" not in df.columns:
         df["category"] = "Other"
     df["category"] = df["category"].fillna("Other").str.strip()
     df["_is_sport"] = df["category"].str.strip() == "Sports"
 
-    # Extract odds + close date from nested markets
+    # ── Price formatter ────────────────────────────────────────────────────────
     def fmt_price(v):
         try:
             f = float(v)
             pct = int(round(f * 100)) if f <= 1 else int(round(f))
-            return f"{cents}%"
+            return f"{pct}%"
         except Exception:
             return "—"
 
+    # ── Extract odds + best close_time from nested markets ────────────────────
     def extract_odds(row):
         markets = row.get("markets") or []
         if not markets or not isinstance(markets, list):
             return "—", "—", None
-        m = markets[0]
-        yes = fmt_price(m.get("yes_bid_dollars") or m.get("yes_bid"))
-        no  = fmt_price(m.get("no_bid_dollars")  or m.get("no_bid"))
-        close_date = parse_date_safe(m.get("close_time"))
-        return yes, no, close_date
+        # Pick the market with the soonest close_time
+        best_market = markets[0]
+        best_close  = None
+        for m in markets:
+            cd = parse_date_safe(m.get("close_time"))
+            if cd is not None and (best_close is None or cd < best_close):
+                best_close   = cd
+                best_market  = m
+        yes = fmt_price(best_market.get("yes_bid_dollars") or best_market.get("yes_bid"))
+        no  = fmt_price(best_market.get("no_bid_dollars")  or best_market.get("no_bid"))
+        return yes, no, best_close
 
-    odds_info = df.apply(extract_odds, axis=1, result_type="expand")
-    df["_yes_price"]  = odds_info[0]
-    df["_no_price"]   = odds_info[1]
-    df["_close_date"] = odds_info[2]
+    odds_info        = df.apply(extract_odds, axis=1, result_type="expand")
+    df["_yes_price"] = odds_info[0]
+    df["_no_price"]  = odds_info[1]
+    df["_close_date"]= odds_info[2]  # plain Python date or None
 
-    def best_date(row):
-        if row["_display_date"] != "Open":
-            return row["_display_date"]
-        if row["_close_date"] is not None:
-            return row["_close_date"].strftime("%b %d, %Y")
-        return "Open"
-    df["_display_date"] = df.apply(best_date, axis=1)
+    # ── Build _sort_date — used for sorting (date object) ─────────────────────
+    date_cols = ["strike_date", "end_date", "close_time", "expiration_time"]
+
+    def get_sort_date(row):
+        # Try top-level fields first
+        for col in date_cols:
+            d = parse_date_safe(row.get(col))
+            if d is not None:
+                return d
+        # Fall back to close_time from nested markets
+        return row.get("_close_date")
+
+    df["_sort_date"]    = df.apply(get_sort_date, axis=1)
+    df["_display_date"] = df["_sort_date"].apply(
+        lambda d: d.strftime("%b %d, %Y") if d is not None else "Open"
+    )
 
     return df
 
@@ -286,10 +287,7 @@ filtered = df.copy()
 
 if date_mode != "All dates":
     def date_ok(row):
-        # Always show sports events regardless of date
-        if row.get("_is_sport"):
-            return True
-        d = row.get("_local_date")
+        d = row.get("_sort_date")
         if d is None:
             return include_no_date
         return custom_start <= d <= custom_end
@@ -305,13 +303,11 @@ if search:
 
 # ── Sort ──────────────────────────────────────────────────────────────────────
 if sort_by != "Default":
-    # Put rows with no date at the end
-    has_date = filtered["_local_date"].notna()
-    with_date    = filtered[has_date].copy()
+    ascending    = sort_by == "Date (earliest first)"
+    has_date     = filtered["_sort_date"].notna()
+    with_date    = filtered[has_date].copy().sort_values("_sort_date", ascending=ascending)
     without_date = filtered[~has_date].copy()
-    ascending = sort_by == "Date (earliest first)"
-    with_date = with_date.sort_values("_local_date", ascending=ascending)
-    filtered = pd.concat([with_date, without_date], ignore_index=True)
+    filtered     = pd.concat([with_date, without_date], ignore_index=True)
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
 # Count sports using all sport-related categories found
