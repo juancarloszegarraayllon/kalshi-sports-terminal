@@ -679,58 +679,37 @@ def fetch_all():
         if not isinstance(mkts, list) or not mkts:
             return "—", "—", None, None, []
 
-        # --- Dates from MARKET level (not event level) ---
-        # open_time  = when betting opens / game starts
-        # close_time = when betting closes (≈ game start for live events)
-        # Use close_time as the display date (it's the game time)
         first_mk = mkts[0]
-        close_dt  = safe_dt(first_mk.get("close_time"))   # full datetime
-        open_dt   = safe_dt(first_mk.get("open_time"))    # full datetime
 
-        # For sorting use close_time date
+        # close_time is the game time / resolution deadline — use for display
+        close_dt   = safe_dt(first_mk.get("close_time"))
         close_date = close_dt.date() if close_dt else None
 
-        # --- Outcome labels ---
-        # Multi-market event (e.g. soccer with Win/Draw/Loss):
-        #   each market's "title" is the outcome label (e.g. "UCV wins", "Libertad wins")
-        # Binary market: use yes_sub_title / no_sub_title
-        event_title = str(row.get("title", "")).strip()
-        is_binary   = len(mkts) == 1 or first_mk.get("market_type") == "binary"
+        # open_time = when betting opened, use for "Begins in" countdown
+        open_dt = safe_dt(first_mk.get("open_time"))
 
+        # Build outcomes — yes_sub_title is ALWAYS the outcome label
         outcomes = []
-        for i, mk in enumerate(mkts):
-            mk_title    = str(mk.get("title") or "").strip()
-            yes_sub     = str(mk.get("yes_sub_title") or "").strip()
-            no_sub      = str(mk.get("no_sub_title")  or "").strip()
+        event_title = str(row.get("title", "")).strip()
 
-            if len(mkts) == 1:
-                # Binary: show yes_sub_title as the label
-                label = yes_sub or mk_title or event_title
-            else:
-                # Multi-outcome: each market title IS the outcome
-                # Strip the event title prefix if present
-                if mk_title and mk_title != event_title:
-                    label = mk_title
-                elif yes_sub and yes_sub != no_sub:
-                    label = yes_sub
-                else:
-                    label = mk_title or f"Option {i+1}"
+        for mk in mkts:
+            # yes_sub_title is the confirmed outcome label field
+            label = str(mk.get("yes_sub_title") or "").strip()
 
-            # Trim common suffixes like " Winner" or event name repetition
-            for suffix in [" Winner", " wins", " win"]:
-                if label.endswith(suffix):
-                    label = label[:-len(suffix)]
+            # Fallback: if no yes_sub_title, try ticker suffix
+            if not label:
+                ticker_mk = str(mk.get("ticker") or "")
+                # e.g. KXCONMEBOLLIBGAME-26APR09UCVLIB-T1 -> last segment
+                parts = ticker_mk.rsplit("-", 1)
+                label = parts[-1] if len(parts) > 1 else ticker_mk
 
-            # Prices — response_price_units tells us the unit
-            # yes_bid_dollars is 0.0–1.0 float already
-            yf = None
-            nf = None
+            # Prices — yes_bid_dollars is 0.0–1.0 confirmed
+            yf = nf = None
             try:
                 yd = mk.get("yes_bid_dollars")
                 nd = mk.get("no_bid_dollars")
                 if yd is not None: yf = float(yd)
                 if nd is not None: nf = float(nd)
-                # Fallback to yes_bid (cents 0-100)
                 if yf is None:
                     yb = mk.get("yes_bid")
                     if yb is not None: yf = float(yb) / 100
@@ -749,20 +728,26 @@ def fetch_all():
     info = df.apply(extract, axis=1, result_type="expand")
     df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]; df["_open_dt"] = info[3]; df["_outcomes"] = info[4]
 
+    # Recompute close_dt as full datetime for proper display
+    def get_close_dt(row):
+        mkts = row.get("markets")
+        if not isinstance(mkts, list) or not mkts: return None
+        return safe_dt(mkts[0].get("close_time"))
+    df["_close_dt"] = df.apply(get_close_dt, axis=1)
+
     def best_dt(row):
-        # _mkt_dt is the market close_time date — most accurate for game events
+        # _mkt_dt = close_time date (game time / deadline) — best for sorting
         d = row.get("_mkt_dt")
         if d: return d
-        # Fallback to open_dt date
-        odt = row.get("_open_dt")
-        if odt: return odt.date() if hasattr(odt, 'date') else odt
+        cdt = row.get("_close_dt")
+        if cdt: return cdt.date() if hasattr(cdt, 'date') else cdt
         return None
 
     df["_sort_dt"] = df.apply(best_dt, axis=1)
-    # For display, prefer the full datetime (close_time) so we can show time
     def get_display_dt(row):
-        odt = row.get("_open_dt")
-        if odt: return fmt_date(odt)
+        # Use close_time (game time / deadline) for display
+        cdt = row.get("_close_dt")
+        if cdt: return fmt_date(cdt)
         d = row.get("_mkt_dt")
         return fmt_date(d) if d else "Open"
     df["_display_dt"] = df.apply(get_display_dt, axis=1)
@@ -771,7 +756,8 @@ def fetch_all():
     def fmt_begins(row):
         from datetime import datetime
         now = datetime.now(UTC)
-        ot = row.get("_open_dt")
+        # Use close_time as the event time (game start / resolution)
+        ot = row.get("_close_dt")
         if ot is None: return ""
         diff = ot - now
         total_seconds = int(diff.total_seconds())
