@@ -177,7 +177,7 @@ def fetch_all_events():
 
     df["_local_date"] = df.apply(get_best_date, axis=1)
     df["_display_date"] = df["_local_date"].apply(
-        lambda d: d.strftime("%b %d") if d is not None else "Open"
+        lambda d: d.strftime("%b %d, %Y") if d is not None else "Open"
     )
 
     if "category" not in df.columns:
@@ -189,8 +189,8 @@ def fetch_all_events():
     def fmt_price(v):
         try:
             f = float(v)
-            cents = int(round(f * 100)) if f <= 1 else int(round(f))
-            return f"{cents}¢"
+            pct = int(round(f * 100)) if f <= 1 else int(round(f))
+            return f"{cents}%"
         except Exception:
             return "—"
 
@@ -213,7 +213,7 @@ def fetch_all_events():
         if row["_display_date"] != "Open":
             return row["_display_date"]
         if row["_close_date"] is not None:
-            return row["_close_date"].strftime("%b %d")
+            return row["_close_date"].strftime("%b %d, %Y")
         return "Open"
     df["_display_date"] = df.apply(best_date, axis=1)
 
@@ -252,6 +252,10 @@ with st.sidebar:
         custom_end   = st.date_input("To",   value=today + timedelta(days=7))
 
     include_no_date = st.checkbox("Include markets with no date", value=True)
+
+    st.markdown("---")
+    st.markdown("**↕️ Sort**")
+    sort_by = st.radio("Order by", ["Date (earliest first)", "Date (latest first)", "Default"], index=0)
 
     st.markdown("---")
     if st.button("🔄 Refresh data"):
@@ -298,6 +302,16 @@ if search:
         filtered.get("category", pd.Series(dtype=str)).str.contains(search, case=False, na=False)
     )
     filtered = filtered[mask]
+
+# ── Sort ──────────────────────────────────────────────────────────────────────
+if sort_by != "Default":
+    # Put rows with no date at the end
+    has_date = filtered["_local_date"].notna()
+    with_date    = filtered[has_date].copy()
+    without_date = filtered[~has_date].copy()
+    ascending = sort_by == "Date (earliest first)"
+    with_date = with_date.sort_values("_local_date", ascending=ascending)
+    filtered = pd.concat([with_date, without_date], ignore_index=True)
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
 # Count sports using all sport-related categories found
