@@ -176,8 +176,14 @@ def fetch_all_events():
         df["category"] = "Other"
     df["category"] = df["category"].fillna("Other").str.strip()
 
-    # Tag sports using Kalshi's actual category value
-    df["_is_sport"] = df["category"].str.lower().str.contains("sport", na=False)
+    # Tag sports using Kalshi's exact category names from /search/filters_by_sport
+    KALSHI_SPORT_CATEGORIES = {
+        "all sports", "basketball", "baseball", "tennis", "soccer", "hockey",
+        "golf", "mma", "cricket", "football", "esports", "motorsport",
+        "aussie rules", "boxing", "lacrosse", "rugby", "darts", "chess",
+        "other", "sports"
+    }
+    df["_is_sport"] = df["category"].str.lower().str.strip().isin(KALSHI_SPORT_CATEGORIES)
 
     return df
 
@@ -259,9 +265,10 @@ if search:
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
 # Count sports using all sport-related categories found
-sport_count = int(filtered["_is_sport"].sum())
-categories  = sorted(filtered["category"].unique().tolist())
-tab_labels  = ["All", "Sports"] + [c for c in categories if "sport" not in c.lower()]
+sport_count    = int(filtered["_is_sport"].sum())
+categories     = sorted(filtered["category"].unique().tolist())
+non_sport_cats = [c for c in categories if c.lower().strip() not in KALSHI_SPORT_CATS]
+tab_labels     = ["All", "Sports"] + non_sport_cats
 
 st.markdown(f"""
 <div class="metric-strip">
@@ -302,9 +309,15 @@ def get_icon(ticker, category):
     if "health" in c: return "🏥"
     return "📊"
 
+KALSHI_SPORT_CATS = {
+    "all sports", "basketball", "baseball", "tennis", "soccer", "hockey",
+    "golf", "mma", "cricket", "football", "esports", "motorsport",
+    "aussie rules", "boxing", "lacrosse", "rugby", "darts", "chess", "sports"
+}
+
 def get_pill_class(category):
-    c = str(category).lower()
-    if "sport" in c: return "cat-Sports"
+    c = str(category).lower().strip()
+    if c in KALSHI_SPORT_CATS: return "cat-Sports"
     mapping = {
         "politics":               "cat-Politics",
         "elections":              "cat-Elections",
@@ -314,7 +327,7 @@ def get_pill_class(category):
         "science and technology": "cat-Science",
         "health":                 "cat-Health",
     }
-    return mapping.get(str(category).lower(), "cat-default")
+    return mapping.get(c, "cat-default")
 
 def render_cards(data):
     if data.empty:
