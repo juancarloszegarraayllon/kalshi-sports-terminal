@@ -1193,28 +1193,39 @@ _cv1.html("""
 (function() {
   function fixButtons() {
     var doc = window.parent ? window.parent.document : document;
-    doc.querySelectorAll('.stButton button, [data-testid="stButton"] button').forEach(function(btn) {
-      btn.style.cssText = [
-        'background:transparent!important',
-        'background-color:transparent!important', 
-        'border:none!important',
-        'box-shadow:none!important',
-        'outline:none!important',
-        'color:#ffffff!important',
-        'font-family:Helvetica,Arial,sans-serif!important',
-        'font-size:13px!important',
-        'text-align:left!important',
-        'justify-content:flex-start!important',
-        'padding:3px 0!important',
-        'margin:0!important',
-        'width:100%!important',
-        'border-radius:0!important',
-        'min-height:28px!important'
-      ].join(';');
+    // Target every button inside stButton wrappers
+    doc.querySelectorAll('button').forEach(function(btn) {
+      // Apply to all buttons - remove all chrome
+      btn.style.setProperty('background', 'transparent', 'important');
+      btn.style.setProperty('background-color', 'transparent', 'important');
+      btn.style.setProperty('border', 'none', 'important');
+      btn.style.setProperty('border-color', 'transparent', 'important');
+      btn.style.setProperty('box-shadow', 'none', 'important');
+      btn.style.setProperty('outline', 'none', 'important');
+      btn.style.setProperty('color', '#ffffff', 'important');
+      btn.style.setProperty('font-family', 'Helvetica, Arial, sans-serif', 'important');
+      btn.style.setProperty('font-size', '13px', 'important');
+      btn.style.setProperty('text-align', 'left', 'important');
+      btn.style.setProperty('justify-content', 'flex-start', 'important');
+      btn.style.setProperty('align-items', 'center', 'important');
+      btn.style.setProperty('padding', '3px 0', 'important');
+      btn.style.setProperty('margin', '0', 'important');
+      btn.style.setProperty('width', '100%', 'important');
+      btn.style.setProperty('border-radius', '0', 'important');
+      btn.style.setProperty('min-height', '28px', 'important');
+      btn.style.setProperty('display', 'flex', 'important');
+      // Also fix the parent div
+      var parent = btn.parentElement;
+      if (parent) {
+        parent.style.setProperty('display', 'flex', 'important');
+        parent.style.setProperty('justify-content', 'flex-start', 'important');
+        parent.style.setProperty('align-items', 'center', 'important');
+        parent.style.setProperty('width', '100%', 'important');
+      }
     });
   }
   fixButtons();
-  setInterval(fixButtons, 500);
+  setInterval(fixButtons, 300);
   new MutationObserver(fixButtons).observe(
     window.parent ? window.parent.document.body : document.body,
     {childList:true, subtree:true}
