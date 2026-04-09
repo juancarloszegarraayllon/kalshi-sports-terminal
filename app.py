@@ -28,7 +28,7 @@ h1{font-family:Helvetica,Arial,sans-serif!important;font-weight:800!important;co
 .market-card{background:#0a0a0a;border:1px solid #1c1c1c;border-radius:10px;padding:16px 18px;transition:border-color .15s,transform .15s;}
 .market-card:hover{border-color:#00ff00;transform:translateY(-2px);}
 .card-top{display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;}
-.cat-pill{font-size:14px;font-weight:700;letter-spacing:.02em;text-transform:capitalize;padding:0;border:none;background:transparent;white-space:nowrap;color:#ffffff!important;}
+.cat-pill{font-size:20px;font-weight:700;letter-spacing:.02em;text-transform:capitalize;padding:0;border:none;background:transparent;white-space:nowrap;color:#ffffff!important;}
 .pill-sports,.pill-elections,.pill-politics,.pill-economics,.pill-financials,
 .pill-crypto,.pill-companies,.pill-entertainment,.pill-climate,.pill-science,
 .pill-health,.pill-default{background:transparent;border:none;color:#ffffff!important;}
