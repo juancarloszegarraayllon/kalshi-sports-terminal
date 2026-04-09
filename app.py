@@ -85,7 +85,6 @@ CAT_TAGS = {
     "Mentions":["Earnings","Politicians","Sports"],
 }
 
-# Sport tags: (icon, name, [live series tickers from debug Section 4])
 SPORT_TAGS = [
     ("⚽","Soccer",["KXDFBPOKAL","KXARGPREMDIVGAME","KXLIGUE1SPREAD","KXUSL","KXUELSPREAD","KXEKSTRAKLASA","KXSERIEATOTAL","KXLALIGATOTAL","KXEPLTOP4","KXLALIGABTTS","KXEPLGAME","KXWCGROUPWIN","KXJOINLEAGUE","KXCHNSL","KXWCGAME","KXDIMAYORGAME","KXAPFDDHGAME","KXWCGOALLEADER","KXBUNDESLIGATOTAL","KXEPLTOTAL","KXSCOTTISHPREMGAME","KXSERIEA1H","KXEPLSPREAD","KXCHLLDPGAME","KXECULP","KXSOCCERPLAYMESSI","KXLEADERUCLGOALS","KXURYPD","KXLIGUE11H","KXBUNDESLIGA2GAME","KXLIGUE1BTTS","KXEFLPROMO","KXUSLGAME","KXKLEAGUE","KXUCLW","KXJOINRONALDO","KXSAUDIPLSPREAD","KXTHAIL1","KXMLSBTTS","KXBELGIANPL","KXEPL1H","KXLAMINEYAMAL","KXBALLONDOR","KXSOCCERTRANSFER","KXSAUDIPLTOTAL","KXWCSQUAD","KXSERIEAGAME","KXSERIEARELEGATION","KXKLEAGUEGAME","KXLIGAMXTOTAL","KXEPLTOP6","KXSUPERLIG","KXARSENALCUPS","KXUCLGAME","KXVENFUTVE","KXSERIEBGAME","KXEGYPLGAME","KXALEAGUETOTAL","KXLIGUE1RELEGATION","KXEPLBTTS","KXFACUP","KXMENWORLDCUP","KXSERIEASPREAD","KXFIFAUSPULL","KXUCL1H","KXLALIGARELEGATION","KXLIGAPORTUGALGAME","KXCOPPAITALIA","KXTHAIL1GAME","KXALEAGUESPREAD","KXSAUDIPLGAME","KXPREMIERLEAGUE","KXLIGAMX","KXLALIGASPREAD","KXDENSUPERLIGAGAME","KXMLSCUP","KXJLEAGUEGAME","KXURYPDGAME","KXWCROUND","KXBUNDESLIGATOP4","KXLIGAMXSPREAD","KXBRASILEIROGAME","KXLIGAMXGAME","KXUCLBTTS","KXALLSVENSKANGAME","KXBUNDESLIGA1H","KXEFLCHAMPIONSHIP","KXUCLSPREAD","KXLIGUE1TOTAL","KXBRASILEIROTOTAL","KXSOCCERPLAYCRON","KXVENFUTVEGAME","KXLALIGATOP4","KXEFLCHAMPIONSHIPGAME","KXPERLIGA1","KXEKSTRAKLASAGAME","KXMLSGAME","KXMLSWEST","KXWCMESSIRONALDO","KXAPFDDH","KXJOINCLUB","KXLALIGA1H","KXWINSTREAKMANU","KXUCL","KXSLGREECE","KXBRASILEIRO","KXHNLGAME","KXSERIEA","KXSERIEABTTS","KXSWISSLEAGUEGAME","KXEREDIVISIEGAME","KXWCIRAN","KXLALIGA","KXALEAGUEGAME","KXCONCACAFCCUPGAME","KXBELGIANPLGAME","KXBUNDESLIGA","KXUEL","KXBUNDESLIGARELEGATION","KXLIGUE1TOP4","KXEPLTOP2","KXUECL","KXCHLLDP","KXBUNDESLIGABTTS","KXWCGROUPQUAL","KXBUNDESLIGAGAME","KXUCLFINALIST","KXSUPERLIGGAME","KXBRASILEIROTOPX","KXLIGAPORTUGAL","KXUCLRO4","KXKNVBCUP","KXCOPADELREY","KXBUNDESLIGASPREAD","KXLALIGA2GAME","KXCHNSLGAME","KXMLSSPREAD","KXSERIEATOP4","KXTEAMSINUCL","KXBRASILEIROSPREAD","KXLIGUE1GAME","KXDENSUPERLIGA","KXMLSTOTAL","KXLALIGAGAME","KXNEXTMANAGERMANU","KXPFAPOY","KXLIGUE1","KXMLSEAST","KXUCLTOTAL","KXWCLOCATION","KXEPLRELEGATION","KXUELGAME","KXECULPGAME","KXUELTOTAL","KXEREDIVISIE"]),
     ("🏀","Basketball",["KXNBAEFINMVP","KXLEADERNBABLK","KXNBAMVP","KXNBASIXTH","KXCITYNBAEXPAND","KXBSLGAME","KXBBLGAME","KXNBACLUTCH","KXNBADRAFTPICK","KXTEAMSINNBAEF","KXSONICS","KXNBADPOY","KXNBAWINS","KXNBALOTTERYODDS","KXTEAMSINNBAF","KXNBADRAFTCOMP","KXNBA","KXWNBADRAFT1","KXNBAMATCHUP","KXBBSERIEAGAME","KXNBAWFINMVP","KXLEADERNBAAST","KXNBASEATTLE","KXMARMAD","KXNBAPLAYOFF","KXNBADRAFTTOP","KXWNBADRAFTTOP3","KXISLGAME","KXNBA2NDTEAMDEF","KXNBA1STTEAMDEF","KXNBAMIMP","KXLEADERNBAREB","KXABAGAME","KXNBAFINMVP","KXACBGAME","KXWNBADELAY","KXLEADERNBASTL","KXNCAAMBNEXTCOACH","KXNBASOUTHWEST","KXNBATOPPICK","KXCBAGAME","KXNBAATLANTIC","KXNBAEAST1SEED","KXJBLEAGUEGAME","KXNBAROY","KXSTEPHDEAL","KXNBAEAST","KXNBA1STTEAM","KXNBACOY","KXNBA2NDTEAM","KXLEADERNBA3PT","KXLBJRETIRE","KXNBAWEST","KXSPORTSOWNERLBJ","KXNEXTTEAMNBA","KXWNBAGAMESPLAYED","KXNBASOUTHEAST","KXNBADRAFTCAT","KXNBA3RDTEAM","KXNBAPACIFIC","KXARGLNBGAME","KXQUADRUPLEDOUBLE","KXNBACENTRAL","KXRECORDNBABEST","KXNBANORTHWEST","KXLNBELITEGAME","KXNBAWEST1SEED","KXNBAPLAYIN","KXLEADERNBAPTS","KXEUROLEAGUEGAME","KXNBATEAM","KXNBADRAFT1"]),
@@ -116,7 +115,6 @@ for ic, sname, tickers in SPORT_TAGS:
 def detect_sport(series_ticker):
     return SERIES_TO_SPORT.get(str(series_ticker).upper(), "")
 
-# Soccer competitions (series prefix → comp name)
 SOCCER_COMP_MAP = {
     "KXEPL":"EPL","KXPREMIERLEAGUE":"EPL","KXARSENALCUPS":"EPL","KXPFAPOY":"EPL","KXNEXTMANAGERMANU":"EPL","KXWINSTREAKMANU":"EPL",
     "KXUCLGAME":"Champions League","KXUCL1H":"Champions League","KXUCLSPREAD":"Champions League","KXUCLTOTAL":"Champions League","KXUCLBTTS":"Champions League","KXUCL":"Champions League","KXUCLFINALIST":"Champions League","KXUCLRO4":"Champions League","KXUCLW":"Champions League","KXLEADERUCLGOALS":"Champions League","KXTEAMSINUCL":"Champions League",
@@ -133,38 +131,25 @@ SOCCER_COMP_MAP = {
     "KXSAUDIPLGAME":"Saudi Pro League","KXSAUDIPLSPREAD":"Saudi Pro League","KXSAUDIPLTOTAL":"Saudi Pro League",
     "KXLIGAPORTUGALGAME":"Liga Portugal","KXLIGAPORTUGAL":"Liga Portugal",
     "KXEREDIVISIEGAME":"Eredivisie","KXEREDIVISIE":"Eredivisie",
-    "KXCOPADELREY":"Copa del Rey",
-    "KXDFBPOKAL":"DFB Pokal",
-    "KXFACUP":"FA Cup",
-    "KXCOPPAITALIA":"Coppa Italia",
+    "KXCOPADELREY":"Copa del Rey","KXDFBPOKAL":"DFB Pokal","KXFACUP":"FA Cup","KXCOPPAITALIA":"Coppa Italia",
     "KXEFLCHAMPIONSHIPGAME":"EFL Championship","KXEFLCHAMPIONSHIP":"EFL Championship","KXEFLPROMO":"EFL Championship",
     "KXSUPERLIGGAME":"Super Lig","KXSUPERLIG":"Super Lig",
-    "KXCONCACAFCCUPGAME":"CONCACAF",
-    "KXUSLGAME":"USL","KXUSL":"USL",
+    "KXCONCACAFCCUPGAME":"CONCACAF","KXUSLGAME":"USL","KXUSL":"USL",
     "KXSCOTTISHPREMGAME":"Scottish Prem",
     "KXEKSTRAKLASAGAME":"Ekstraklasa","KXEKSTRAKLASA":"Ekstraklasa",
     "KXALEAGUEGAME":"A-League","KXALEAGUESPREAD":"A-League","KXALEAGUETOTAL":"A-League",
     "KXKLEAGUEGAME":"K League","KXKLEAGUE":"K League",
-    "KXJLEAGUEGAME":"J League",
-    "KXCHNSLGAME":"Chinese SL","KXCHNSL":"Chinese SL",
-    "KXALLSVENSKANGAME":"Allsvenskan",
-    "KXDENSUPERLIGAGAME":"Danish SL","KXDENSUPERLIGA":"Danish SL",
-    "KXSWISSLEAGUEGAME":"Swiss League",
-    "KXARGPREMDIVGAME":"Argentinian",
-    "KXDIMAYORGAME":"Colombian",
-    "KXURYPDGAME":"Uruguayan","KXURYPD":"Uruguayan",
-    "KXECULPGAME":"Ecuador LigaPro","KXECULP":"Ecuador LigaPro",
-    "KXVENFUTVEGAME":"Venezuelan","KXVENFUTVE":"Venezuelan",
-    "KXCHLLDPGAME":"Chilean","KXCHLLDP":"Chilean",
-    "KXAPFDDHGAME":"APF","KXAPFDDH":"APF",
-    "KXSLGREECE":"Greek SL",
-    "KXTHAIL1GAME":"Thai League","KXTHAIL1":"Thai League",
-    "KXEGYPLGAME":"Egyptian PL",
-    "KXHNLGAME":"HNL Croatia",
-    "KXBELGIANPLGAME":"Belgian Pro","KXBELGIANPL":"Belgian Pro",
-    "KXPERLIGA1":"Peruvian L1",
-    "KXKNVBCUP":"KNVB Cup",
-    "KXLAMINEYAMAL":"Transfer/Other","KXBALLONDOR":"Awards","KXSOCCERTRANSFER":"Transfer/Other","KXJOINLEAGUE":"Transfer/Other","KXJOINRONALDO":"Transfer/Other","KXJOINCLUB":"Transfer/Other",
+    "KXJLEAGUEGAME":"J League","KXCHNSLGAME":"Chinese SL","KXCHNSL":"Chinese SL",
+    "KXALLSVENSKANGAME":"Allsvenskan","KXDENSUPERLIGAGAME":"Danish SL","KXDENSUPERLIGA":"Danish SL",
+    "KXSWISSLEAGUEGAME":"Swiss League","KXARGPREMDIVGAME":"Argentinian","KXDIMAYORGAME":"Colombian",
+    "KXURYPDGAME":"Uruguayan","KXURYPD":"Uruguayan","KXECULPGAME":"Ecuador LigaPro","KXECULP":"Ecuador LigaPro",
+    "KXVENFUTVEGAME":"Venezuelan","KXVENFUTVE":"Venezuelan","KXCHLLDPGAME":"Chilean","KXCHLLDP":"Chilean",
+    "KXAPFDDHGAME":"APF","KXAPFDDH":"APF","KXSLGREECE":"Greek SL",
+    "KXTHAIL1GAME":"Thai League","KXTHAIL1":"Thai League","KXEGYPLGAME":"Egyptian PL",
+    "KXHNLGAME":"HNL Croatia","KXBELGIANPLGAME":"Belgian Pro","KXBELGIANPL":"Belgian Pro",
+    "KXPERLIGA1":"Peruvian L1","KXKNVBCUP":"KNVB Cup",
+    "KXLAMINEYAMAL":"Transfer/Other","KXBALLONDOR":"Awards","KXSOCCERTRANSFER":"Transfer/Other",
+    "KXJOINLEAGUE":"Transfer/Other","KXJOINRONALDO":"Transfer/Other","KXJOINCLUB":"Transfer/Other",
 }
 
 def get_soccer_comp(series):
@@ -227,45 +212,46 @@ def paginate(with_markets=False, category=None, series_ticker=None, max_pages=30
             events.extend(batch)
             cursor = resp.get("cursor") or resp.get("next_cursor")
             if not cursor: break
-            time.sleep(0.35)
+            time.sleep(0.1)  # reduced from 0.35
         except Exception as e:
             if "429" in str(e): time.sleep(3)
             else: break
     return events
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=1800)  # 30 min cache
 def fetch_all():
     prog = st.progress(0, text="Step 1 — Fetching all events…")
+
+    # Step 1: fetch all events without nested markets (fast, no odds)
     all_ev = paginate(with_markets=False, max_pages=30)
-    prog.progress(0.3, text=f"{len(all_ev)} events. Step 2 — Fetching sports with odds…")
-
-    all_sport_series = list(SERIES_TO_SPORT.keys())
-    seen = {e["event_ticker"] for e in all_ev}
     ev_map = {e["event_ticker"]: e for e in all_ev}
+    prog.progress(0.35, text=f"{len(all_ev)} events found. Step 2 — Fetching sports odds…")
 
-    total = len(all_sport_series)
-    for i, series in enumerate(all_sport_series):
-        prog.progress(0.3 + 0.6*(i/total), text=f"Fetching {series}…")
-        batch = paginate(with_markets=True, series_ticker=series, max_pages=3)
-        for e in batch:
-            t = e.get("event_ticker","")
-            if not t: continue
-            if t not in ev_map or (e.get("markets") and not ev_map.get(t,{}).get("markets")):
-                ev_map[t] = e
+    # Step 2: ONE bulk fetch for all sports with nested markets
+    # Replaces the old per-series loop (300+ API calls → just a few paginated pages)
+    sport_events = paginate(with_markets=True, category="Sports", max_pages=30)
+    for e in sport_events:
+        t = e.get("event_ticker", "")
+        if not t: continue
+        # Prefer the version that has markets data attached
+        if t not in ev_map or (e.get("markets") and not ev_map.get(t, {}).get("markets")):
+            ev_map[t] = e
 
-    prog.progress(0.95, text="Building dataframe…")
+    prog.progress(0.85, text="Building dataframe…")
     combined = list(ev_map.values())
     if not combined:
         prog.empty(); return pd.DataFrame()
 
     df = pd.DataFrame(combined)
-    df["category"] = df.get("category", pd.Series("Other", index=df.index)).fillna("Other").str.strip()
-    df["_series"]  = df.get("series_ticker", pd.Series("", index=df.index)).fillna("").str.upper()
-    df["_sport"]   = df["_series"].apply(detect_sport)
-    df["_is_sport"] = df["_sport"] != ""
-    df["_soccer_comp"] = df.apply(lambda r: get_soccer_comp(r["_series"]) if r["_sport"]=="Soccer" else "", axis=1)
+    df["category"]   = df.get("category", pd.Series("Other", index=df.index)).fillna("Other").str.strip()
+    df["_series"]    = df.get("series_ticker", pd.Series("", index=df.index)).fillna("").str.upper()
+    df["_sport"]     = df["_series"].apply(detect_sport)
+    df["_is_sport"]  = df["_sport"] != ""
+    df["_soccer_comp"] = df.apply(
+        lambda r: get_soccer_comp(r["_series"]) if r["_sport"] == "Soccer" else "", axis=1
+    )
 
-    # Normalize markets column: replace NaN / non-list values with empty list
+    # Normalize markets column — pandas fills missing values with NaN (float), not []
     if "markets" not in df.columns:
         df["markets"] = [[] for _ in range(len(df))]
     else:
@@ -273,7 +259,6 @@ def fetch_all():
 
     def extract(row):
         mkts = row.get("markets")
-        # Guard: must be a non-empty list (NaN from pandas is a float, not a list)
         if not isinstance(mkts, list) or len(mkts) == 0:
             return "—", "—", None
         m = mkts[0]
@@ -299,7 +284,7 @@ def fetch_all():
     prog.progress(1.0); prog.empty()
     return df
 
-# Sidebar
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📡 Kalshi Terminal")
     search = st.text_input("🔍 Search", placeholder="team, market, keyword…")
@@ -319,8 +304,9 @@ with st.sidebar:
     sort_by = st.radio("↕️ Sort", ["Earliest first","Latest first","Default"], index=0)
     st.markdown("---")
     if st.button("🔄 Refresh"): fetch_all.clear(); st.rerun()
-    st.caption("Cached 10 min.")
+    st.caption("Cached 30 min.")
 
+# ── Main ──────────────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
 with st.spinner("Loading…"):
     df = fetch_all()
@@ -328,7 +314,7 @@ with st.spinner("Loading…"):
 if df.empty:
     st.error("No data. Check API credentials."); st.stop()
 
-# Filter
+# ── Filter ────────────────────────────────────────────────────────────────────
 filtered = df.copy()
 if date_mode != "All dates":
     def date_ok(row):
@@ -361,6 +347,7 @@ st.markdown(f"""<div class="metric-strip">
   <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
 </div>""", unsafe_allow_html=True)
 
+# ── Render helpers ─────────────────────────────────────────────────────────────
 def render_cards(data):
     if data.empty:
         st.markdown('<div class="empty-state">No markets match your filters.</div>', unsafe_allow_html=True)
@@ -445,4 +432,4 @@ for i, tab in enumerate(top_tabs):
         elif cat == "Sports":  render_sport_tabs(filtered[filtered["_is_sport"]].copy())
         else:                  render_tag_tabs(filtered[filtered["category"]==cat].copy(), cat)
 
-st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 10 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
