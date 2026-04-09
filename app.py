@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 
 st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="🏟️")
 
@@ -48,6 +48,18 @@ hr { border-color: #1e1e32 !important; }
 .stTabs [aria-selected="true"] { background: #1e1e32 !important; color: #a5b4fc !important; border-radius: 6px 6px 0 0; }
 </style>
 """, unsafe_allow_html=True)
+
+# ── Timezone-safe date converter (no zoneinfo needed) ─────────────────────────
+UTC = timezone.utc
+
+def to_utc_date(ts):
+    """Convert a pandas Timestamp (UTC-aware) to a plain date in UTC."""
+    try:
+        if pd.isna(ts):
+            return None
+        return ts.astimezone(UTC).date()
+    except Exception:
+        return None
 
 # ── API ────────────────────────────────────────────────────────────────────────
 @st.cache_resource
@@ -131,20 +143,16 @@ def fetch_all():
     if "event_ticker" in df.columns:
         df = df.drop_duplicates(subset=["event_ticker"])
 
-    # Parse dates
+    # Parse dates — try multiple fields
+    df["_parsed_date"] = pd.NaT
     for col in ["strike_date", "end_date", "close_time", "expiration_time"]:
         if col in df.columns:
             parsed = pd.to_datetime(df[col], errors="coerce", utc=True)
-            if parsed.notna().any():
-                df["_parsed_date"] = parsed
-                break
-    if "_parsed_date" not in df.columns:
-        df["_parsed_date"] = pd.NaT
+            mask = df["_parsed_date"].isna() & parsed.notna()
+            df.loc[mask, "_parsed_date"] = parsed[mask]
 
-    # Local date column for easy filtering
-    df["_local_date"] = df["_parsed_date"].apply(
-        lambda d: d.tz_convert("US/Eastern").date() if pd.notna(d) else None
-    )
+    # Convert to plain UTC date — no zoneinfo dependency
+    df["_local_date"] = df["_parsed_date"].apply(to_utc_date)
 
     if "category" not in df.columns:
         df["category"] = "Other"
@@ -206,7 +214,6 @@ if df.empty:
 # ── Apply filters ──────────────────────────────────────────────────────────────
 filtered = df.copy()
 
-# Date filter
 if date_mode != "All dates":
     def date_ok(d):
         if d is None:
@@ -214,7 +221,6 @@ if date_mode != "All dates":
         return custom_start <= d <= custom_end
     filtered = filtered[filtered["_local_date"].apply(date_ok)]
 
-# Search filter
 if search:
     mask = (
         filtered.get("title", pd.Series(dtype=str)).str.contains(search, case=False, na=False) |
