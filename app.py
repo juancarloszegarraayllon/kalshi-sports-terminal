@@ -1010,7 +1010,7 @@ def render_cards(data):
                 kickoff_epoch = int(kickoff_dt_val.timestamp())
             else:
                 kickoff_epoch = 0
-            date_part = (" · " + dt) if dt and dt != "Open" else ""
+            date_part = (" · " + dt) if (dt and dt != "Open") else ""
             html += (
                 f'<div class="market-card" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">'
                 f'<div class="card-top"><span class="cat-pill {pill}">{label}</span></div>'
@@ -1114,34 +1114,32 @@ for i, tab in enumerate(top_tabs):
         elif cat == "Sports": render_sports(filtered[filtered["_is_sport"]].copy())
         else:                 render_cat_tabs(filtered[filtered["category"]==cat].copy(), cat)
 
-# Real-time JS countdown
-import streamlit.components.v1 as _components
-_components.html(
-    "<script>"
-    "(function(){"
-    "function fmt(s){"
-    "if(s<=0)return'🔴 Live';"
-    "var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sec=s%60;"
-    "if(d>1)return'Begins in '+d+'d';"
-    "if(d===1)return'Begins in 1d '+h+'h';"
-    "if(h>0)return'Begins in '+h+'h '+m+'m '+('0'+sec).slice(-2)+'s';"
-    "if(m>0)return'Begins in '+m+'m '+('0'+sec).slice(-2)+'s';"
-    "return'Begins in '+sec+'s';"
-    "}"
-    "function tick(){"
-    "var now=Math.floor(Date.now()/1000);"
-    "document.querySelectorAll('.countdown[data-kickoff]').forEach(function(el){"
-    "var k=parseInt(el.getAttribute('data-kickoff'),10);"
-    "var live=el.getAttribute('data-live')==='true';"
-    "if(!k&&!live)return;"
-    "if(live||k===-1||k-now<=0){el.textContent='🔴 Live';}"
-    "else{el.textContent=fmt(k-now);}"
-    "});"
-    "}"
-    "tick();setInterval(tick,1000);"
-    "new MutationObserver(tick).observe(document.body,{childList:true,subtree:true});"
-    "})();"
-    "</script>",
+import streamlit.components.v1 as _cv1
+_cv1.html(
+    '<script>'
+    '(function(){'
+    'function fmt(s){'
+    'if(s<=0)return"\U0001F534 Live";'
+    'var d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60),sc=s%60;'
+    'if(d>1)return"Begins in "+d+"d";'
+    'if(d===1)return"Begins in 1d "+h+"h";'
+    'if(h>0)return"Begins in "+h+"h "+m+"m "+(("0"+sc).slice(-2))+"s";'
+    'if(m>0)return"Begins in "+m+"m "+(("0"+sc).slice(-2))+"s";'
+    'return"Begins in "+sc+"s";}'
+    'function tick(){'
+    'var now=Math.floor(Date.now()/1000);'
+    'document.querySelectorAll(".countdown[data-kickoff]").forEach(function(el){'
+    'var k=parseInt(el.getAttribute("data-kickoff"),10);'
+    'var live=el.getAttribute("data-live")==="true";'
+    'if(!k&&!live)return;'
+    'if(live||k===-1||k-now<=0){el.textContent="\U0001F534 Live";}'
+    'else{el.textContent=fmt(k-now);}'
+    '});'
+    '}'
+    'tick();setInterval(tick,1000);'
+    'new MutationObserver(tick).observe(document.body,{childList:true,subtree:true});'
+    '})();'
+    '</script>',
     height=0
 )
 
