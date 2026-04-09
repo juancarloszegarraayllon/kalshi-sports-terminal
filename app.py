@@ -104,12 +104,10 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Sports nav column - plain text buttons, no rectangles */
-[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"],
-[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"]:hover,
-[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"]:focus,
-[data-testid="column"]:first-child [data-testid="stBaseButton-secondary"]:active {
+/* Sports nav - strip ALL button chrome everywhere EXCEPT tab buttons */
+button:not([role="tab"]) {
     background:transparent!important;
+    background-color:transparent!important;
     border:none!important;
     box-shadow:none!important;
     outline:none!important;
@@ -124,6 +122,19 @@ div[data-testid="stButton"] button:active,
     width:100%!important;
     border-radius:0!important;
     min-height:28px!important;
+}
+button:not([role="tab"]):hover {
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    color:#aaaaaa!important;
+}
+button:not([role="tab"]):focus,
+button:not([role="tab"]):active {
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    outline:none!important;
 }
 
 /* ── Streamlit overrides ── */
