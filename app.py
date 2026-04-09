@@ -404,6 +404,90 @@ def render_cards(data):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
+# Series ticker keyword → competition name (built from debug output)
+# Key = substring to look for in series_ticker (uppercase)
+# Value = competition display name
+SERIES_TO_COMP = {
+    # Basketball
+    "EUROLEAGUE":"Euroleague", "ADRIATIC":"Adriatic ABA League", "CHINABASKET":"Chinese Basketball Association",
+    "GERMBBL":"Germany BBL", "ISRAELBBALL":"Israeli Super League", "ITALYSERIEA":"Italy Serie A",
+    "JAPANB":"Japan B League", "LNB":"LNB Elite", "LIGABASK":"Liga Nacional de Basquetbol",
+    "PROBASKET":"Pro Basketball (M)", "WNBA":"Pro Basketball (W)", "NBA":"Pro Basketball (M)",
+    "NCAAB":"College Basketball (M)", "RUSSIAVTB":"Russia VTB United League",
+    "SPAINACB":"Spain Liga ACB", "TURKEYBSL":"Turkey BSL",
+    # Baseball
+    "MLB":"Pro Baseball", "JAPANNPB":"Japan NPB", "KOREAKBO":"Korea KBO", "NCAAB":"College Baseball",
+    "COLLEGEBASEBALL":"College Baseball",
+    # Tennis
+    "ATP":"ATP", "WTA":"WTA", "MONTECARLO":"ATP Monte Carlo", "FRENCHOPEN":"ATP French Open",
+    "WTALINZ":"WTA Linz", "CHALLMADRID":"ATP Challenger Madrid", "CHALLMONZA":"ATP Challenger Monza",
+    "CHALLWUNING":"ATP Challenger Wuning", "WTAMADRID":"WTA 125K Madrid",
+    # Soccer
+    "EPL":"EPL", "MLS":"MLS", "LALIGA":"La Liga", "SERIEA":"Serie A", "BUNDESLIGA":"Bundesliga",
+    "LIGUE1":"Ligue 1", "UCL":"Champions League", "CL":"Champions League",
+    "CHAMPIONSLEAGUE":"Champions League", "UEL":"Europa League", "EUROPALEAGUE":"Europa League",
+    "CONFERENCELEAGUE":"Conference League", "UECL":"Conference League",
+    "LIGA1":"La Liga", "LIGAMX":"Liga MX", "BRASILEIRAO":"Brasileiro Serie A",
+    "EREDIVISIE":"Eredivisie", "LIGAPORTUGAL":"Liga Portugal", "BELGIANPRO":"Belgian Pro League",
+    "ALLSVENSKAN":"Allsvenskan", "SUPERLIGA":"Danish Superliga", "EFLCHAMP":"EFL Championship",
+    "SUPERLIG":"Super Lig", "SWISSSUPER":"Swiss Super League", "SCOTTISH":"Scottish Premiership",
+    "KOREAKLEAGUE":"Korea K League 1", "JAPANJ1":"Japan J1 League", "CHINESESUPER":"Chinese Super League",
+    "CONCACAF":"CONCACAF Champions Cup", "LIBERTADORES":"CONMEBOL Libertadores",
+    "SUDAMERICANA":"CONMEBOL Sudamericana", "COPADELREY":"Copa del Rey", "COPPA":"Coppa Italia",
+    "DFBPOKAL":"DFB Pokal", "FACUP":"FA Cup", "FIFA":"FIFA World Cup", "WORLDCUP":"FIFA World Cup",
+    "WOMENSCL":"Champions League Womens", "BUNDESLIGA2":"Bundesliga 2", "LALIGA2":"La Liga 2",
+    "SERIEB":"Serie B", "USLCHAMP":"USL Championship", "URUGUAY":"Uruguay Primera Division",
+    "CHILE":"Chile Liga de Primera", "ECUADOR":"Ecuador LigaPro", "VENEZUELA":"Venezuela Liga FUTVE",
+    "COLOMBIA":"Colombian Liga DIMAYOR", "ARGENTINA":"Argentina Primera Division",
+    "AUSTRALIALEAGUE":"Australia A League", "THAI":"Thai League 1", "EGYPT":"Egyptian Premier League",
+    "CROATIA":"Croatia HNL", "EKSTRAKLASA":"Ekstraklasa", "GREECE":"Greece Super League",
+    "KNVB":"KNVB", "LIGA1PERU":"Liga 1 Peru", "APF":"APF Division de Honor",
+    "BALLER":"Baller League",
+    # Hockey
+    "NHL":"Pro Hockey", "AHL":"AHL", "FINLANDLIIGA":"Finland Liiga",
+    "CZECHEXTRA":"Czech Extraliga", "GERMDEL":"Germany DEL", "KHL":"KHL", "SHL":"SHL",
+    "SWISShockey":"Switzerland National League", "COLLEGEHOCKEY":"College Hockey",
+    # Golf
+    "MASTERS":"The Masters", "RYDERCUP":"Ryder Cup",
+    # MMA
+    "UFC":"UFC",
+    # Cricket
+    "IPL":"IPL", "PSL":"PSL", "T20I":"T20 International", "T20INT":"T20 International",
+    # Football
+    "NFL":"Pro Football", "NCAAF":"College Football", "UFL":"UFL",
+    # Esports
+    "CS2":"CS2", "LOL":"League of Legends", "DOTA":"Dota 2",
+    "VAL":"Valorant", "OW":"Overwatch", "R6":"Rainbow Six Siege",
+    # Motorsport
+    "F1":"F1", "NASCARCUP":"NASCAR Cup Series", "NASCAROREILLY":"NASCAR O'Reilly Auto Parts Series",
+    "NASCARTRUCK":"NASCAR Truck Series", "INDYCAR":"IndyCar", "MOTOGP":"MotoGP",
+    # Aussie Rules
+    "AFL":"AFL",
+    # Boxing
+    "BOX":"Boxing",
+    # Lacrosse
+    "COLLEGELAX":"College Lacrosse", "NLL":"College Lacrosse", "PLL":"College Lacrosse",
+    # Rugby
+    "NRL":"National Rugby League", "FRENCHRUGBY":"France Top 14",
+    "GALLAGHER":"Gallagher Premiership", "SUPERLEAGUERUGBY":"Super League Rugby",
+    # Darts
+    "PDC":"Premier League Darts", "DART":"Premier League Darts",
+    # Other
+    "SAILGP":"SailGP",
+}
+
+def get_competition(series_ticker):
+    """Map a series_ticker to a competition name."""
+    s = str(series_ticker).upper()
+    # Try longest match first to avoid short false matches
+    best = None
+    best_len = 0
+    for key, comp in SERIES_TO_COMP.items():
+        if key in s and len(key) > best_len:
+            best = comp
+            best_len = len(key)
+    return best or "Other"
+
 # ── Sub-tab renderer for sports ────────────────────────────────────────────────
 def render_sport_tabs(sdf):
     """Sports tab: sub-tabs by sport, then by competition."""
@@ -421,36 +505,25 @@ def render_sport_tabs(sdf):
             else:
                 sport_name = present_sports[i-1]
                 sport_df   = sdf[sdf["_sport"] == sport_name].copy()
-                comps      = SPORT_COMPS.get(sport_name, [])
 
-                # Find which competitions are present by matching series_ticker
-                def match_comp(series, comp):
-                    s = str(series).upper()
-                    c = comp.upper().replace(" ","")
-                    # Try direct keyword match
-                    for word in comp.split():
-                        if len(word) > 3 and word.upper() in s:
-                            return True
-                    return False
+                # Map each event to its competition using series_ticker
+                sport_df["_comp"] = sport_df["_series"].apply(get_competition)
 
-                present_comps = []
-                for comp in comps:
-                    if sport_df["_series"].apply(lambda s: match_comp(s, comp)).any():
-                        present_comps.append(comp)
+                present_comps = sorted([c for c in sport_df["_comp"].unique() if c != "Other"])
+                has_other     = "Other" in sport_df["_comp"].values
 
-                if not present_comps:
+                if not present_comps and not has_other:
                     render_cards(sport_df)
                 else:
-                    comp_labels = ["All"] + present_comps
+                    comp_list   = present_comps + (["Other"] if has_other else [])
+                    comp_labels = ["All"] + comp_list
                     comp_tabs   = st.tabs(comp_labels)
                     for j, ctab in enumerate(comp_tabs):
                         with ctab:
                             if j == 0:
                                 render_cards(sport_df)
                             else:
-                                comp = present_comps[j-1]
-                                comp_df = sport_df[sport_df["_series"].apply(lambda s: match_comp(s, comp))]
-                                render_cards(comp_df)
+                                render_cards(sport_df[sport_df["_comp"] == comp_list[j-1]])
 
 # ── Tag sub-tabs for non-sport categories ──────────────────────────────────────
 def render_tag_tabs(cat_df, cat):
