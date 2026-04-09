@@ -56,8 +56,14 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .odds-price-no{font-size:15px;font-weight:700;color:#ff2222;}
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
-.subcat-panel button{background:transparent!important;border:none!important;text-align:left!important;padding:6px 8px!important;font-size:13px!important;font-family:Helvetica,sans-serif!important;}
-.subcat-panel button:hover{color:#00ff00!important;}
+/* Left nav buttons */
+section.main div[data-testid="column"] button{
+    background:transparent!important;border:none!important;
+    text-align:left!important;justify-content:flex-start!important;
+    padding:5px 4px!important;font-size:13px!important;
+    font-family:Helvetica,sans-serif!important;color:#ffffff!important;
+    box-shadow:none!important;border-radius:4px!important;}
+section.main div[data-testid="column"] button:hover{color:#00ff00!important;background:#0a0a0a!important;}
 
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
@@ -1088,35 +1094,50 @@ for i, tab in enumerate(top_tabs):
             _left, _right = st.columns([1, 4])
 
             with _left:
-                st.markdown("<div class='subcat-panel'>", unsafe_allow_html=True)
-                subcat_key = f"subcat_{cat}"
+                subcat_key    = f"subcat_{cat}"
                 subsubcat_key = f"subsubcat_{cat}"
                 if subcat_key not in st.session_state:
                     st.session_state[subcat_key] = subcats[0]
                 if subsubcat_key not in st.session_state:
                     st.session_state[subsubcat_key] = "All"
 
-                for sc in subcats:
-                    is_active = st.session_state[subcat_key] == sc
-                    label = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","").replace("⚾","").replace("🏈","").replace("🏒","").replace("🎾","").replace("⛳","").replace("🥊","").replace("🏏","").replace("🎮","").replace("🏎️","").replace("♟️","").replace("🏉","").replace("🥍","").replace("🎯","").replace("⛵","").strip()
-                    style = "color:#00ff00;font-weight:700;" if is_active else "color:#ffffff;opacity:.7;"
-                    if st.button(label, key=f"sc_{cat}_{sc}", use_container_width=True):
-                        st.session_state[subcat_key] = sc
-                        st.session_state[subsubcat_key] = "All"
-                        st.rerun()
+                selected_subcat    = st.session_state[subcat_key]
+                selected_subsubcat = st.session_state[subsubcat_key]
 
-                # Sub-sub-categories
-                selected_subcat = st.session_state[subcat_key]
-                subsubcats = get_subsubcats(cat, selected_subcat, filtered)
-                if subsubcats:
-                    st.markdown("<hr style='border-color:#1c1c1c;margin:8px 0;'>", unsafe_allow_html=True)
-                    for ssc in subsubcats:
-                        is_active2 = st.session_state[subsubcat_key] == ssc
-                        style2 = "color:#00ff00;font-size:11px;font-weight:600;" if is_active2 else "color:#888;font-size:11px;"
-                        if st.button(ssc, key=f"ssc_{cat}_{selected_subcat}_{ssc}", use_container_width=True):
-                            st.session_state[subsubcat_key] = ssc
+                for sc in subcats:
+                    clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
+                    is_active = selected_subcat == sc
+
+                    # Get count
+                    if cat == "Sports" and sc != "All sports":
+                        cnt = int((filtered["_sport"] == sc).sum())
+                    elif cat == "Sports" and sc == "All sports":
+                        cnt = int(filtered["_is_sport"].sum())
+                    else:
+                        cnt = len(filtered)
+
+                    # Top-level item — clicking selects it
+                    col_label, col_arrow = st.columns([4,1])
+                    with col_label:
+                        label_md = f"**{clean}** <span style='color:#888;font-size:11px;'>({cnt})</span>" if is_active else f"{clean} <span style='color:#555;font-size:11px;'>({cnt})</span>"
+                        color = "#00ff00" if is_active else "#ffffff"
+                        if st.button(f"{clean} ({cnt})", key=f"sc_{cat}_{sc}",
+                                     use_container_width=True):
+                            st.session_state[subcat_key] = sc
+                            st.session_state[subsubcat_key] = "All"
                             st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
+
+                    # If this sport is selected, show its sub-subcategories inline below
+                    if is_active:
+                        subsubcats = get_subsubcats(cat, sc, filtered)
+                        if subsubcats:
+                            for ssc in subsubcats:
+                                is_ssc_active = selected_subsubcat == ssc
+                                prefix = "  ▸ " if is_ssc_active else "     "
+                                if st.button(f"{prefix}{ssc}", key=f"ssc_{cat}_{sc}_{ssc}",
+                                             use_container_width=True):
+                                    st.session_state[subsubcat_key] = ssc
+                                    st.rerun()
 
             with _right:
                 selected_subcat  = st.session_state.get(subcat_key, subcats[0])
