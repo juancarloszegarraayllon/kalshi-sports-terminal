@@ -44,7 +44,8 @@ h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0
 .odds-yes{flex:1;background:#0d2d1a;border:1px solid #166534;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{flex:1;background:#2d0d0d;border:1px solid #7f1d1d;border-radius:6px;padding:5px 8px;text-align:center;}
 .outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
-.outcome-label{font-size:11px;color:#9ca3af;font-weight:500;flex:0 0 auto;min-width:60px;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.outcome-label{font-size:11px;color:#9ca3af;font-weight:500;flex:0 0 auto;min-width:60px;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.outcome-chance{font-size:13px;font-weight:600;color:#e2e8f0;flex:0 0 auto;min-width:38px;text-align:right;}
 .outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
 .outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
 .ticker-link{font-size:10px;color:#4f46e5;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;}
@@ -654,14 +655,37 @@ def fetch_all():
         for mk in mkts:
             d = safe_date(mk.get("close_time"))
             if d and (close is None or d < close): close = d
-        # Build list of (label, yes, no) for each outcome
+        # Build list of (label, chance, yes, no) for each outcome
+        # Kalshi market fields: subtitle = outcome label (e.g. "Libertad")
+        # yes_bid / yes_bid_dollars = YES price (cents or dollars)
+        # chance = yes_bid interpreted as probability
+        event_title = str(row.get("title","")).strip()
         outcomes = []
         for mk in mkts:
-            label = str(mk.get("subtitle") or mk.get("title") or "").strip()
-            yes = fmt_pct(mk.get("yes_bid_dollars") or mk.get("yes_bid"))
-            no  = fmt_pct(mk.get("no_bid_dollars")  or mk.get("no_bid"))
-            if label or yes != "—":
-                outcomes.append((label, yes, no))
+            # subtitle is the outcome label — fall back to ticker suffix if same as event title
+            raw_sub = str(mk.get("subtitle") or "").strip()
+            ticker_mk = str(mk.get("ticker") or "").strip()
+            # If subtitle is identical to event title or empty, derive label from market ticker suffix
+            if not raw_sub or raw_sub == event_title:
+                # e.g. KXCONMEBOLLIBGAME-26APR09UCVLIB-T1 → T1, or use index
+                parts = ticker_mk.rsplit("-", 1)
+                raw_sub = parts[-1] if len(parts) > 1 else ticker_mk
+            label = raw_sub[:30]
+            # YES bid: try dollars first (0-1 float), then cents (0-100 int)
+            yes_raw = mk.get("yes_bid_dollars") or mk.get("yes_bid")
+            no_raw  = mk.get("no_bid_dollars")  or mk.get("no_bid")
+            try:
+                yf = float(yes_raw) if yes_raw is not None else None
+                nf = float(no_raw)  if no_raw  is not None else None
+                # Normalise to 0-1 range
+                if yf is not None and yf > 1: yf = yf / 100
+                if nf is not None and nf > 1: nf = nf / 100
+                chance = f"{int(round(yf*100))}%" if yf is not None else "—"
+                yes    = f"{int(round(yf*100))}¢"  if yf is not None else "—"
+                no     = f"{int(round(nf*100))}¢"  if nf is not None else "—"
+            except:
+                chance, yes, no = "—","—","—"
+            outcomes.append((label, chance, yes, no))
         return "—","—", close, outcomes
 
     info = df.apply(extract, axis=1, result_type="expand")
@@ -765,16 +789,17 @@ def render_cards(data):
             # Build outcomes rows
             if outcomes:
                 odds_html = ""
-                for (olabel, oyes, ono) in outcomes[:4]:  # max 4 outcomes
-                    safe_label = olabel[:22] if olabel else "—"
+                for (olabel, ochance, oyes, ono) in outcomes[:5]:
+                    safe_label = olabel[:24] if olabel else "—"
                     odds_html += f'''<div class="outcome-row">
 <div class="outcome-label">{safe_label}</div>
+<div class="outcome-chance">{ochance}</div>
 <div class="outcome-odds">
 <div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">{oyes}</div></div>
 <div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">{ono}</div></div>
 </div></div>'''
             else:
-                odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
+                odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             html += f"""<div class="market-card">
 <div class="card-top"><span class="cat-pill {pill}">{label}</span><span class="date-text">📅 {dt}</span></div>
 <span class="card-icon">{icon}</span>
