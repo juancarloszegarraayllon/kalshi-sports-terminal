@@ -958,11 +958,20 @@ if search:
 
 if sort_by != "Default":
     asc = sort_by == "Earliest first"
-    has = filtered["_sort_dt"].notna()
-    dated, undated = filtered[has].copy(), filtered[~has].copy()
-    dated["_sk"] = dated["_sort_dt"].apply(lambda d: str(d) if d else "9999")
-    dated = dated.sort_values("_sk", ascending=asc).drop(columns=["_sk"])
+    from datetime import date as _sortdate
+    def _sort_key(d):
+        if d is None: return "9999-99-99"
+        if isinstance(d, _sortdate): return d.isoformat()
+        try: return str(d)
+        except: return "9999-99-99"
+    filtered = filtered.copy()
+    filtered["_sk"] = filtered["_sort_dt"].apply(_sort_key)
+    # Put nulls at end regardless of direction
+    has_date = filtered["_sk"] != "9999-99-99"
+    dated   = filtered[has_date].sort_values("_sk", ascending=asc)
+    undated = filtered[~has_date]
     filtered = pd.concat([dated, undated], ignore_index=True)
+    filtered = filtered.drop(columns=["_sk"])
 
 sport_count = int(df["_is_sport"].sum())
 st.markdown(f"""<div class="metric-strip">
@@ -1024,8 +1033,14 @@ def render_cards(data):
                 odds_html = '<div class="outcome-row"><div class="outcome-label">—</div><div class="outcome-chance">—</div><div class="outcome-odds"><div class="odds-yes"><div class="odds-label">YES</div><div class="odds-price-yes">—</div></div><div class="odds-no"><div class="odds-label">NO</div><div class="odds-price-no">—</div></div></div></div>'
             # Get kickoff epoch for JS countdown
             kickoff_dt_val = row.get("_kickoff_dt")
-            kickoff_epoch  = int(kickoff_dt_val.timestamp()) if kickoff_dt_val else 0
-            is_live_card   = (begins == "🔴 Live")
+            begins_str     = str(row.get("_begins") or "")
+            is_live_card   = ("Live" in begins_str)
+            if is_live_card:
+                kickoff_epoch = -1  # signals JS to show Live
+            elif kickoff_dt_val:
+                kickoff_epoch = int(kickoff_dt_val.timestamp())
+            else:
+                kickoff_epoch = 0
             html += f"""<div class="market-card" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">
 <div class="card-top"><span class="cat-pill {pill}">{label}</span></div>
 <div class="card-timing"><span class="begins-text countdown" data-kickoff="{kickoff_epoch}" data-live="{str(is_live_card).lower()}">{begins}</span>{f' · <span class="date-text">{dt}</span>' if dt and dt != "Open" else ""}</div>
@@ -1127,48 +1142,50 @@ for i, tab in enumerate(top_tabs):
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
 
-# ── Real-time JS countdown ────────────────────────────────────────────────────
-st.markdown("""
+# ── Real-time JS countdown via components ────────────────────────────────────
+import streamlit.components.v1 as _components
+_components.html("""
 <script>
 (function() {
     function fmtCountdown(secs) {
-        if (secs <= 0) return "🔴 Live";
+        if (secs <= 0) return "\ud83d\udd34 Live";
         var d = Math.floor(secs / 86400);
         var h = Math.floor((secs % 86400) / 3600);
         var m = Math.floor((secs % 3600) / 60);
         var s = secs % 60;
-        if (d > 1)  return "Begins in " + d + "d";
+        if (d > 1)   return "Begins in " + d + "d";
         if (d === 1) return "Begins in 1d " + h + "h";
-        if (h > 0)  return "Begins in " + h + "h " + m + "m " + s + "s";
-        if (m > 0)  return "Begins in " + m + "m " + s + "s";
+        if (h > 0)   return "Begins in " + h + "h " + m + "m " + s + "s";
+        if (m > 0)   return "Begins in " + m + "m " + s + "s";
         return "Begins in " + s + "s";
     }
 
     function tick() {
         var now = Math.floor(Date.now() / 1000);
-        var elems = document.querySelectorAll(".countdown[data-kickoff]");
+        // Target the parent document since we are inside an iframe
+        var doc = window.parent.document;
+        var elems = doc.querySelectorAll(".countdown[data-kickoff]");
         elems.forEach(function(el) {
-            var kickoff = parseInt(el.getAttribute("data-kickoff"), 10);
+            var kickoff = parseInt(el.getAttribute("data-kickoff") || "0", 10);
             var isLive  = el.getAttribute("data-live") === "true";
+            if (isLive) {
+                el.textContent = "\ud83d\udd34 Live";
+                return;
+            }
             if (!kickoff) return;
             var diff = kickoff - now;
-            if (isLive || diff <= 0) {
-                el.textContent = "🔴 Live";
-                el.style.color  = "#10b981";
-            } else {
-                el.textContent  = fmtCountdown(diff);
-                el.style.color  = "#10b981";
-            }
+            el.textContent = fmtCountdown(diff);
+            el.style.color = "#10b981";
+            el.style.fontWeight = "600";
         });
     }
 
-    // Run immediately and then every second
     tick();
     setInterval(tick, 1000);
 
-    // Re-attach after Streamlit re-renders (it replaces DOM)
-    var observer = new MutationObserver(function() { tick(); });
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Also watch for DOM changes (Streamlit re-renders)
+    var observer = new MutationObserver(tick);
+    observer.observe(window.parent.document.body, { childList: true, subtree: true });
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
