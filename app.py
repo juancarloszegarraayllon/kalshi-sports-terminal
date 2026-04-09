@@ -1,13 +1,13 @@
 import streamlit as st
 import tempfile
 import time
+import json
 import pandas as pd
+import requests
 
 st.set_page_config(page_title="Kalshi Structure Debug", layout="wide")
-st.title("🔍 Kalshi Full Structure Debug")
-st.caption("This tool pulls the real category → series → events hierarchy live from the API.")
+st.title("🔍 Kalshi Structure Debug — Export")
 
-# ── Connect ────────────────────────────────────────────────────────────────────
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -23,13 +23,10 @@ def get_client():
 client = get_client()
 st.success("✅ Connected")
 
-# ── Step 1: Pull ALL series (paginated) ────────────────────────────────────────
-st.header("Step 1 — All Series (category + tags)")
+BASE = "https://api.elections.kalshi.com/trade-api/v2"
 
 @st.cache_data(ttl=300)
 def fetch_all_series():
-    import requests
-    BASE = "https://api.elections.kalshi.com/trade-api/v2"
     all_series, cursor = [], None
     for _ in range(60):
         try:
@@ -44,94 +41,13 @@ def fetch_all_series():
             if not cursor: break
             time.sleep(0.3)
         except Exception as e:
-            st.error(f"Series fetch error: {e}"); break
+            st.error(f"Error: {e}"); break
     return all_series
 
-with st.spinner("Fetching all series…"):
-    all_series = fetch_all_series()
-
-st.write(f"**Total series:** {len(all_series)}")
-
-df_s = pd.DataFrame(all_series)
-show_cols = [c for c in ["ticker","title","category","tags","frequency"] if c in df_s.columns]
-
-# Category breakdown
-st.subheader("Categories & counts:")
-cat_counts = df_s["category"].fillna("(none)").value_counts()
-st.dataframe(cat_counts.rename("series count").reset_index())
-
-# For each category: list series tickers + tags
-st.subheader("Category → Series Tickers → Tags:")
-for cat in sorted(df_s["category"].fillna("(none)").unique()):
-    cat_df = df_s[df_s["category"].fillna("(none)") == cat]
-    with st.expander(f"📂 {cat}  ({len(cat_df)} series)"):
-        # Show unique tags within this category
-        all_tags = []
-        for tags in cat_df["tags"].dropna():
-            if isinstance(tags, list):
-                all_tags.extend(tags)
-        unique_tags = sorted(set(all_tags))
-        st.write(f"**Tags (sub-categories):** {unique_tags}")
-        st.dataframe(cat_df[show_cols].reset_index(drop=True))
-
-# ── Step 2: For Sports — show tags as sub-categories ──────────────────────────
-st.header("Step 2 — Sports Series: Tag → Series Tickers")
-
-sports_df = df_s[df_s["category"] == "Sports"].copy()
-st.write(f"**Sports series total:** {len(sports_df)}")
-
-# Explode tags
-sports_df["_tags"] = sports_df["tags"].apply(lambda x: x if isinstance(x, list) else ["(no tag)"])
-tag_to_series = {}
-for _, row in sports_df.iterrows():
-    for tag in row["_tags"]:
-        tag_to_series.setdefault(tag, []).append(row["ticker"])
-
-st.subheader("Sport Tag → Series Tickers:")
-for tag, tickers in sorted(tag_to_series.items()):
-    with st.expander(f"🏷️ {tag}  ({len(tickers)} series)"):
-        st.write(tickers)
-
-# ── Step 3: Fetch sample events for each sport tag ────────────────────────────
-st.header("Step 3 — Sample Events per Sport Tag")
-st.caption("Fetches up to 5 events for each sport series ticker to confirm what's live")
-
-if st.button("▶️ Run event samples (slow — ~2 min)"):
-    tag_events = {}
-    all_sport_tickers = sorted(sports_df["ticker"].unique().tolist())
-    prog = st.progress(0)
-    for i, ticker in enumerate(all_sport_tickers):
-        prog.progress((i+1)/len(all_sport_tickers), text=f"Fetching {ticker}…")
-        try:
-            resp = client.get_events(limit=3, status="open", series_ticker=ticker)
-            events = resp.to_dict().get("events", [])
-            if events:
-                tag_events[ticker] = events
-        except Exception:
-            pass
-        time.sleep(0.2)
-    prog.empty()
-
-    st.write(f"Series with live events: {len(tag_events)} / {len(all_sport_tickers)}")
-
-    # Group back by tag
-    for tag, tickers in sorted(tag_to_series.items()):
-        live = {t: tag_events[t] for t in tickers if t in tag_events}
-        if not live: continue
-        with st.expander(f"🏷️ {tag} — {len(live)} active series"):
-            for ticker, events in live.items():
-                st.write(f"**{ticker}**")
-                for e in events:
-                    st.write(f"  • {e.get('title')} | series: {e.get('series_ticker')} | cat: {e.get('category')}")
-
-# ── Step 4: What series tickers appear in live open events? ───────────────────
-st.header("Step 4 — Live Events: Series Ticker Breakdown")
-st.caption("Pages through all open events and shows the unique series_tickers that appear")
-
 @st.cache_data(ttl=300)
-def fetch_live_events_sample():
+def fetch_live_events():
     all_ev, cursor = [], None
-    for _ in range(15):  # 15 pages = 3000 events
+    for _ in range(20):
         try:
             kw = {"limit": 200, "status": "open"}
             if cursor: kw["cursor"] = cursor
@@ -143,22 +59,111 @@ def fetch_live_events_sample():
             if not cursor: break
             time.sleep(0.35)
         except Exception as e:
-            st.warning(f"Stopped: {e}"); break
+            st.warning(f"Stopped at page: {e}"); break
     return all_ev
 
-with st.spinner("Fetching live events sample (up to 3000)…"):
-    live_events = fetch_live_events_sample()
+@st.cache_data(ttl=300)
+def fetch_sport_filters():
+    try:
+        r = requests.get(f"{BASE}/search/filters_by_sport", timeout=10)
+        return r.json()
+    except Exception:
+        return {}
 
-ev_df = pd.DataFrame(live_events)
-st.write(f"**Live events fetched:** {len(ev_df)}")
+with st.spinner("Fetching all data…"):
+    all_series   = fetch_all_series()
+    live_events  = fetch_live_events()
+    sport_filter = fetch_sport_filters()
 
-if "series_ticker" in ev_df.columns and "category" in ev_df.columns:
-    st.subheader("Category → unique series_tickers in live events:")
-    for cat in sorted(ev_df["category"].fillna("(none)").unique()):
-        cat_ev = ev_df[ev_df["category"].fillna("(none)") == cat]
-        series = sorted(cat_ev["series_ticker"].dropna().unique().tolist())
-        with st.expander(f"📂 {cat}  ({len(cat_ev)} events, {len(series)} series)"):
-            st.write("**Series tickers:**", series)
-            st.dataframe(
-                cat_ev[["event_ticker","series_ticker","title"]].head(20).reset_index(drop=True)
-            )
+st.write(f"Series: **{len(all_series)}** | Live events: **{len(live_events)}**")
+
+# ── Build full structure report ────────────────────────────────────────────────
+def build_report():
+    lines = []
+
+    # 1. Series by category
+    df_s = pd.DataFrame(all_series)
+    lines.append("=" * 60)
+    lines.append("SECTION 1: ALL SERIES BY CATEGORY")
+    lines.append("=" * 60)
+
+    for cat in sorted(df_s["category"].fillna("(none)").unique()):
+        cat_df = df_s[df_s["category"].fillna("(none)") == cat]
+        lines.append(f"\n### CATEGORY: {cat} ({len(cat_df)} series)")
+
+        # Collect tags
+        all_tags = []
+        for tags in cat_df["tags"].dropna():
+            if isinstance(tags, list): all_tags.extend(tags)
+        lines.append(f"  Tags: {sorted(set(all_tags))}")
+
+        # List series
+        for _, row in cat_df.iterrows():
+            tags = row.get("tags") or []
+            lines.append(f"  - {row['ticker']} | {row.get('title','')} | tags: {tags}")
+
+    # 2. Sport filters (competitions per sport)
+    lines.append("\n" + "=" * 60)
+    lines.append("SECTION 2: SPORT FILTERS (competitions per sport)")
+    lines.append("=" * 60)
+    filters = sport_filter.get("filters_by_sports", {})
+    ordering = sport_filter.get("sport_ordering", list(filters.keys()))
+    for sport in ordering:
+        comps = list(filters.get(sport, {}).get("competitions", {}).keys())
+        lines.append(f"\n### {sport}")
+        lines.append(f"  Competitions: {comps}")
+
+    # 3. Live events by category → series_ticker
+    lines.append("\n" + "=" * 60)
+    lines.append("SECTION 3: LIVE EVENTS BY CATEGORY → SERIES TICKER")
+    lines.append("=" * 60)
+
+    ev_df = pd.DataFrame(live_events)
+    if "category" in ev_df.columns and "series_ticker" in ev_df.columns:
+        for cat in sorted(ev_df["category"].fillna("(none)").unique()):
+            cat_ev = ev_df[ev_df["category"].fillna("(none)") == cat]
+            series_list = sorted(cat_ev["series_ticker"].dropna().unique().tolist())
+            lines.append(f"\n### {cat} ({len(cat_ev)} events, {len(series_list)} unique series)")
+            lines.append(f"  Series tickers: {series_list}")
+            for _, row in cat_ev.iterrows():
+                lines.append(f"  - {row.get('event_ticker','')} | series: {row.get('series_ticker','')} | {row.get('title','')[:80]}")
+
+    # 4. Sports series with tags → which have live events
+    lines.append("\n" + "=" * 60)
+    lines.append("SECTION 4: SPORTS SERIES TAGS → LIVE EVENT SERIES TICKERS")
+    lines.append("=" * 60)
+
+    sports_series = df_s[df_s["category"] == "Sports"]
+    live_series   = set(ev_df["series_ticker"].dropna().unique()) if "series_ticker" in ev_df.columns else set()
+
+    tag_map = {}
+    for _, row in sports_series.iterrows():
+        tags = row.get("tags") or ["(no tag)"]
+        if not isinstance(tags, list): tags = ["(no tag)"]
+        for tag in tags:
+            tag_map.setdefault(tag, []).append(row["ticker"])
+
+    for tag, tickers in sorted(tag_map.items()):
+        live = [t for t in tickers if t in live_series]
+        lines.append(f"\n### Sport Tag: {tag}")
+        lines.append(f"  All series ({len(tickers)}): {tickers}")
+        lines.append(f"  Live now   ({len(live)}):  {live}")
+
+    return "\n".join(lines)
+
+# ── Generate and show download button ─────────────────────────────────────────
+st.header("📥 Download Full Structure Report")
+st.caption("Click the button below to download a text file with the complete category/series/event hierarchy")
+
+report = build_report()
+
+st.download_button(
+    label     = "⬇️ Download structure report (.txt)",
+    data      = report,
+    file_name = "kalshi_structure.txt",
+    mime      = "text/plain",
+)
+
+# Also show a preview
+st.header("Preview")
+st.text_area("Full report (scroll to read)", report, height=600)
