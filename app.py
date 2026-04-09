@@ -25,15 +25,15 @@ h1 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important; co
 .market-card:hover::before { opacity: 1; }
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
 .cat-pill { font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; border: 1px solid; }
-.cat-Sports       { background: #1a2e1a; color: #4ade80; border-color: #166534; }
-.cat-Politics     { background: #1e1a2e; color: #818cf8; border-color: #3730a3; }
-.cat-Elections    { background: #2e1a1e; color: #f472b6; border-color: #9d174d; }
-.cat-Financials   { background: #2e2a1a; color: #fbbf24; border-color: #92400e; }
-.cat-Entertainment{ background: #2e1e1a; color: #fb923c; border-color: #9a3412; }
-.cat-Climate      { background: #1a2e2e; color: #22d3ee; border-color: #164e63; }
-.cat-Science      { background: #1e2e1a; color: #86efac; border-color: #14532d; }
-.cat-Health       { background: #2e1a2e; color: #e879f9; border-color: #701a75; }
-.cat-default      { background: #1e1e32; color: #94a3b8; border-color: #2d2d55; }
+.cat-Sports        { background: #1a2e1a; color: #4ade80; border-color: #166534; }
+.cat-Politics      { background: #1e1a2e; color: #818cf8; border-color: #3730a3; }
+.cat-Elections     { background: #2e1a1e; color: #f472b6; border-color: #9d174d; }
+.cat-Financials    { background: #2e2a1a; color: #fbbf24; border-color: #92400e; }
+.cat-Entertainment { background: #2e1e1a; color: #fb923c; border-color: #9a3412; }
+.cat-Climate       { background: #1a2e2e; color: #22d3ee; border-color: #164e63; }
+.cat-Science       { background: #1e2e1a; color: #86efac; border-color: #14532d; }
+.cat-Health        { background: #2e1a2e; color: #e879f9; border-color: #701a75; }
+.cat-default       { background: #1e1e32; color: #94a3b8; border-color: #2d2d55; }
 .date-text { font-size: 11px; color: #374151; }
 .card-title { font-size: 15px; font-weight: 500; color: #e2e8f0; line-height: 1.45; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card-icon { font-size: 22px; margin-bottom: 8px; display: block; }
@@ -42,7 +42,6 @@ h1 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important; co
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
 .empty-state { text-align: center; padding: 80px 20px; color: #374151; font-size: 14px; }
 hr { border-color: #1e1e32 !important; }
-/* Tab styling */
 .stTabs [data-baseweb="tab-list"] { background: #0f0f1a; border-bottom: 1px solid #1e1e32; gap: 4px; }
 .stTabs [data-baseweb="tab"] { background: transparent; color: #4b5563; border: none; font-size: 12px; letter-spacing: .06em; }
 .stTabs [aria-selected="true"] { background: #1e1e32 !important; color: #a5b4fc !important; border-radius: 6px 6px 0 0; }
@@ -69,35 +68,63 @@ def get_client():
 
 client = get_client()
 
-# ── Fetch ALL events, no filtering ────────────────────────────────────────────
+# ── Fetch ALL events with pagination ──────────────────────────────────────────
 @st.cache_data(ttl=180)
 def fetch_all():
-    try:
-        resp = client.get_events(limit=200, status="open")
-        events = resp.to_dict().get("events", [])
-        if not events:
-            return pd.DataFrame()
-        df = pd.DataFrame(events)
+    all_events = []
+    cursor = None
+    page = 0
+    MAX_PAGES = 20  # safety cap — 20 x 200 = up to 4000 events
 
-        # Parse dates from whichever field exists
-        for col in ["strike_date", "end_date", "close_time", "expiration_time"]:
-            if col in df.columns:
-                parsed = pd.to_datetime(df[col], errors="coerce", utc=True)
-                if parsed.notna().any():
-                    df["_parsed_date"] = parsed
-                    break
-        if "_parsed_date" not in df.columns:
-            df["_parsed_date"] = pd.NaT
+    while page < MAX_PAGES:
+        try:
+            kwargs = {"limit": 200, "status": "open"}
+            if cursor:
+                kwargs["cursor"] = cursor
 
-        # Normalize category
-        if "category" not in df.columns:
-            df["category"] = "Other"
-        df["category"] = df["category"].fillna("Other").str.strip()
+            resp = client.get_events(**kwargs)
+            data = resp.to_dict()
+            events = data.get("events", [])
 
-        return df
-    except Exception as e:
-        st.error(f"Fetch error: {e}")
+            if not events:
+                break
+
+            all_events.extend(events)
+            page += 1
+
+            # Get next cursor — Kalshi uses cursor-based pagination
+            cursor = data.get("cursor") or data.get("next_cursor") or data.get("pagination", {}).get("next_cursor")
+
+            # Stop if no cursor returned (last page)
+            if not cursor:
+                break
+
+        except Exception as e:
+            st.warning(f"Stopped pagination at page {page}: {e}")
+            break
+
+    if not all_events:
         return pd.DataFrame()
+
+    df = pd.DataFrame(all_events)
+    df = df.drop_duplicates(subset=["event_ticker"]) if "event_ticker" in df.columns else df
+
+    # Parse dates
+    for col in ["strike_date", "end_date", "close_time", "expiration_time"]:
+        if col in df.columns:
+            parsed = pd.to_datetime(df[col], errors="coerce", utc=True)
+            if parsed.notna().any():
+                df["_parsed_date"] = parsed
+                break
+    if "_parsed_date" not in df.columns:
+        df["_parsed_date"] = pd.NaT
+
+    # Normalize category
+    if "category" not in df.columns:
+        df["category"] = "Other"
+    df["category"] = df["category"].fillna("Other").str.strip()
+
+    return df
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -110,51 +137,54 @@ with st.sidebar:
 # ── Load ───────────────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
 
-with st.spinner("Loading markets…"):
+with st.spinner("Fetching all markets (paginating…)"):
     df = fetch_all()
 
 if df.empty:
-    st.markdown('<div class="empty-state">No data returned from API. Check credentials.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="empty-state">No data returned. Check your API credentials.</div>', unsafe_allow_html=True)
     st.stop()
 
-# ── Apply search ───────────────────────────────────────────────────────────────
+# ── Search ─────────────────────────────────────────────────────────────────────
+filtered = df.copy()
 if search:
     mask = (
-        df.get("title", pd.Series(dtype=str)).str.contains(search, case=False, na=False) |
-        df.get("event_ticker", pd.Series(dtype=str)).str.contains(search, case=False, na=False) |
-        df.get("category", pd.Series(dtype=str)).str.contains(search, case=False, na=False)
+        filtered.get("title", pd.Series(dtype=str)).str.contains(search, case=False, na=False) |
+        filtered.get("event_ticker", pd.Series(dtype=str)).str.contains(search, case=False, na=False) |
+        filtered.get("category", pd.Series(dtype=str)).str.contains(search, case=False, na=False)
     )
-    df = df[mask]
+    filtered = filtered[mask]
 
-# ── Build category tabs ────────────────────────────────────────────────────────
-categories = ["All"] + sorted(df["category"].unique().tolist())
-sport_count = int((df["category"].str.lower() == "sports").sum())
+# ── Tabs ───────────────────────────────────────────────────────────────────────
+categories  = sorted(filtered["category"].unique().tolist())
+tab_labels  = ["All"] + categories
+sport_count = int((filtered["category"].str.lower() == "sports").sum())
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="metric-strip">
   <div class="metric-box"><div class="metric-label">Total markets</div><div class="metric-value">{len(df)}</div></div>
   <div class="metric-box"><div class="metric-label">Sports</div><div class="metric-value">{sport_count}</div></div>
-  <div class="metric-box"><div class="metric-label">Categories</div><div class="metric-value">{len(categories)-1}</div></div>
+  <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
+  <div class="metric-box"><div class="metric-label">Categories</div><div class="metric-value">{len(categories)}</div></div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Tabs ───────────────────────────────────────────────────────────────────────
-tabs = st.tabs(categories)
-
+# ── Card renderer ──────────────────────────────────────────────────────────────
 def get_icon(ticker, category):
     t = ticker.upper()
     c = str(category).lower()
-    if "NBA" in t:  return "🏀"
-    if "MLB" in t:  return "⚾"
-    if "NHL" in t:  return "🏒"
-    if "NFL" in t:  return "🏈"
-    if "GOLF" in t or "PGA" in t: return "⛳"
-    if "TEN" in t or "ATP" in t or "WTA" in t: return "🎾"
-    if "SOC" in t or "MLS" in t or "EPL" in t: return "⚽"
-    if "UFC" in t or "MMA" in t: return "🥊"
-    if "F1" in t or "NASCAR" in t: return "🏎️"
-    if "sport" in c: return "🏟️"
+    if "NBA"    in t: return "🏀"
+    if "MLB"    in t: return "⚾"
+    if "NHL"    in t: return "🏒"
+    if "NFL"    in t: return "🏈"
+    if "GOLF"   in t or "PGA"  in t: return "⛳"
+    if "TEN"    in t or "ATP"  in t or "WTA" in t: return "🎾"
+    if "SOC"    in t or "MLS"  in t or "EPL" in t or "FIFA" in t or "UEFA" in t: return "⚽"
+    if "UFC"    in t or "MMA"  in t: return "🥊"
+    if "F1"     in t or "NASCAR" in t: return "🏎️"
+    if "NCAAB"  in t: return "🏀"
+    if "NCAAF"  in t: return "🏈"
+    if "sport"  in c: return "🏟️"
     if "election" in c or "polit" in c: return "🗳️"
     if "financ" in c or "econom" in c: return "📈"
     if "entertain" in c: return "🎬"
@@ -164,18 +194,17 @@ def get_icon(ticker, category):
     return "📊"
 
 def get_pill_class(category):
-    c = str(category)
     mapping = {
-        "Sports": "cat-Sports",
-        "Politics": "cat-Politics",
-        "Elections": "cat-Elections",
-        "Financials": "cat-Financials",
-        "Entertainment": "cat-Entertainment",
-        "Climate and Weather": "cat-Climate",
-        "Science and Technology": "cat-Science",
-        "Health": "cat-Health",
+        "Sports":                "cat-Sports",
+        "Politics":              "cat-Politics",
+        "Elections":             "cat-Elections",
+        "Financials":            "cat-Financials",
+        "Entertainment":         "cat-Entertainment",
+        "Climate and Weather":   "cat-Climate",
+        "Science and Technology":"cat-Science",
+        "Health":                "cat-Health",
     }
-    return mapping.get(c, "cat-default")
+    return mapping.get(str(category), "cat-default")
 
 def render_cards(data):
     if data.empty:
@@ -191,7 +220,7 @@ def render_cards(data):
             title     = title_raw.split(":")[-1].replace("Will the ", "").split("?")[0].strip() or title_raw[:80]
             icon      = get_icon(ticker, category)
             pill_cls  = get_pill_class(category)
-            cat_label = category[:12]
+            cat_label = category[:14]
 
             d = row.get("_parsed_date")
             try:
@@ -217,13 +246,15 @@ def render_cards(data):
     cards_html += "</div>"
     st.markdown(cards_html, unsafe_allow_html=True)
 
+# ── Render tabs ────────────────────────────────────────────────────────────────
+tabs = st.tabs(tab_labels)
 for i, tab in enumerate(tabs):
     with tab:
-        cat = categories[i]
+        cat = tab_labels[i]
         if cat == "All":
-            render_cards(df)
+            render_cards(filtered)
         else:
-            render_cards(df[df["category"] == cat])
+            render_cards(filtered[filtered["category"] == cat])
 
 st.markdown("---")
 st.markdown(
