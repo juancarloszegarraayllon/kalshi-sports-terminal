@@ -15,6 +15,7 @@ html, body, [class*="css"] { font-family: 'DM Mono', monospace; }
 section[data-testid="stSidebar"] { background: #0f0f1a !important; border-right: 1px solid #1e1e32; }
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] p { color: #6b7280 !important; font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; }
+section[data-testid="stSidebar"] .stSelectbox > div { background: #1a1a2e !important; }
 h1 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important; color: #f0f0ff !important; letter-spacing: -.02em; font-size: 2.2rem !important; }
 .metric-strip { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
 .metric-box { background: #0f0f1a; border: 1px solid #1e1e32; border-radius: 10px; padding: 14px 20px; flex: 1; min-width: 120px; }
@@ -27,15 +28,22 @@ h1 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important; co
 .market-card:hover::before { opacity: 1; }
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .cat-pill { font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; border: 1px solid; }
-.cat-Sports        { background: #1a2e1a; color: #4ade80; border-color: #166534; }
-.cat-Politics      { background: #1e1a2e; color: #818cf8; border-color: #3730a3; }
-.cat-Elections     { background: #2e1a1e; color: #f472b6; border-color: #9d174d; }
-.cat-Financials    { background: #2e2a1a; color: #fbbf24; border-color: #92400e; }
-.cat-Entertainment { background: #2e1e1a; color: #fb923c; border-color: #9a3412; }
-.cat-Climate       { background: #1a2e2e; color: #22d3ee; border-color: #164e63; }
-.cat-Science       { background: #1e2e1a; color: #86efac; border-color: #14532d; }
-.cat-Health        { background: #2e1a2e; color: #e879f9; border-color: #701a75; }
-.cat-default       { background: #1e1e32; color: #94a3b8; border-color: #2d2d55; }
+.pill-sports       { background: #1a2e1a; color: #4ade80; border-color: #166534; }
+.pill-elections    { background: #2e1a1e; color: #f472b6; border-color: #9d174d; }
+.pill-politics     { background: #1e1a2e; color: #818cf8; border-color: #3730a3; }
+.pill-economics    { background: #2e2a1a; color: #fbbf24; border-color: #92400e; }
+.pill-financials   { background: #2e2a1a; color: #fbbf24; border-color: #92400e; }
+.pill-crypto       { background: #1e2a2e; color: #67e8f9; border-color: #0e7490; }
+.pill-companies    { background: #2e1e2e; color: #d8b4fe; border-color: #7e22ce; }
+.pill-entertainment{ background: #2e1e1a; color: #fb923c; border-color: #9a3412; }
+.pill-climate      { background: #1a2e2e; color: #22d3ee; border-color: #164e63; }
+.pill-science      { background: #1e2e1a; color: #86efac; border-color: #14532d; }
+.pill-health       { background: #2e1a2e; color: #e879f9; border-color: #701a75; }
+.pill-social       { background: #2e1e2a; color: #f9a8d4; border-color: #9d174d; }
+.pill-world        { background: #1a1e2e; color: #93c5fd; border-color: #1e40af; }
+.pill-transport    { background: #2e2e1a; color: #d9f99d; border-color: #3f6212; }
+.pill-mentions     { background: #1e2e2e; color: #5eead4; border-color: #0f766e; }
+.pill-default      { background: #1e1e32; color: #94a3b8; border-color: #2d2d55; }
 .date-text { font-size: 11px; color: #6b7280; }
 .card-icon { font-size: 20px; margin-bottom: 6px; display: block; }
 .card-title { font-size: 14px; font-weight: 500; color: #e2e8f0; line-height: 1.45; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -49,44 +57,88 @@ h1 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important; co
 .odds-price-no  { font-size: 15px; font-weight: 500; color: #f87171; }
 .empty-state { text-align: center; padding: 80px 20px; color: #374151; font-size: 14px; }
 hr { border-color: #1e1e32 !important; }
-.stTabs [data-baseweb="tab-list"] { background: #0f0f1a; border-bottom: 1px solid #1e1e32; gap: 4px; }
-.stTabs [data-baseweb="tab"] { background: transparent; color: #4b5563; border: none; font-size: 12px; letter-spacing: .06em; }
+.stTabs [data-baseweb="tab-list"] { background: #0f0f1a; border-bottom: 1px solid #1e1e32; gap: 2px; flex-wrap: wrap; }
+.stTabs [data-baseweb="tab"] { background: transparent; color: #4b5563; border: none; font-size: 12px; letter-spacing: .04em; padding: 8px 14px; }
 .stTabs [aria-selected="true"] { background: #1e1e32 !important; color: #a5b4fc !important; border-radius: 6px 6px 0 0; }
 </style>
 """, unsafe_allow_html=True)
 
-UTC = timezone.utc
+UTC      = timezone.utc
 BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
-SPORT_CATS = {"sports"}
+
+# ── Kalshi category → display structure (mirrors kalshi.com nav) ───────────────
+# Top-level categories exactly as returned by the API, with icon + pill class
+CATEGORY_META = {
+    "Sports":                 ("🏟️", "pill-sports"),
+    "Elections":              ("🗳️", "pill-elections"),
+    "Politics":               ("🏛️", "pill-politics"),
+    "Economics":              ("📈", "pill-economics"),
+    "Financials":             ("💰", "pill-financials"),
+    "Crypto":                 ("₿",  "pill-crypto"),
+    "Companies":              ("🏢", "pill-companies"),
+    "Entertainment":          ("🎬", "pill-entertainment"),
+    "Climate and Weather":    ("🌍", "pill-climate"),
+    "Science and Technology": ("🔬", "pill-science"),
+    "Health":                 ("🏥", "pill-health"),
+    "Social":                 ("👥", "pill-social"),
+    "World":                  ("🌐", "pill-world"),
+    "Transportation":         ("✈️", "pill-transport"),
+    "Mentions":               ("💬", "pill-mentions"),
+}
+
+# Sports sub-categories (from Kalshi's /search/filters_by_sport)
+SPORT_SUBS = [
+    ("🏀", "Basketball"), ("⚾", "Baseball"), ("🎾", "Tennis"),
+    ("⚽", "Soccer"),     ("🏒", "Hockey"),   ("⛳", "Golf"),
+    ("🥊", "MMA"),        ("🏏", "Cricket"),  ("🏈", "Football"),
+    ("🎮", "Esports"),    ("🏎️", "Motorsport"),("🥊", "Boxing"),
+    ("🏉", "Rugby"),      ("🥍", "Lacrosse"), ("🎯", "Darts"),
+    ("♟️", "Chess"),      ("🏉", "Aussie Rules"),
+]
+
+# Detect sport sub-category from ticker
+def detect_sport(ticker):
+    t = ticker.upper()
+    if any(x in t for x in ["NBA","NCAAB","BBALL","WNBA"]): return "Basketball"
+    if any(x in t for x in ["MLB","NCAAB","BASEBALL"]):     return "Baseball"
+    if any(x in t for x in ["NHL","HOCKEY"]):               return "Hockey"
+    if any(x in t for x in ["NFL","NCAAF","FOOTBALL"]):     return "Football"
+    if any(x in t for x in ["SOC","MLS","EPL","UEFA","FIFA","SOCCER"]): return "Soccer"
+    if any(x in t for x in ["TEN","ATP","WTA","TENNIS"]):   return "Tennis"
+    if any(x in t for x in ["GOLF","PGA","MASTERS","USPGA"]): return "Golf"
+    if any(x in t for x in ["UFC","MMA"]):                  return "MMA"
+    if any(x in t for x in ["CRICKET","IPL","BBL"]):        return "Cricket"
+    if any(x in t for x in ["F1","NASCAR","MOTOR","FORMULA"]): return "Motorsport"
+    if any(x in t for x in ["BOX","BOXING"]):               return "Boxing"
+    if any(x in t for x in ["RUGBY","NRL","SUPER"]):        return "Rugby"
+    if any(x in t for x in ["LAX","LACROSSE","NLL","PLL"]): return "Lacrosse"
+    if any(x in t for x in ["DART","PDC"]):                 return "Darts"
+    if any(x in t for x in ["CHESS","FIDE"]):               return "Chess"
+    if any(x in t for x in ["AFL","AUSSIE","AUSKICK"]):     return "Aussie Rules"
+    if any(x in t for x in ["ESPORT","LOL","DOTA","CSGO","VAL","OVERWATCH"]): return "Esports"
+    return "Other"
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def safe_date(val):
-    """Parse anything into a plain Python date, or return None."""
     try:
-        if val is None or val == "":
-            return None
-        if isinstance(val, date) and not isinstance(val, pd.Timestamp):
-            return val
+        if val is None or val == "": return None
+        if isinstance(val, date) and not isinstance(val, pd.Timestamp): return val
         ts = pd.to_datetime(val, utc=True)
-        if pd.isna(ts):
-            return None
+        if pd.isna(ts): return None
         return ts.to_pydatetime().astimezone(UTC).date()
     except Exception:
         return None
 
 def fmt_date(d):
     try:
-        if d is None:
-            return "Open"
-        return d.strftime("%b %d, %Y")
+        return d.strftime("%b %d, %Y") if d else "Open"
     except Exception:
         return "Open"
 
 def fmt_pct(v):
     try:
         f = float(v)
-        pct = int(round(f * 100)) if f <= 1.0 else int(round(f))
-        return f"{pct}%"
+        return f"{int(round(f * 100)) if f <= 1.0 else int(round(f))}%"
     except Exception:
         return "—"
 
@@ -95,18 +147,16 @@ def fmt_pct(v):
 def get_client():
     try:
         from kalshi_python_sync import Configuration, KalshiClient
-        api_key_id = st.secrets["KALSHI_API_KEY_ID"]
-        private_key_str = st.secrets["KALSHI_PRIVATE_KEY"]
+        key_id  = st.secrets["KALSHI_API_KEY_ID"]
+        key_str = st.secrets["KALSHI_PRIVATE_KEY"]
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".pem") as f:
-            f.write(private_key_str)
-            pem_path = f.name
+            f.write(key_str); pem = f.name
         cfg = Configuration()
-        cfg.api_key_id = api_key_id
-        cfg.private_key_pem_path = pem_path
+        cfg.api_key_id = key_id
+        cfg.private_key_pem_path = pem
         return KalshiClient(cfg)
     except Exception as e:
-        st.error(f"❌ Connection failed: {e}")
-        st.stop()
+        st.error(f"❌ Connection failed: {e}"); st.stop()
 
 client = get_client()
 
@@ -119,8 +169,8 @@ def paginate(with_markets=False, category=None):
             if with_markets: kw["with_nested_markets"] = True
             if category:     kw["category"] = category
             if cursor:       kw["cursor"]   = cursor
-            resp   = client.get_events(**kw).to_dict()
-            batch  = resp.get("events", [])
+            resp  = client.get_events(**kw).to_dict()
+            batch = resp.get("events", [])
             if not batch: break
             events.extend(batch)
             cursor = resp.get("cursor") or resp.get("next_cursor") or (resp.get("pagination") or {}).get("next_cursor")
@@ -134,95 +184,76 @@ def paginate(with_markets=False, category=None):
 @st.cache_data(ttl=600)
 def fetch_all():
     prog = st.progress(0, text="Fetching all events…")
-
-    # Pass 1: all events, no markets (fast, complete)
+    # Pass 1: all events, fast
     all_ev = paginate(with_markets=False)
-    prog.progress(0.5, text=f"{len(all_ev)} events fetched. Getting sports odds…")
-
-    # Pass 2: sports only WITH markets (for odds + close_time)
+    prog.progress(0.5, text=f"{len(all_ev)} events. Fetching sports odds…")
+    # Pass 2: sports with markets for odds
     sports_ev = paginate(with_markets=True, category="Sports")
     prog.empty()
 
-    # Merge markets into pass-1 events
     mkt_map = {e["event_ticker"]: e.get("markets", []) for e in sports_ev if e.get("markets")}
     for e in all_ev:
         if e.get("event_ticker") in mkt_map:
             e["markets"] = mkt_map[e["event_ticker"]]
 
-    if not all_ev:
-        return pd.DataFrame()
+    if not all_ev: return pd.DataFrame()
 
     df = pd.DataFrame(all_ev).drop_duplicates(subset=["event_ticker"])
-
-    # Category
     df["category"] = df.get("category", pd.Series("Other", index=df.index)).fillna("Other").str.strip()
     df["_is_sport"] = df["category"] == "Sports"
 
-    # Extract odds from first nested market
+    # Odds from nested markets
     def extract(row):
         mkts = row.get("markets") or []
-        if not mkts:
-            return "—", "—", None
-        m   = mkts[0]
+        if not mkts: return "—", "—", None
+        m = mkts[0]
         yes = fmt_pct(m.get("yes_bid_dollars") or m.get("yes_bid"))
         no  = fmt_pct(m.get("no_bid_dollars")  or m.get("no_bid"))
-        # soonest close_time across all markets
         close = None
         for mk in mkts:
             d = safe_date(mk.get("close_time"))
-            if d and (close is None or d < close):
-                close = d
+            if d and (close is None or d < close): close = d
         return yes, no, close
 
     info = df.apply(extract, axis=1, result_type="expand")
-    df["_yes"]   = info[0]
-    df["_no"]    = info[1]
-    df["_mkt_dt"]= info[2]   # plain date or None
+    df["_yes"] = info[0]; df["_no"] = info[1]; df["_mkt_dt"] = info[2]
 
-    # Best sort date: strike_date > close_time > nested market close
     def best_dt(row):
         for col in ["strike_date", "close_time", "end_date", "expiration_time"]:
             d = safe_date(row.get(col))
             if d: return d
-        return row.get("_mkt_dt")  # already a plain date or None
+        return row.get("_mkt_dt")
 
     df["_sort_dt"]    = df.apply(best_dt, axis=1)
     df["_display_dt"] = df["_sort_dt"].apply(fmt_date)
-
+    df["_sport_sub"]  = df.apply(lambda r: detect_sport(str(r.get("event_ticker",""))) if r["_is_sport"] else "", axis=1)
     return df
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📡 Kalshi Terminal")
-    search = st.text_input("🔍 Search", placeholder="soccer, tennis, team…")
+    search = st.text_input("🔍 Search", placeholder="team, market, keyword…")
 
     st.markdown("---")
-    st.markdown("**📅 Date Filter**")
-    today = date.today()
-    date_mode = st.radio("Show", ["All dates", "Today", "Tomorrow", "This week", "Custom range"], index=0)
-
+    st.markdown("**📅 Date**")
+    today     = date.today()
+    date_mode = st.radio("Show", ["All dates","Today","Tomorrow","This week","Custom range"], index=0)
     d_start = d_end = None
-    if date_mode == "Today":
-        d_start = d_end = today
-    elif date_mode == "Tomorrow":
-        d_start = d_end = today + timedelta(days=1)
-    elif date_mode == "This week":
-        d_start, d_end = today, today + timedelta(days=6)
+    if date_mode == "Today":          d_start = d_end = today
+    elif date_mode == "Tomorrow":     d_start = d_end = today + timedelta(days=1)
+    elif date_mode == "This week":    d_start, d_end = today, today + timedelta(days=6)
     elif date_mode == "Custom range":
         d_start = st.date_input("From", value=today)
         d_end   = st.date_input("To",   value=today + timedelta(days=7))
-
     include_no_date = st.checkbox("Include events with no date", value=True)
 
     st.markdown("---")
     st.markdown("**↕️ Sort**")
-    sort_by = st.radio("Order", ["Earliest first", "Latest first", "Default"], index=0)
+    sort_by = st.radio("Order", ["Earliest first","Latest first","Default"], index=0)
 
     st.markdown("---")
-    if st.button("🔄 Refresh"):
-        fetch_all.clear()
-        st.rerun()
-    st.caption("Data cached 10 min.")
+    if st.button("🔄 Refresh"): fetch_all.clear(); st.rerun()
+    st.caption("Cached 10 min.")
 
 # ── Load ───────────────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
@@ -230,126 +261,47 @@ with st.spinner("Loading…"):
     df = fetch_all()
 
 if df.empty:
-    st.error("No data returned. Check API credentials.")
-    st.stop()
+    st.error("No data. Check API credentials."); st.stop()
 
 # ── Filter ─────────────────────────────────────────────────────────────────────
 filtered = df.copy()
 
-# Date filter — sports always pass through (their dates live in nested markets)
 if date_mode != "All dates":
     def date_ok(row):
-        if row["_is_sport"]:
-            return True          # never filter out sports
+        if row["_is_sport"]: return True   # sports always show
         d = row["_sort_dt"]
-        if d is None:
-            return include_no_date
-        return d_start <= d <= d_end
+        if d is None: return include_no_date
+        try: return d_start <= d <= d_end
+        except Exception: return include_no_date
     filtered = filtered[filtered.apply(date_ok, axis=1)]
 
-# Search
 if search:
     s = search.lower()
-    mask = (
-        filtered["title"].str.lower().str.contains(s, na=False) |
-        filtered["event_ticker"].str.lower().str.contains(s, na=False) |
-        filtered["category"].str.lower().str.contains(s, na=False)
-    )
+    mask = (filtered["title"].str.lower().str.contains(s, na=False) |
+            filtered["event_ticker"].str.lower().str.contains(s, na=False) |
+            filtered["category"].str.lower().str.contains(s, na=False))
     filtered = filtered[mask]
 
-# Sort
 if sort_by != "Default":
-    asc = sort_by == "Earliest first"
-    has = filtered["_sort_dt"].notna()
+    asc     = sort_by == "Earliest first"
+    has     = filtered["_sort_dt"].notna()
     dated   = filtered[has].copy()
     undated = filtered[~has].copy()
     dated["_sk"] = dated["_sort_dt"].apply(lambda d: str(d) if d else "9999")
-    dated = dated.sort_values("_sk", ascending=asc).drop(columns=["_sk"])
+    dated   = dated.sort_values("_sk", ascending=asc).drop(columns=["_sk"])
     filtered = pd.concat([dated, undated], ignore_index=True)
 
 # ── Metrics ────────────────────────────────────────────────────────────────────
-all_cats    = sorted(df["category"].unique().tolist())
-non_sport   = [c for c in all_cats if c.lower() not in SPORT_CATS]
-tab_labels  = ["All", "Sports"] + non_sport
 sport_count = int(df["_is_sport"].sum())
-
 st.markdown(f"""
 <div class="metric-strip">
   <div class="metric-box"><div class="metric-label">Total markets</div><div class="metric-value">{len(df)}</div></div>
   <div class="metric-box"><div class="metric-label">Sports</div><div class="metric-value">{sport_count}</div></div>
   <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
-  <div class="metric-box"><div class="metric-label">Categories</div><div class="metric-value">{len(all_cats)}</div></div>
 </div>
 """, unsafe_allow_html=True)
 
-# ── Card helpers ───────────────────────────────────────────────────────────────
-def get_icon(ticker, cat):
-    t, c = ticker.upper(), cat.lower()
-    if "NBA" in t or "NCAAB" in t:                          return "🏀"
-    if "MLB" in t:                                           return "⚾"
-    if "NHL" in t:                                           return "🏒"
-    if "NFL" in t or "NCAAF" in t:                          return "🏈"
-    if "GOLF" in t or "PGA" in t:                           return "⛳"
-    if "TEN" in t or "ATP" in t or "WTA" in t:              return "🎾"
-    if any(x in t for x in ["SOC","MLS","EPL","FIFA","UEFA"]): return "⚽"
-    if "UFC" in t or "MMA" in t:                            return "🥊"
-    if "F1" in t or "NASCAR" in t or "MOTOR" in t:          return "🏎️"
-    if "CRICKET" in t or "IPL" in t:                        return "🏏"
-    if "RUGBY" in t:                                         return "🏉"
-    if "BOX" in t:                                           return "🥊"
-    if "CHESS" in t:                                         return "♟️"
-    if "DART" in t:                                          return "🎯"
-    if "basketball" in c:  return "🏀"
-    if "soccer" in c:      return "⚽"
-    if "tennis" in c:      return "🎾"
-    if "baseball" in c:    return "⚾"
-    if "hockey" in c:      return "🏒"
-    if "football" in c:    return "🏈"
-    if "golf" in c:        return "⛳"
-    if "sport" in c:       return "🏟️"
-    if "election" in c:    return "🗳️"
-    if "politic" in c:     return "🗳️"
-    if "financ" in c or "econom" in c or "crypto" in c: return "📈"
-    if "entertain" in c:   return "🎬"
-    if "climate" in c or "weather" in c: return "🌍"
-    if "science" in c or "tech" in c:   return "🔬"
-    if "health" in c:      return "🏥"
-    return "📊"
-
-def get_pill(cat):
-    c = cat.lower().strip()
-    if c in SPORT_CATS: return "cat-Sports"
-    m = {"politics":"cat-Politics","elections":"cat-Elections","financials":"cat-Financials",
-         "entertainment":"cat-Entertainment","climate and weather":"cat-Climate",
-         "science and technology":"cat-Science","health":"cat-Health"}
-    return m.get(c, "cat-default")
-
-def detect_sport(ticker):
-    t = ticker.upper()
-    if "NBA" in t or "NCAAB" in t: return "Basketball"
-    if "MLB" in t:                  return "Baseball"
-    if "NHL" in t:                  return "Hockey"
-    if "NFL" in t or "NCAAF" in t: return "Football"
-    if any(x in t for x in ["SOC","MLS","EPL","UEFA","FIFA"]): return "Soccer"
-    if "TEN" in t or "ATP" in t or "WTA" in t: return "Tennis"
-    if "GOLF" in t or "PGA" in t:  return "Golf"
-    if "UFC" in t or "MMA" in t:   return "MMA"
-    if "CRICKET" in t or "IPL" in t: return "Cricket"
-    if "F1" in t or "NASCAR" in t or "MOTOR" in t: return "Motorsport"
-    if "BOX" in t:    return "Boxing"
-    if "RUGBY" in t:  return "Rugby"
-    if "DART" in t:   return "Darts"
-    if "CHESS" in t:  return "Chess"
-    if "AFL" in t or "AUSSIE" in t: return "Aussie Rules"
-    return "Other"
-
-SPORT_ICONS = {
-    "Basketball":"🏀","Baseball":"⚾","Hockey":"🏒","Football":"🏈",
-    "Soccer":"⚽","Tennis":"🎾","Golf":"⛳","MMA":"🥊","Cricket":"🏏",
-    "Motorsport":"🏎️","Boxing":"🥊","Rugby":"🏉","Darts":"🎯",
-    "Chess":"♟️","Aussie Rules":"🏉","Other":"🏟️",
-}
-
+# ── Card renderer ──────────────────────────────────────────────────────────────
 def render_cards(data):
     if data.empty:
         st.markdown('<div class="empty-state">No markets match your filters.</div>', unsafe_allow_html=True)
@@ -357,16 +309,22 @@ def render_cards(data):
     html = '<div class="card-grid">'
     for _, row in data.iterrows():
         try:
-            ticker  = str(row.get("event_ticker","")).upper()
-            cat     = str(row.get("category","Other"))
-            raw     = str(row.get("title","Unknown"))
-            title   = raw.split(":")[-1].replace("Will the ","").split("?")[0].strip() or raw[:80]
-            icon    = get_icon(ticker, cat)
-            pill    = get_pill(cat)
-            label   = cat[:14]
-            dt      = str(row.get("_display_dt","Open"))
-            yes     = str(row.get("_yes","—"))
-            no      = str(row.get("_no","—"))
+            ticker = str(row.get("event_ticker","")).upper()
+            cat    = str(row.get("category","Other"))
+            raw    = str(row.get("title","Unknown"))
+            title  = raw.split(":")[-1].replace("Will the ","").split("?")[0].strip() or raw[:80]
+            _, pill = CATEGORY_META.get(cat, ("📊", "pill-default"))
+            dt     = str(row.get("_display_dt","Open"))
+            yes    = str(row.get("_yes","—"))
+            no     = str(row.get("_no","—"))
+            sub    = str(row.get("_sport_sub",""))
+            label  = sub if sub and sub != "Other" else cat[:14]
+            icon_map = {"Basketball":"🏀","Baseball":"⚾","Hockey":"🏒","Football":"🏈",
+                        "Soccer":"⚽","Tennis":"🎾","Golf":"⛳","MMA":"🥊","Cricket":"🏏",
+                        "Motorsport":"🏎️","Boxing":"🥊","Rugby":"🏉","Darts":"🎯",
+                        "Chess":"♟️","Aussie Rules":"🏉","Esports":"🎮"}
+            base_icon = CATEGORY_META.get(cat, ("📊",""))[0]
+            icon = icon_map.get(sub, base_icon) if sub else base_icon
 
             html += f"""
             <div class="market-card">
@@ -389,25 +347,52 @@ def render_cards(data):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-# ── Tabs ───────────────────────────────────────────────────────────────────────
-tabs = st.tabs(tab_labels)
+# ── Navigation — mirrors Kalshi.com structure ──────────────────────────────────
+# Top-level tabs in same order as Kalshi's website
+TOP_TABS = ["All"] + [c for c in CATEGORY_META.keys() if c in df["category"].unique()]
+
+tabs = st.tabs(TOP_TABS)
 for i, tab in enumerate(tabs):
     with tab:
-        cat = tab_labels[i]
+        cat = TOP_TABS[i]
+
         if cat == "All":
             render_cards(filtered)
+
         elif cat == "Sports":
+            # Sports → sub-tabs by sport (Basketball, Soccer, Tennis…)
             sdf = filtered[filtered["_is_sport"]].copy()
-            sdf["_sport_type"] = sdf["event_ticker"].apply(detect_sport)
-            present = sorted(sdf["_sport_type"].unique().tolist())
-            sub_labels = ["All Sports"] + [f"{SPORT_ICONS.get(s,'🏟️')} {s}" for s in present]
+            present_subs  = [s for _, s in SPORT_SUBS if s in sdf["_sport_sub"].values]
+            has_other     = "Other" in sdf["_sport_sub"].values
+            sub_names     = present_subs + (["Other"] if has_other else [])
+            sub_icons     = {s: ic for ic, s in SPORT_SUBS}
+            sub_labels    = ["All Sports"] + [f"{sub_icons.get(s,'🏟️')} {s}" for s in sub_names]
+
             sub_tabs = st.tabs(sub_labels)
             for j, stab in enumerate(sub_tabs):
                 with stab:
                     if j == 0:
                         render_cards(sdf)
                     else:
-                        render_cards(sdf[sdf["_sport_type"] == present[j-1]])
+                        render_cards(sdf[sdf["_sport_sub"] == sub_names[j-1]])
+
+        elif cat == "Elections":
+            # Elections — show with a series_ticker sub-filter if possible
+            edf = filtered[filtered["category"] == "Elections"]
+            # Group by series_ticker prefix for sub-categories
+            edf = edf.copy()
+            edf["_series"] = edf["series_ticker"].fillna("Other") if "series_ticker" in edf.columns else "Other"
+            unique_series = sorted(edf["_series"].unique().tolist())[:8]  # cap at 8
+            if len(unique_series) > 1:
+                sub_labels = ["All Elections"] + unique_series
+                sub_tabs   = st.tabs(sub_labels)
+                for j, stab in enumerate(sub_tabs):
+                    with stab:
+                        if j == 0: render_cards(edf)
+                        else:      render_cards(edf[edf["_series"] == unique_series[j-1]])
+            else:
+                render_cards(edf)
+
         else:
             render_cards(filtered[filtered["category"] == cat])
 
