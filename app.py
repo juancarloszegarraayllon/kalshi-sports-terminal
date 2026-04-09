@@ -581,6 +581,7 @@ def safe_dt(val):
     """Return full datetime (timezone-aware) or None."""
     try:
         if val is None or val == "": return None
+        if isinstance(val, str) and val.strip() in ("", "NaT", "None", "nan"): return None
         ts = pd.to_datetime(val, utc=True)
         if pd.isna(ts): return None
         return ts.to_pydatetime().astimezone(UTC)
@@ -816,18 +817,22 @@ def fetch_all():
         # 2. game_date — parsed from ticker (date only)
         gd = row.get("_game_date")
         if gd: return fmt_date(gd)
-        # 3. market close_time — works for futures + non-sport events
+        # 3. market expected_expiration_time — closest to actual event date
         mkts = row.get("markets") or []
         if mkts:
-            cdt = safe_dt(mkts[0].get("close_time"))
-            if cdt: return fmt_date(cdt)
-        # 4. event-level date fields (non-sport events without markets)
-        for col in ["close_time", "expected_expiration_time", "expiration_time",
-                    "end_date", "strike_date"]:
-            v = row.get(col)
-            if v is not None and str(v) not in ("", "NaT", "None", "nan"):
-                cdt = safe_dt(v)
+            m0 = mkts[0]
+            for mf in ["expected_expiration_time", "expiration_time", "close_time"]:
+                cdt = safe_dt(m0.get(mf))
                 if cdt: return fmt_date(cdt)
+        # 4. event-level fields — try expiration before close
+        for col in ["expected_expiration_time", "expiration_time",
+                    "end_date", "strike_date", "close_time"]:
+            try:
+                v = row.get(col)
+                if v is None: continue
+                cdt = safe_dt(v)  # safe_dt handles NaT/None/strings
+                if cdt: return fmt_date(cdt)
+            except: continue
         # 5. mkt_dt last resort
         d = row.get("_mkt_dt")
         return fmt_date(d) if d else ""
