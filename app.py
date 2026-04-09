@@ -39,7 +39,7 @@ h1{font-family:'Syne',sans-serif!important;font-weight:800!important;color:#f0f0
 .card-icon{font-size:20px;margin-bottom:6px;display:block;}
 .card-title{font-size:14px;font-weight:500;color:#e2e8f0;line-height:1.45;margin-bottom:12px;min-height:58px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1a1a2e;padding-top:10px;}
-.ticker-text{font-size:10px;color:#374151;letter-spacing:.06em;display:block;margin-bottom:8px;}
+.ticker-text{font-size:10px;color:#374151;letter-spacing:.06em;display:block;margin-bottom:8px;word-break:break-all;white-space:normal;}
 .odds-row{display:flex;gap:8px;}
 .odds-yes{flex:1;background:#0d2d1a;border:1px solid #166534;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{flex:1;background:#2d0d0d;border:1px solid #7f1d1d;border-radius:6px;padding:5px 8px;text-align:center;}
