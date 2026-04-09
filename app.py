@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import tempfile
+import time
 from datetime import date, timedelta
 
 st.set_page_config(page_title="Kalshi Terminal", layout="wide", page_icon="🏟️")
@@ -68,13 +69,16 @@ def get_client():
 
 client = get_client()
 
-# ── Fetch ALL events with pagination ──────────────────────────────────────────
-@st.cache_data(ttl=180)
+# ── Fetch ALL events with rate-limit-safe pagination ──────────────────────────
+@st.cache_data(ttl=600)  # cache for 10 min so we don't re-paginate constantly
 def fetch_all():
     all_events = []
     cursor = None
     page = 0
-    MAX_PAGES = 20  # safety cap — 20 x 200 = up to 4000 events
+    MAX_PAGES = 30
+    DELAY = 0.4  # 400ms between requests — stays well under rate limit
+
+    progress = st.progress(0, text="Fetching page 1…")
 
     while page < MAX_PAGES:
         try:
@@ -92,22 +96,43 @@ def fetch_all():
             all_events.extend(events)
             page += 1
 
-            # Get next cursor — Kalshi uses cursor-based pagination
-            cursor = data.get("cursor") or data.get("next_cursor") or data.get("pagination", {}).get("next_cursor")
+            # Update progress
+            progress.progress(
+                min(page / MAX_PAGES, 1.0),
+                text=f"Fetched {len(all_events)} events across {page} pages…"
+            )
 
-            # Stop if no cursor returned (last page)
+            # Get next cursor
+            cursor = (
+                data.get("cursor") or
+                data.get("next_cursor") or
+                (data.get("pagination") or {}).get("next_cursor")
+            )
+
             if not cursor:
-                break
+                break  # last page
+
+            time.sleep(DELAY)  # respect rate limit
 
         except Exception as e:
-            st.warning(f"Stopped pagination at page {page}: {e}")
-            break
+            err = str(e)
+            if "429" in err or "too_many_requests" in err.lower():
+                # Back off and retry once
+                progress.progress(page / MAX_PAGES, text=f"Rate limited — waiting 3s then retrying…")
+                time.sleep(3)
+                continue
+            else:
+                st.warning(f"Stopped at page {page}: {e}")
+                break
+
+    progress.empty()
 
     if not all_events:
         return pd.DataFrame()
 
     df = pd.DataFrame(all_events)
-    df = df.drop_duplicates(subset=["event_ticker"]) if "event_ticker" in df.columns else df
+    if "event_ticker" in df.columns:
+        df = df.drop_duplicates(subset=["event_ticker"])
 
     # Parse dates
     for col in ["strike_date", "end_date", "close_time", "expiration_time"]:
@@ -129,15 +154,16 @@ def fetch_all():
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 📡 Kalshi Terminal")
-    search = st.text_input("Search", placeholder="keyword, team, ticker…")
-    if st.button("🔄 Refresh"):
+    search = st.text_input("Search", placeholder="soccer, tennis, team…")
+    if st.button("🔄 Refresh data"):
         fetch_all.clear()
         st.rerun()
+    st.caption("Data cached for 10 min to avoid rate limits.")
 
 # ── Load ───────────────────────────────────────────────────────────────────────
 st.title("📡 Kalshi Markets Terminal")
 
-with st.spinner("Fetching all markets (paginating…)"):
+with st.spinner("Loading…"):
     df = fetch_all()
 
 if df.empty:
@@ -154,12 +180,11 @@ if search:
     )
     filtered = filtered[mask]
 
-# ── Tabs ───────────────────────────────────────────────────────────────────────
+# ── Metrics ────────────────────────────────────────────────────────────────────
 categories  = sorted(filtered["category"].unique().tolist())
 tab_labels  = ["All"] + categories
 sport_count = int((filtered["category"].str.lower() == "sports").sum())
 
-# ── Metrics ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="metric-strip">
   <div class="metric-box"><div class="metric-label">Total markets</div><div class="metric-value">{len(df)}</div></div>
@@ -169,7 +194,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Card renderer ──────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
 def get_icon(ticker, category):
     t = ticker.upper()
     c = str(category).lower()
@@ -195,20 +220,20 @@ def get_icon(ticker, category):
 
 def get_pill_class(category):
     mapping = {
-        "Sports":                "cat-Sports",
-        "Politics":              "cat-Politics",
-        "Elections":             "cat-Elections",
-        "Financials":            "cat-Financials",
-        "Entertainment":         "cat-Entertainment",
-        "Climate and Weather":   "cat-Climate",
-        "Science and Technology":"cat-Science",
-        "Health":                "cat-Health",
+        "Sports":                 "cat-Sports",
+        "Politics":               "cat-Politics",
+        "Elections":              "cat-Elections",
+        "Financials":             "cat-Financials",
+        "Entertainment":          "cat-Entertainment",
+        "Climate and Weather":    "cat-Climate",
+        "Science and Technology": "cat-Science",
+        "Health":                 "cat-Health",
     }
     return mapping.get(str(category), "cat-default")
 
 def render_cards(data):
     if data.empty:
-        st.markdown('<div class="empty-state">No markets in this category.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="empty-state">No markets here.</div>', unsafe_allow_html=True)
         return
 
     cards_html = '<div class="card-grid">'
@@ -246,7 +271,7 @@ def render_cards(data):
     cards_html += "</div>"
     st.markdown(cards_html, unsafe_allow_html=True)
 
-# ── Render tabs ────────────────────────────────────────────────────────────────
+# ── Tabs ───────────────────────────────────────────────────────────────────────
 tabs = st.tabs(tab_labels)
 for i, tab in enumerate(tabs):
     with tab:
@@ -259,6 +284,6 @@ for i, tab in enumerate(tabs):
 st.markdown("---")
 st.markdown(
     "<p style='text-align:center;color:#1f2937;font-size:11px;letter-spacing:.06em;'>"
-    "KALSHI TERMINAL · REFRESHES EVERY 3 MIN · NOT FINANCIAL ADVICE</p>",
+    "KALSHI TERMINAL · CACHED 10 MIN · NOT FINANCIAL ADVICE</p>",
     unsafe_allow_html=True
 )
