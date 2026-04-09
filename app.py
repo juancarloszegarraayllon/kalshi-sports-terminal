@@ -588,9 +588,10 @@ def safe_dt(val):
 
 def fmt_date(d):
     """d can be a date or datetime."""
+    from datetime import datetime, timezone as _tz
     try:
         if d is None: return "Open"
-        if hasattr(d, 'hour'):  # datetime
+        if hasattr(d, 'hour'):  # full datetime
             try:
                 import pytz
                 eastern = pytz.timezone('US/Eastern')
@@ -599,9 +600,20 @@ def fmt_date(d):
                 eastern = ZoneInfo('America/New_York')
             if d.tzinfo:
                 d = d.astimezone(eastern)
+            now = datetime.now(d.tzinfo)
+            diff_days = (d.date() - now.date()).days
             hour = d.hour % 12 or 12
             ampm = "am" if d.hour < 12 else "pm"
-            return f"{d.strftime('%b')} {d.day}, {hour}:{d.strftime('%M')}{ampm} ET"
+            mins = d.strftime('%M')
+            # Same day: show time only
+            if diff_days == 0:
+                return f"Today {hour}:{mins}{ampm} ET"
+            # Within 7 days: show day + time
+            if 0 < diff_days <= 7:
+                return f"{d.strftime('%b')} {d.day}, {hour}:{mins}{ampm} ET"
+            # Far future: just show date
+            return f"{d.strftime('%b')} {d.day}"
+        # date only
         return d.strftime("%b %d")
     except:
         try: return d.strftime("%b %d") if d else "Open"
@@ -756,33 +768,37 @@ def fetch_all():
     def fmt_begins(row):
         from datetime import datetime
         now = datetime.now(UTC)
-        # Use close_time as the event time (game start / resolution)
-        ot = row.get("_close_dt")
-        if ot is None: return ""
-        diff = ot - now
+        cdt = row.get("_close_dt")
+        if cdt is None: return ""
+        diff = cdt - now
         total_seconds = int(diff.total_seconds())
-        if total_seconds <= 0: return "Live"
+        # Past or within 10 min after close = Live
+        if total_seconds <= 600: return "🔴 Live"
+        # Only show "Begins in" for events happening within 7 days
+        # For far-future markets (futures/outrights) show nothing
+        if total_seconds > 7 * 86400: return ""
         if total_seconds < 3600:
             m = total_seconds // 60
-            return f"Begins in {m}m"
+            return f"⏱ {m}m"
         if total_seconds < 86400:
             h = total_seconds // 3600
             m = (total_seconds % 3600) // 60
-            return f"Begins in {h}h {m}m" if m else f"Begins in {h}h"
+            return f"⏱ {h}h {m}m" if m else f"⏱ {h}h"
         d = total_seconds // 86400
-        return f"Begins in {d}d"
+        return f"⏱ {d}d"
 
     df["_begins"] = df.apply(fmt_begins, axis=1)
-    # Debug: store sample raw market fields — prefer multi-market soccer event
+    # Debug: store sample raw market fields — find a soccer GAME event
+    GAME_SERIES = {"KXEPLGAME","KXUCLGAME","KXSERIEAGAME","KXLALIGAGAME",
+                   "KXBUNDESLIGAGAME","KXLIGUE1GAME","KXMLSGAME","KXLIGAMXGAME",
+                   "KXCONMEBOLLIBGAME","KXCONMEBOLSUDGAME","KXUECLGAME","KXUELGAME"}
     if not df.empty:
-        # Try to find a soccer game with 2+ markets first
-        multi = df[
-            (df["_sport"] == "Soccer") &
-            df["_outcomes"].apply(lambda x: len(x) >= 2 if isinstance(x, list) else False)
-        ]
-        sample = multi if not multi.empty else df[
-            df["_outcomes"].apply(lambda x: len(x) > 0 if isinstance(x, list) else False)
-        ]
+        game = df[df["_series"].isin(GAME_SERIES) & df["_outcomes"].apply(
+            lambda x: len(x) >= 2 if isinstance(x, list) else False)]
+        multi = df[(df["_sport"]=="Soccer") & df["_outcomes"].apply(
+            lambda x: len(x) >= 2 if isinstance(x, list) else False)]
+        sample = game if not game.empty else (multi if not multi.empty else df[
+            df["_outcomes"].apply(lambda x: len(x) > 0 if isinstance(x, list) else False)])
         if not sample.empty:
             row0 = sample.iloc[0]
             mkts = row0["markets"] if "markets" in row0.index else []
