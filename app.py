@@ -53,6 +53,8 @@ hr { border-color: #1e1e32 !important; }
 BASE_URL = "https://api.elections.kalshi.com/trade-api/v2"
 UTC = timezone.utc
 
+KALSHI_SPORT_CATS = {"sports"}
+
 def parse_date_safe(val):
     try:
         if val is None or val == "" or (isinstance(val, float) and pd.isna(val)):
@@ -308,8 +310,6 @@ def get_icon(ticker, category):
     if "science" in c or "tech" in c: return "🔬"
     if "health" in c: return "🏥"
     return "📊"
-
-KALSHI_SPORT_CATS = {"sports"}
 
 def get_pill_class(category):
     c = str(category).lower().strip()
