@@ -23,9 +23,6 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .market-card:hover{border-color:#00ff00;transform:translateY(-2px);}
 .card-top{display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;}
 .cat-pill{font-size:20px;font-weight:700;letter-spacing:.02em;text-transform:capitalize;padding:0;border:none;background:transparent;white-space:nowrap;color:#ffffff!important;}
-.pill-sports,.pill-elections,.pill-politics,.pill-economics,.pill-financials,
-.pill-crypto,.pill-companies,.pill-entertainment,.pill-climate,.pill-science,
-.pill-health,.pill-default{background:transparent;border:none;color:#ffffff!important;}
 .card-timing{display:flex;flex-direction:row;align-items:center;gap:4px;margin-bottom:8px;}
 .date-text{font-size:11px;color:#ffffff;opacity:.6;}
 .card-icon{font-size:20px;margin-bottom:4px;display:block;}
@@ -33,14 +30,12 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .card-footer{border-top:1px solid #1c1c1c;padding-top:10px;}
 .ticker-link{font-size:10px;color:#00ff00;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;opacity:.6;}
 .ticker-link:hover{opacity:1;text-decoration:underline;}
-.ticker-text{font-size:10px;color:#00ff00;opacity:.6;display:block;margin-bottom:8px;word-break:break-all;}
 
 /* ── Outcomes ── */
 .outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
 .outcome-label{font-size:11px;color:#ffffff;font-weight:500;flex:0 0 auto;min-width:80px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85;}
 .outcome-chance{font-size:13px;font-weight:700;color:#ffffff;flex:0 0 auto;min-width:38px;text-align:right;}
 .outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
-.outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
 .odds-yes{background:#001500;border:1px solid #00ff00;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{background:#150000;border:1px solid #ff2222;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-label{font-size:9px;color:#ffffff;text-transform:uppercase;letter-spacing:.08em;opacity:.5;}
@@ -48,12 +43,31 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .odds-price-no{font-size:15px;font-weight:700;color:#ff2222;}
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
+
+/* Nav buttons - plain text style like original */
+button[kind="secondary"], button[kind="primary"],
+div[data-testid="stButton"] button,
+.stButton > div > button,
+.stButton button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    text-align: left !important;
+    padding: 3px 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+.stButton button:hover {
+    color: #888888 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 UTC = timezone.utc
 
-# ── Category metadata (from your original) ───────────────────────────────────
+# ── Category metadata (original) ─────────────────────────────────────────────
 TOP_CATS = ["Sports","Elections","Politics","Economics","Financials",
             "Crypto","Companies","Entertainment","Climate and Weather",
             "Science and Technology","Health","Social","World","Transportation","Mentions"]
@@ -69,127 +83,12 @@ CAT_META = {
     "Mentions":("💬","pill-default"),
 }
 
-# ── Paste ALL your original dictionaries here (from your first message) ───────
-# _SPORT_SERIES, SPORT_ICONS, SOCCER_COMP, SPORT_SUBTABS, CAT_TAGS
+# ── Paste your full original dictionaries here ───────────────────────────────
+_SPORT_SERIES = { ... }   # ← Paste your full _SPORT_SERIES
+SPORT_ICONS = { ... }
+SOCCER_COMP = { ... }
+SPORT_SUBTABS = { ... }
 
-_SPORT_SERIES = {
-    "Soccer": [
-        "KXEPLGAME","KXEPL1H","KXEPLSPREAD","KXEPLTOTAL","KXEPLBTTS",
-        "KXEPLTOP4","KXEPLTOP2","KXEPLTOP6","KXEPLRELEGATION","KXPREMIERLEAGUE",
-        "KXARSENALCUPS","KXWINSTREAKMANU","KXNEXTMANAGERMANU","KXPFAPOY","KXLAMINEYAMAL",
-        "KXUCLGAME","KXUCL1H","KXUCLSPREAD","KXUCLTOTAL","KXUCLBTTS","KXUCL",
-        "KXUCLFINALIST","KXUCLRO4","KXUCLW","KXLEADERUCLGOALS","KXTEAMSINUCL",
-        "KXUELGAME","KXUELSPREAD","KXUELTOTAL","KXUEL",
-        "KXUECL","KXUECLGAME",
-        "KXLALIGAGAME","KXLALIGA1H","KXLALIGASPREAD","KXLALIGATOTAL","KXLALIGABTTS",
-        "KXLALIGA","KXLALIGATOP4","KXLALIGARELEGATION",
-        "KXLALIGA2GAME",
-        "KXSERIEAGAME","KXSERIEA1H","KXSERIEASPREAD","KXSERIEATOTAL","KXSERIEABTTS",
-        "KXSERIEA","KXSERIEATOP4","KXSERIEARELEGATION",
-        "KXSERIEBGAME",
-        "KXBUNDESLIGAGAME","KXBUNDESLIGA1H","KXBUNDESLIGASPREAD","KXBUNDESLIGATOTAL",
-        "KXBUNDESLIGABTTS","KXBUNDESLIGA","KXBUNDESLIGATOP4","KXBUNDESLIGARELEGATION",
-        "KXBUNDESLIGA2GAME",
-        "KXLIGUE1GAME","KXLIGUE11H","KXLIGUE1SPREAD","KXLIGUE1TOTAL","KXLIGUE1BTTS",
-        "KXLIGUE1","KXLIGUE1TOP4","KXLIGUE1RELEGATION",
-        "KXMLSGAME","KXMLSSPREAD","KXMLSTOTAL","KXMLSBTTS","KXMLSCUP","KXMLSEAST","KXMLSWEST",
-        "KXLIGAMXGAME","KXLIGAMXSPREAD","KXLIGAMXTOTAL","KXLIGAMX",
-        "KXBRASILEIROGAME","KXBRASILEIROSPREAD","KXBRASILEIROTOTAL","KXBRASILEIRO","KXBRASILEIROTOPX",
-        "KXWCGAME","KXWCROUND","KXWCGROUPWIN","KXWCGROUPQUAL","KXWCGOALLEADER",
-        "KXWCMESSIRONALDO","KXWCLOCATION","KXWCIRAN","KXWCSQUAD","KXMENWORLDCUP",
-        "KXSOCCERPLAYMESSI","KXSOCCERPLAYCRON","KXFIFAUSPULL","KXFIFAUSPULLGAME",
-        "KXSAUDIPLGAME","KXSAUDIPLSPREAD","KXSAUDIPLTOTAL",
-        "KXLIGAPORTUGALGAME","KXLIGAPORTUGAL",
-        "KXEREDIVISIEGAME","KXEREDIVISIE",
-        "KXCOPADELREY","KXDFBPOKAL","KXFACUP","KXCOPPAITALIA",
-        "KXEFLCHAMPIONSHIPGAME","KXEFLCHAMPIONSHIP","KXEFLPROMO",
-        "KXSUPERLIGGAME","KXSUPERLIG",
-        "KXCONCACAFCCUPGAME","KXCONMEBOLLIBGAME","KXCONMEBOLSUDGAME",
-        "KXUSLGAME","KXUSL",
-        "KXSCOTTISHPREMGAME",
-        "KXEKSTRAKLASAGAME","KXEKSTRAKLASA",
-        "KXALEAGUEGAME","KXALEAGUESPREAD","KXALEAGUETOTAL",
-        "KXKLEAGUEGAME","KXKLEAGUE",
-        "KXJLEAGUEGAME",
-        "KXCHNSLGAME","KXCHNSL",
-        "KXALLSVENSKANGAME",
-        "KXDENSUPERLIGAGAME","KXDENSUPERLIGA",
-        "KXSWISSLEAGUEGAME",
-        "KXARGPREMDIVGAME",
-        "KXDIMAYORGAME",
-        "KXURYPDGAME","KXURYPD",
-        "KXECULPGAME","KXECULP",
-        "KXVENFUTVEGAME","KXVENFUTVE",
-        "KXCHLLDPGAME","KXCHLLDP",
-        "KXAPFDDHGAME","KXAPFDDH",
-        "KXBALLERLEAGUEGAME",
-        "KXSLGREECE",
-        "KXTHAIL1GAME","KXTHAIL1",
-        "KXEGYPLGAME",
-        "KXHNLGAME",
-        "KXBELGIANPLGAME","KXBELGIANPL",
-        "KXPERLIGA1",
-        "KXKNVBCUP",
-        "KXSOCCERTRANSFER","KXJOINLEAGUE","KXJOINRONALDO","KXJOINCLUB","KXBALLONDOR",
-    ],
-    "Basketball": [
-        "KXNBAGAME","KXNBASPREAD","KXNBATOTAL","KXNBATEAMTOTAL",
-        "KXNBA1HWINNER","KXNBA1HSPREAD","KXNBA1HTOTAL",
-        "KXNBA2HWINNER","KXNBA2D","KXNBA3D","KXNBA3PT",
-        "KXNBAPTS","KXNBAREB","KXNBAAST","KXNBABLK","KXNBASTL",
-        "KXNBA","KXNBAEAST","KXNBAWEST","KXNBAPLAYOFF","KXNBAPLAYIN",
-        "KXNBAATLANTIC","KXNBACENTRAL","KXNBASOUTHEAST",
-        "KXNBANORTHWEST","KXNBAPACIFIC","KXNBASOUTHWEST",
-        "KXNBAEAST1SEED","KXNBAWEST1SEED",
-        "KXTEAMSINNBAF","KXTEAMSINNBAEF","KXTEAMSINNBAWF",
-        "KXNBAMATCHUP","KXNBAWINS","KXRECORDNBABEST",
-        "KXNBAMVP","KXNBAROY","KXNBACOY","KXNBADPOY","KXNBASIXTH",
-        "KXNBAMIMP","KXNBACLUTCH","KXNBAFINMVP","KXNBAWFINMVP","KXNBAEFINMVP",
-        "KXNBA1STTEAM","KXNBA2NDTEAM","KXNBA3RDTEAM",
-        "KXNBA1STTEAMDEF","KXNBA2NDTEAMDEF",
-        "KXLEADERNBAPTS","KXLEADERNBAREB","KXLEADERNBAAST",
-        "KXLEADERNBABLK","KXLEADERNBASTL","KXLEADERNBA3PT",
-        "KXNBADRAFT1","KXNBADRAFTPICK","KXNBADRAFTTOP","KXNBADRAFTCAT","KXNBADRAFTCOMP",
-        "KXNBATOPPICK","KXNBALOTTERYODDS","KXNBATOP5ROTY",
-        "KXNBATEAM","KXNBASEATTLE","KXCITYNBAEXPAND","KXSONICS",
-        "KXNEXTTEAMNBA","KXLBJRETIRE","KXSPORTSOWNERLBJ","KXSTEPHDEAL",
-        "KXQUADRUPLEDOUBLE","KXSHAI20PTREC","KXNBA2KCOVER",
-        "KXWNBADRAFT1","KXWNBADRAFTTOP3","KXWNBADELAY","KXWNBAGAMESPLAYED",
-        "KXMARMAD","KXNCAAMBNEXTCOACH",
-        "KXEUROLEAGUEGAME","KXBSLGAME","KXBBLGAME","KXACBGAME",
-        "KXISLGAME","KXABAGAME","KXCBAGAME","KXBBSERIEAGAME",
-        "KXJBLEAGUEGAME","KXLNBELITEGAME","KXARGLNBGAME","KXVTBGAME",
-    ],
-    # Add the rest of your sports (Baseball, Football, Hockey, etc.) from your original file
-}
-
-SPORT_ICONS = {
-    "Soccer":"⚽","Basketball":"🏀","Baseball":"⚾","Football":"🏈",
-    "Hockey":"🏒","Tennis":"🎾","Golf":"⛳","MMA":"🥊","Cricket":"🏏",
-    "Esports":"🎮","Motorsport":"🏎️","Boxing":"🥊","Rugby":"🏉",
-    "Lacrosse":"🥍","Chess":"♟️","Darts":"🎯","Aussie Rules":"🏉",
-    "Other Sports":"🏆",
-}
-
-SOCCER_COMP = {
-    "KXEPLGAME":"EPL","KXEPL1H":"EPL","KXEPLSPREAD":"EPL","KXEPLTOTAL":"EPL",
-    "KXEPLBTTS":"EPL","KXEPLTOP4":"EPL","KXEPLTOP2":"EPL","KXEPLTOP6":"EPL",
-    "KXEPLRELEGATION":"EPL","KXPREMIERLEAGUE":"EPL","KXARSENALCUPS":"EPL",
-    "KXWINSTREAKMANU":"EPL","KXNEXTMANAGERMANU":"EPL","KXPFAPOY":"EPL","KXLAMINEYAMAL":"EPL",
-    "KXUCLGAME":"Champions League","KXUCL1H":"Champions League","KXUCLSPREAD":"Champions League",
-    "KXUCLTOTAL":"Champions League","KXUCLBTTS":"Champions League","KXUCL":"Champions League",
-    "KXUCLFINALIST":"Champions League","KXUCLRO4":"Champions League","KXUCLW":"Champions League",
-    "KXLEADERUCLGOALS":"Champions League","KXTEAMSINUCL":"Champions League",
-    "KXUELGAME":"Europa League","KXUELSPREAD":"Europa League","KXUELTOTAL":"Europa League","KXUEL":"Europa League",
-    "KXUECL":"Conference League","KXUECLGAME":"Conference League",
-    # Add the rest from your original SOCCER_COMP dictionary
-}
-
-SPORT_SUBTABS = {
-    # Paste your full SPORT_SUBTABS from original file
-}
-
-# Build SERIES_SPORT
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -198,7 +97,7 @@ for sport, series_list in _SPORT_SERIES.items():
 def get_sport(series_ticker):
     return SERIES_SPORT.get(str(series_ticker).upper(), "")
 
-# ── Helpers with fix for NaT ─────────────────────────────────────────────────
+# ── Helpers with NaT fix ─────────────────────────────────────────────────────
 def safe_dt(val):
     try:
         if val is None or val == "": return None
@@ -246,7 +145,7 @@ def fmt_date(d):
     except:
         return ""
 
-# ── API (unchanged) ─────────────────────────────────────────────────────────
+# ── API (original) ───────────────────────────────────────────────────────────
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -380,7 +279,7 @@ def fetch_all():
     prog.progress(1.0); prog.empty()
     return df
 
-# ── Automatic Infinite Scroll (only change) ──────────────────────────────────
+# ── Automatic Infinite Scroll (minimal change) ───────────────────────────────
 def render_cards(data, tab_name="default"):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
@@ -443,7 +342,7 @@ def render_cards(data, tab_name="default"):
 
     st.markdown(html, unsafe_allow_html=True)
 
-    # Automatic infinite scroll
+    # Automatic scroll loading
     if visible < len(data):
         st.markdown(f"""
         <script>
@@ -463,7 +362,7 @@ def render_cards(data, tab_name="default"):
             st.session_state[state_key] += BATCH_SIZE
             st.rerun()
 
-# ── Main layout (kept as close as possible to your original) ─────────────────
+# ── Main layout (kept very close to original) ────────────────────────────────
 st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
 
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
@@ -544,7 +443,7 @@ if sort_by != "Default":
 
 sport_count = int(df["_is_sport"].sum())
 
-# ── Render (kept close to original) ──────────────────────────────────────────
+# ── Render (original style) ──────────────────────────────────────────────────
 present_cats = [""] + ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
@@ -556,7 +455,8 @@ for i, tab in enumerate(top_tabs):
 
         if cat == "":
             st.markdown(
-                "<div style='text-align:center;padding:80px 20px;font-family:Helvetica,Arial,sans-serif;'>"
+                "<div style='text-align:center;padding:80px 20px;"
+                "font-family:Helvetica,Arial,sans-serif;'>"
                 "<div style='font-size:18px;color:#00ff00;font-weight:700;margin-bottom:12px;'>"
                 "Welcome to OddsIQ</div>"
                 "<div style='font-size:14px;color:#555;'>"
@@ -579,11 +479,14 @@ for i, tab in enumerate(top_tabs):
                 for item in ["All sports"] + sports_present:
                     cnt = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
                     is_sel = st.session_state.sel_sport == item
+                    arrow = " ▾" if (is_sel and item != "All sports") else (" ▸" if item != "All sports" else "")
                     color = "#00ff00" if is_sel else "#ffffff"
                     weight = "bold" if is_sel else "normal"
+
                     st.markdown(
-                        f"<div style='color:{color};font-weight:{weight};font-size:13px;padding:4px 0;font-family:Helvetica,Arial,sans-serif;cursor:pointer;'>"
-                        f"{item} ({cnt})</div>",
+                        f"<div style='color:{color};font-weight:{weight};font-size:13px;"
+                        f"padding:4px 0;font-family:Helvetica,Arial,sans-serif;cursor:pointer;'>"
+                        f"{item} ({cnt}){arrow}</div>",
                         unsafe_allow_html=True
                     )
                     if st.button(f"{item}", key=f"sp__{item.replace(' ','_')}"):
