@@ -125,13 +125,13 @@ div[data-testid="stRadio"] label > div:first-child {
     width:0!important;
     height:0!important;
 }
-/* Invisible nav trigger buttons */
+/* Invisible nav trigger buttons - sit ON TOP of the markdown text above */
 button:not([role="tab"]) {
     opacity:0!important;
-    height:2px!important;
+    height:28px!important;
     min-height:0!important;
     padding:0!important;
-    margin:-6px 0 2px 0!important;
+    margin:-28px 0 0 0!important;
     border:none!important;
     background:transparent!important;
     box-shadow:none!important;
@@ -139,6 +139,8 @@ button:not([role="tab"]) {
     cursor:pointer!important;
     display:block!important;
     pointer-events:auto!important;
+    position:relative!important;
+    z-index:10!important;
 }
 
 /* ── Streamlit overrides ── */
@@ -1211,8 +1213,14 @@ for i, tab in enumerate(top_tabs):
                         unsafe_allow_html=True
                     )
                     if st.button(f"_{item}", key=f"sp_{item}", use_container_width=True):
-                        st.session_state[sport_key] = item
-                        st.session_state[comp_key]  = "All"
+                        if item == "All sports":
+                            st.session_state[sport_key] = "All sports"
+                        elif st.session_state[sport_key] == item:
+                            # Clicking active sport collapses it back to All
+                            st.session_state[sport_key] = "All sports"
+                        else:
+                            st.session_state[sport_key] = item
+                        st.session_state[comp_key] = "All"
                         st.rerun()
 
                     # Show children inline right below this sport
