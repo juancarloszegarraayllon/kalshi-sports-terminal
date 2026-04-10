@@ -60,16 +60,16 @@ CAT_META = {
 }
 
 # ==================== PASTE YOUR FULL DICTIONARIES HERE ====================
-_SPORT_SERIES = {
-    # Paste the entire _SPORT_SERIES from your original file here
-    "Soccer": ["KXEPLGAME", "KXUCLGAME", ...],   # your full list
-    "Basketball": ["KXNBAGAME", ...],
-    # ... paste all sports
-}
+# Copy from your original file and paste them below this line
 
-SPORT_ICONS = { ... }   # Paste full
-SOCCER_COMP = { ... }   # Paste full
-SPORT_SUBTABS = { ... } # Paste full
+_SPORT_SERIES = {}   # ← PASTE FULL _SPORT_SERIES HERE
+SPORT_ICONS = {}     # ← PASTE FULL
+SOCCER_COMP = {}     # ← PASTE FULL (this was causing the crash)
+SPORT_SUBTABS = {}   # ← PASTE FULL
+
+# Safe fallback so the app doesn't crash if dictionaries are empty
+if not SOCCER_COMP:
+    SOCCER_COMP = {}
 
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
@@ -79,7 +79,7 @@ for sport, series_list in _SPORT_SERIES.items():
 def get_sport(series_ticker):
     return SERIES_SPORT.get(str(series_ticker).upper(), "")
 
-# ── Helpers (keep your original) ─────────────────────────────────────────────
+# ── Helpers ──────────────────────────────────────────────────────────────────
 def safe_dt(val):
     try:
         if val is None or val == "": return None
@@ -124,7 +124,7 @@ def fmt_date(d):
     except:
         return d.strftime("%b %d") if d else ""
 
-# ── API (keep as is) ─────────────────────────────────────────────────────────
+# ── API ──────────────────────────────────────────────────────────────────────
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -177,11 +177,11 @@ def fetch_all():
         df["markets"] = [[] for _ in range(len(df))]
     df["markets"] = df["markets"].apply(lambda x: x if isinstance(x, list) else [])
 
+    # Safe soccer_comp line
     df["_soccer_comp"] = df.apply(
         lambda r: SOCCER_COMP.get(r["_series"],"Other") if r["_sport"]=="Soccer" else "", axis=1
     )
 
-    # Paste your original extract function here
     def extract(row):
         mkts = row.get("markets", [])
         if not mkts:
@@ -217,7 +217,7 @@ def fetch_all():
     prog.progress(1.0); prog.empty()
     return df
 
-# ── Automatic Infinite Scroll (NO button) ────────────────────────────────────
+# ── Automatic Infinite Scroll (no visible button) ────────────────────────────
 def render_cards(data, tab_name="default"):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
@@ -281,7 +281,7 @@ def render_cards(data, tab_name="default"):
 
     st.markdown(html, unsafe_allow_html=True)
 
-    # Auto load when scrolling
+    # Auto-load on scroll
     if visible < len(data):
         st.markdown(f"""
         <script>
@@ -341,7 +341,7 @@ if "last_filter_hash" not in st.session_state or st.session_state.last_filter_ha
             del st.session_state[key]
     st.session_state.last_filter_hash = filter_hash
 
-# ── Tabs ─────────────────────────────────────────────────────────────────────
+# ── Tabs with Sports Navigation ──────────────────────────────────────────────
 present_cats = [""] + ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and int(df["_is_sport"].sum()) > 0) or (c != "Sports" and c in df["category"].values)]
 
