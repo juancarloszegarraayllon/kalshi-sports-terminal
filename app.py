@@ -101,10 +101,6 @@ div[data-testid="stButton"] button:active,
 }
 
 /* ── Tabs ── */
-/* Hide scroll trigger button */
-button:has(> div > p:only-child) {
-    display: none !important;
-}
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
@@ -1087,7 +1083,10 @@ def render_cards(data, page_key="cards_shown"):
             unsafe_allow_html=True
         )
         # Hidden button triggered by scroll JS
+        # Hidden trigger button - made invisible via CSS class trick
+        st.markdown("<div style='height:0;overflow:hidden;'>", unsafe_allow_html=True)
         load_btn = st.button("⬇", key=f"loadmore_{page_key}")
+        st.markdown("</div>", unsafe_allow_html=True)
         if load_btn:
             st.session_state[page_key] = shown + PAGE_SIZE
             st.rerun()
