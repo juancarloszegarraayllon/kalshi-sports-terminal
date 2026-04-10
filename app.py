@@ -1078,46 +1078,13 @@ def render_cards(data, page_key="cards_shown"):
 
     if shown < total:
         st.markdown(
-            f"<div style='text-align:center;color:#333;font-size:11px;padding:8px 0;'>"
+            f"<div style='text-align:center;color:#444;font-size:11px;padding:4px 0'>"
             f"{min(shown,total)} of {total}</div>",
             unsafe_allow_html=True
         )
-        # Hidden button triggered by scroll JS
-        # Hidden trigger button - made invisible via CSS class trick
-        st.markdown("<div style='height:0;overflow:hidden;'>", unsafe_allow_html=True)
-        load_btn = st.button("⬇", key=f"loadmore_{page_key}")
-        st.markdown("</div>", unsafe_allow_html=True)
-        if load_btn:
+        if st.button("Load more ↓", key=f"loadmore_{page_key}"):
             st.session_state[page_key] = shown + PAGE_SIZE
             st.rerun()
-        # JS: detect scroll to bottom and click hidden button
-        st.components.v1.html(f"""
-<script>
-(function() {{
-    var triggered = false;
-    var p = window.parent;
-    if (!p) return;
-    p.addEventListener('scroll', function() {{
-        var scrollTop = p.scrollY || p.pageYOffset;
-        var docHeight = p.document.documentElement.scrollHeight;
-        var winHeight = p.innerHeight;
-        if (!triggered && scrollTop + winHeight >= docHeight - 300) {{
-            triggered = true;
-            var btns = p.document.querySelectorAll('button');
-            for (var i = 0; i < btns.length; i++) {{
-                if (btns[i].innerText.trim() === '⬇') {{
-                    btns[i].click();
-                    return;
-                }}
-            }}
-        }}
-        if (scrollTop + winHeight < docHeight - 500) {{
-            triggered = false;
-        }}
-    }}, {{passive: true}});
-}})();
-</script>
-""", height=0)
 
 # Build series-to-subtab lookup
 SERIES_TO_SUBTAB = {}  # sport → {series → tab_name}
