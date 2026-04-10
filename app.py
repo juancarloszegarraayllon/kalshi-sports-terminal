@@ -23,26 +23,19 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .market-card:hover{border-color:#00ff00;transform:translateY(-2px);}
 .card-top{display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;}
 .cat-pill{font-size:20px;font-weight:700;letter-spacing:.02em;text-transform:capitalize;padding:0;border:none;background:transparent;white-space:nowrap;color:#ffffff!important;}
-.pill-sports,.pill-elections,.pill-politics,.pill-economics,.pill-financials,
-.pill-crypto,.pill-companies,.pill-entertainment,.pill-climate,.pill-science,
-.pill-health,.pill-default{background:transparent;border:none;color:#ffffff!important;}
 .card-timing{display:flex;flex-direction:row;align-items:center;gap:4px;margin-bottom:8px;}
 .date-text{font-size:11px;color:#ffffff;opacity:.6;}
-.begins-text{font-size:11px;color:#00ff00;font-weight:600;}
-.live-text{font-size:11px;color:#00ff00;font-weight:700;}
 .card-icon{font-size:20px;margin-bottom:4px;display:block;}
 .card-title{font-size:14px;font-weight:600;color:#ffffff;line-height:1.45;margin-bottom:12px;min-height:52px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1c1c1c;padding-top:10px;}
 .ticker-link{font-size:10px;color:#00ff00;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;opacity:.6;}
 .ticker-link:hover{opacity:1;text-decoration:underline;}
-.ticker-text{font-size:10px;color:#00ff00;opacity:.6;display:block;margin-bottom:8px;word-break:break-all;}
 
 /* ── Outcomes ── */
 .outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
 .outcome-label{font-size:11px;color:#ffffff;font-weight:500;flex:0 0 auto;min-width:80px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85;}
 .outcome-chance{font-size:13px;font-weight:700;color:#ffffff;flex:0 0 auto;min-width:38px;text-align:right;}
 .outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
-.outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
 .odds-yes{background:#001500;border:1px solid #00ff00;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{background:#150000;border:1px solid #ff2222;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-label{font-size:9px;color:#ffffff;text-transform:uppercase;letter-spacing:.08em;opacity:.5;}
@@ -51,7 +44,7 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
 
-/* Nav buttons - plain text style (original) */
+/* Plain text nav buttons - exactly like original */
 button[kind="secondary"], button[kind="primary"],
 div[data-testid="stButton"] button,
 .stButton > div > button,
@@ -74,7 +67,7 @@ div[data-testid="stButton"] button,
 
 UTC = timezone.utc
 
-# ── Category metadata (original) ─────────────────────────────────────────────
+# ── Category metadata ─────────────────────────────────────────────────────────
 TOP_CATS = ["Sports","Elections","Politics","Economics","Financials",
             "Crypto","Companies","Entertainment","Climate and Weather",
             "Science and Technology","Health","Social","World","Transportation","Mentions"]
@@ -90,38 +83,18 @@ CAT_META = {
     "Mentions":("💬","pill-default"),
 }
 
-CAT_TAGS = {
-    "Elections":["US Elections","International","House","Senate","Primaries","Governor"],
-    "Politics":["Trump","Congress","International","SCOTUS","Local","Tariffs"],
-    "Economics":["Fed","Inflation","GDP","Jobs","Housing","Oil","Global"],
-    "Financials":["S&P","Nasdaq","Metals","Agriculture","Oil & Gas","Treasuries"],
-    "Crypto":["BTC","ETH","SOL","DOGE","XRP","BNB"],
-    "Companies":["IPOs","Elon Musk","CEOs","Tech","Layoffs"],
-    "Entertainment":["Music","Television","Movies","Awards","Video games"],
-    "Climate and Weather":["Hurricanes","Temperature","Snow and rain","Climate change"],
-    "Science and Technology":["AI","Space","Medicine","Energy"],
-}
-
-# ── YOUR ORIGINAL DICTIONARIES (paste them here) ─────────────────────────────
-# Copy from your original file and paste the full blocks below
-
+# ── Paste your full original dictionaries here ───────────────────────────────
 _SPORT_SERIES = {
     # Paste the entire _SPORT_SERIES from your original file here
+    "Soccer": ["KXEPLGAME", "KXEPL1H", ...],   # your full list
+    "Basketball": ["KXNBAGAME", ...],
+    # ... all other sports
 }
 
-SPORT_ICONS = {
-    # Paste full SPORT_ICONS
-}
+SPORT_ICONS = { ... }   # Paste full
+SOCCER_COMP = { ... }   # Paste full
+SPORT_SUBTABS = { ... } # Paste full
 
-SOCCER_COMP = {
-    # Paste full SOCCER_COMP
-}
-
-SPORT_SUBTABS = {
-    # Paste full SPORT_SUBTABS
-}
-
-# Build SERIES_SPORT
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -130,7 +103,7 @@ for sport, series_list in _SPORT_SERIES.items():
 def get_sport(series_ticker):
     return SERIES_SPORT.get(str(series_ticker).upper(), "")
 
-# ── Helpers (original + NaT fix) ─────────────────────────────────────────────
+# ── Helpers (with NaT fix) ───────────────────────────────────────────────────
 def safe_dt(val):
     try:
         if val is None or val == "": return None
@@ -395,7 +368,7 @@ def render_cards(data, tab_name="default"):
             st.session_state[state_key] += BATCH_SIZE
             st.rerun()
 
-# ── Main layout (kept identical to original) ─────────────────────────────────
+# ── Main layout (original) ───────────────────────────────────────────────────
 st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
 
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
