@@ -125,6 +125,21 @@ div[data-testid="stRadio"] label > div:first-child {
     width:0!important;
     height:0!important;
 }
+/* Invisible nav trigger buttons */
+button:not([role="tab"]) {
+    opacity:0!important;
+    height:2px!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:-6px 0 2px 0!important;
+    border:none!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    width:100%!important;
+    cursor:pointer!important;
+    display:block!important;
+    pointer-events:auto!important;
+}
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
@@ -1154,48 +1169,85 @@ for i, tab in enumerate(top_tabs):
             nav_col, card_col = st.columns([1, 4])
 
             with nav_col:
-                # Use radio for sport selection - no rerun issues
-                sport_options = ["All sports"] + sports_present
-                sel_sport = st.radio(
-                    "sport", sport_options, index=0,
-                    label_visibility="collapsed",
-                    key=f"radio_sport_{cat}"
-                )
+                # Track selections in session state
+                sport_key = "sel_sport"
+                comp_key  = "sel_comp"
+                if sport_key not in st.session_state:
+                    st.session_state[sport_key] = "All sports"
+                if comp_key not in st.session_state:
+                    st.session_state[comp_key] = "All"
 
-                # If a sport with children is selected, show competition radio
-                sel_comp = "All"
-                if sel_sport and sel_sport != "All sports":
-                    sport_df = sdf[sdf["_sport"]==sel_sport].copy()
-                    if sel_sport == "Soccer":
-                        comps = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
-                        children = ["All"] + comps
-                    else:
-                        tabs_def = SPORT_SUBTABS.get(sel_sport, [])
-                        if tabs_def:
-                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
-                            sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s,"Other"))
-                            children = ["All"] + [t for t,_ in tabs_def if (sport_df["_subtab"]==t).any()]
-                        else:
-                            children = []
-                    if len(children) > 1:
-                        sel_comp = st.radio(
-                            "comp", children, index=0,
-                            label_visibility="collapsed",
-                            key=f"radio_comp_{sel_sport}"
-                        )
+                sel_sport = st.session_state[sport_key]
+                sel_comp  = st.session_state[comp_key]
+
+                # Build children map for each sport
+                def get_children(sport, df):
+                    sdf2 = df[df["_sport"]==sport].copy()
+                    if sport == "Soccer":
+                        comps = sorted([c for c in sdf2["_soccer_comp"].unique() if c and c not in ("Other","")])
+                        return ["All"] + comps if comps else []
+                    td = SPORT_SUBTABS.get(sport, [])
+                    if td:
+                        lk = SERIES_TO_SUBTAB.get(sport, {})
+                        sdf2["_subtab"] = sdf2["_series"].apply(lambda s: lk.get(s,"Other"))
+                        ch = [t for t,_ in td if (sdf2["_subtab"]==t).any()]
+                        return ["All"] + ch if ch else []
+                    return []
+
+                # Render each sport as a radio item, with children inline below
+                all_items = ["All sports"] + sports_present
+                for item in all_items:
+                    is_sel = sel_sport == item
+                    color  = "#00ff00" if is_sel else "#ffffff"
+                    weight = "bold" if is_sel else "normal"
+                    cnt    = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
+                    children = [] if item == "All sports" else get_children(item, sdf)
+                    arrow  = " ▾" if (is_sel and children) else (" ▸" if children else "")
+
+                    st.markdown(
+                        f"<div style='color:{color};font-weight:{weight};"
+                        f"font-size:13px;padding:4px 0;font-family:Helvetica,Arial,sans-serif;'>"
+                        f"{item} ({cnt}){arrow}</div>",
+                        unsafe_allow_html=True
+                    )
+                    if st.button(f"_{item}", key=f"sp_{item}", use_container_width=True):
+                        st.session_state[sport_key] = item
+                        st.session_state[comp_key]  = "All"
+                        st.rerun()
+
+                    # Show children inline right below this sport
+                    if is_sel and children:
+                        for child in children:
+                            is_c  = sel_comp == child
+                            cc    = "#00ff00" if is_c else "#888888"
+                            cw    = "bold" if is_c else "normal"
+                            pre   = "▸ " if is_c else ""
+                            st.markdown(
+                                f"<div style='color:{cc};font-weight:{cw};"
+                                f"font-size:12px;padding:2px 0 2px 14px;"
+                                f"font-family:Helvetica,Arial,sans-serif;'>{pre}{child}</div>",
+                                unsafe_allow_html=True
+                            )
+                            if st.button(f"_{item}_{child}", key=f"cp_{item}_{child}",
+                                         use_container_width=True):
+                                st.session_state[sport_key] = item
+                                st.session_state[comp_key]  = child
+                                st.rerun()
 
             with card_col:
-                if sel_sport == "All sports":
+                s = st.session_state.get("sel_sport", "All sports")
+                c = st.session_state.get("sel_comp",  "All")
+                if s == "All sports":
                     view = sdf
                 else:
-                    view = sdf[sdf["_sport"]==sel_sport].copy()
-                    if sel_comp and sel_comp != "All":
-                        if sel_sport == "Soccer":
-                            view = view[view["_soccer_comp"]==sel_comp]
+                    view = sdf[sdf["_sport"]==s].copy()
+                    if c and c != "All":
+                        if s == "Soccer":
+                            view = view[view["_soccer_comp"]==c]
                         else:
-                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
+                            lookup = SERIES_TO_SUBTAB.get(s, {})
                             view["_subtab"] = view["_series"].apply(lambda x: lookup.get(x,"Other"))
-                            view = view[view["_subtab"]==sel_comp]
+                            view = view[view["_subtab"]==c]
                 render_cards(view)
 
         else:
