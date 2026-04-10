@@ -104,44 +104,13 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Nav buttons - plain text, no rectangle - universal selector */
-button {
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    text-align:left!important;
-    justify-content:flex-start!important;
-    padding:3px 0!important;
-    color:#ffffff!important;
-    font-size:13px!important;
-    font-family:Helvetica,Arial,sans-serif!important;
-    font-weight:400!important;
-    width:100%!important;
-    border-radius:0!important;
-    min-height:0!important;
-}
-button:hover {
-    background:transparent!important;
-    color:#aaaaaa!important;
-    border:none!important;
-    box-shadow:none!important;
-}
-button:focus, button:active {
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    outline:none!important;
-}
-/* Tab buttons keep their style */
-[data-baseweb="tab-list"] button {
-    color:#555555!important;
-    padding:8px 14px!important;
-    width:auto!important;
-}
-[data-baseweb="tab-list"] [aria-selected="true"] {
-    background:#001500!important;
-    color:#00ff00!important;
-    border-radius:6px 6px 0 0!important;
+/* Make nav buttons invisible but clickable, overlaid on markdown text */
+[data-testid="stVerticalBlock"] [data-testid="stBaseButton-secondary"] {
+    opacity:0!important;height:20px!important;min-height:0!important;
+    padding:0!important;margin:-22px 0 2px 0!important;
+    border:none!important;background:transparent!important;
+    box-shadow:none!important;width:100%!important;
+    display:block!important;position:relative!important;z-index:99!important;
 }
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
@@ -971,23 +940,21 @@ with _c3:
 today = date.today()
 d_start = d_end = None
 
-# ── Date filters ──────────────────────────────────────────────────────────────
-_dfc1, _dfc2, _dfc3 = st.columns([1.5, 1.5, 1])
+_dfc1, _dfc2 = st.columns([2, 1])
 with _dfc1:
-    date_mode = st.selectbox("Date filter", ["All dates","Today","This week","Custom"],
+    date_mode = st.selectbox("", ["All dates", "Today", "This week", "Custom"],
                              label_visibility="collapsed", key="date_mode_sel")
 with _dfc2:
-    if date_mode == "Custom":
-        d_start = st.date_input("From", value=today, label_visibility="collapsed")
-    elif date_mode == "Today":
-        d_start = d_end = today
-    elif date_mode == "This week":
-        d_start, d_end = today, today + timedelta(days=6)
-with _dfc3:
     include_no_date = st.toggle("Include undated", value=True)
 
-if date_mode == "Custom":
-    _, _dc2, _ = st.columns([1.5, 1.5, 1])
+if date_mode == "Today":
+    d_start = d_end = today
+elif date_mode == "This week":
+    d_start, d_end = today, today + timedelta(days=6)
+elif date_mode == "Custom":
+    _dc1, _dc2, _ = st.columns([1, 1, 1])
+    with _dc1:
+        d_start = st.date_input("From", value=today, label_visibility="collapsed")
     with _dc2:
         d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
 with st.spinner("Loading…"):
@@ -1241,7 +1208,13 @@ for i, tab in enumerate(top_tabs):
                     color = "#00ff00" if is_sel else "#ffffff"
                     weight = "bold" if is_sel else "normal"
 
-                    if st.button(f"{item} ({cnt}){arrow}", key=f"sp__{item}"):
+                    st.markdown(
+                        f"<div style='color:{color};font-weight:{weight};font-size:13px;"
+                        f"padding:4px 0;font-family:Helvetica,Arial,sans-serif;cursor:pointer;'>"
+                        f"{item} ({cnt}){arrow}</div>",
+                        unsafe_allow_html=True
+                    )
+                    if st.button(f"{item}", key=f"sp__{item}"):
                         if item == "All sports":
                             st.session_state[sport_key] = "All sports"
                             st.session_state[comp_key]  = "All"
@@ -1262,7 +1235,13 @@ for i, tab in enumerate(top_tabs):
                             cc = "#00ff00" if is_c else "#888888"
                             cw = "bold" if is_c else "normal"
                             pre = "▸ " if is_c else ""
-                            if st.button(f"    {pre}{child}", key=f"cp__{item}__{child}"):
+                            st.markdown(
+                                f"<div style='color:{cc};font-weight:{cw};font-size:12px;"
+                                f"padding:2px 0 2px 14px;font-family:Helvetica,Arial,sans-serif;'>"
+                                f"{pre}{child}</div>",
+                                unsafe_allow_html=True
+                            )
+                            if st.button(f"{child}", key=f"cp__{item}__{child}"):
                                 st.session_state[sport_key] = item
                                 st.session_state[comp_key] = child
                                 st.session_state["_active_tab"] = present_cats.index("Sports")
