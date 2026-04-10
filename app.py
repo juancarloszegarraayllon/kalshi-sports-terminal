@@ -104,6 +104,14 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
+/* Make nav buttons invisible but clickable, overlaid on markdown text */
+[data-testid="stVerticalBlock"] [data-testid="stBaseButton-secondary"] {
+    opacity:0!important;height:24px!important;min-height:0!important;
+    padding:0!important;margin:-26px 0 2px 0!important;
+    border:none!important;background:transparent!important;
+    box-shadow:none!important;width:100%!important;
+    display:block!important;position:relative!important;z-index:99!important;
+}
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
 button[kind="secondary"][data-testid="stBaseButton-secondary"]:has(+*) { display:none!important; }
@@ -1139,11 +1147,33 @@ def filter_data(cat, subcat, subsubcat, data):
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
+# Auto-select Sports tab if a sport nav click happened
+_default_tab = st.session_state.get("_active_tab", 0)
+
 top_tabs = st.tabs(present_cats)
+
+# Inject JS to click the correct tab after render
+if _default_tab > 0 and _default_tab < len(present_cats):
+    tab_label = present_cats[_default_tab]
+    st.markdown(f"""<script>
+    (function(){{
+        var doc = window.parent ? window.parent.document : document;
+        function clickTab() {{
+            var tabs = doc.querySelectorAll('[data-baseweb="tab"]');
+            for (var t of tabs) {{
+                if (t.textContent.trim() === '{tab_label}') {{
+                    t.click(); return;
+                }}
+            }}
+        }}
+        setTimeout(clickTab, 100);
+    }})();
+    </script>""", unsafe_allow_html=True)
 
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
+        st.session_state["_active_tab"] = i
 
         if cat == "All":
             st.markdown(
@@ -1181,48 +1211,47 @@ for i, tab in enumerate(top_tabs):
                         return ["All"] + ch if ch else []
                     return []
 
-                # Build flat list based on CURRENT session state
-                # Each entry: (label, sport, comp)
-                flat = []
+                # Render each sport as individual button, children inline
                 for item in ["All sports"] + sports_present:
                     cnt = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
                     children = [] if item == "All sports" else get_children(item, sdf)
-                    arrow = " ▾" if (item == sel_sport and children) else (" ▸" if children else "")
-                    flat.append((f"{item} ({cnt}){arrow}", item, "All"))
-                    # Only expand children for currently selected sport
-                    if item == sel_sport and children:
+                    is_sel = sel_sport == item
+                    arrow = " ▾" if (is_sel and children) else (" ▸" if children else "")
+                    color = "#00ff00" if is_sel else "#ffffff"
+                    weight = "bold" if is_sel else "normal"
+
+                    st.markdown(
+                        f"<div style='color:{color};font-weight:{weight};font-size:13px;"
+                        f"padding:4px 0;font-family:Helvetica,Arial,sans-serif;cursor:pointer;'>"
+                        f"{item} ({cnt}){arrow}</div>",
+                        unsafe_allow_html=True
+                    )
+                    if st.button(f"{item}", key=f"sp__{item}"):
+                        if is_sel and item != "All sports":
+                            st.session_state[sport_key] = "All sports"
+                        else:
+                            st.session_state[sport_key] = item
+                        st.session_state[comp_key] = "All"
+                        st.session_state["_active_tab"] = present_cats.index("Sports")
+                        st.rerun()
+
+                    if is_sel and children:
                         for child in children:
-                            prefix = "  ▸ " if child == sel_comp else "    "
-                            flat.append((f"{prefix}{child}", item, child))
-
-                labels = [f[0] for f in flat]
-
-                # Find index of current selection
-                cur_idx = 0
-                for fi, (lbl, sp, cp) in enumerate(flat):
-                    if sp == sel_sport and cp == sel_comp:
-                        cur_idx = fi
-                        break
-
-                chosen_label = st.radio("nav", labels, index=cur_idx,
-                                        label_visibility="collapsed",
-                                        key=f"nav_radio_{sel_sport}_{sel_comp}")
-
-                # Map chosen label back to (sport, comp)
-                chosen_sp, chosen_cp = "All sports", "All"
-                for (lbl, sp, cp) in flat:
-                    if lbl == chosen_label:
-                        chosen_sp, chosen_cp = sp, cp
-                        break
-
-                # Toggle collapse: clicking active sport header collapses
-                if chosen_sp == sel_sport and chosen_cp == "All" and chosen_sp != "All sports":
-                    chosen_sp = "All sports"
-
-                # Update session state
-                if chosen_sp != sel_sport or chosen_cp != sel_comp:
-                    st.session_state[sport_key] = chosen_sp
-                    st.session_state[comp_key]  = chosen_cp
+                            is_c = sel_comp == child
+                            cc = "#00ff00" if is_c else "#888888"
+                            cw = "bold" if is_c else "normal"
+                            pre = "▸ " if is_c else ""
+                            st.markdown(
+                                f"<div style='color:{cc};font-weight:{cw};font-size:12px;"
+                                f"padding:2px 0 2px 14px;font-family:Helvetica,Arial,sans-serif;'>"
+                                f"{pre}{child}</div>",
+                                unsafe_allow_html=True
+                            )
+                            if st.button(f"{child}", key=f"cp__{item}__{child}"):
+                                st.session_state[sport_key] = item
+                                st.session_state[comp_key] = child
+                                st.session_state["_active_tab"] = present_cats.index("Sports")
+                                st.rerun()
 
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
