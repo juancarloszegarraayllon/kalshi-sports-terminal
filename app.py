@@ -1090,32 +1090,31 @@ def render_cards(data, page_key="cards_shown"):
         if load_btn:
             st.session_state[page_key] = shown + PAGE_SIZE
             st.rerun()
-        # JS: watch scroll position, click hidden button when near bottom
+        # JS: detect scroll to bottom and click hidden button
         st.components.v1.html(f"""
 <script>
 (function() {{
-    var fired = false;
-    function checkScroll() {{
-        var doc = window.parent ? window.parent.document : document;
-        var scrollTop = doc.documentElement.scrollTop || doc.body.scrollTop;
-        var scrollHeight = doc.documentElement.scrollHeight || doc.body.scrollHeight;
-        var clientHeight = doc.documentElement.clientHeight || doc.body.clientHeight;
-        if (!fired && scrollTop + clientHeight >= scrollHeight - 200) {{
-            fired = true;
-            // find and click the hidden load more button
-            var btns = doc.querySelectorAll('button');
-            for (var b of btns) {{
-                if (b.innerText.trim() === '⬇') {{
-                    b.click();
-                    break;
+    var triggered = false;
+    var p = window.parent;
+    if (!p) return;
+    p.addEventListener('scroll', function() {{
+        var scrollTop = p.scrollY || p.pageYOffset;
+        var docHeight = p.document.documentElement.scrollHeight;
+        var winHeight = p.innerHeight;
+        if (!triggered && scrollTop + winHeight >= docHeight - 300) {{
+            triggered = true;
+            var btns = p.document.querySelectorAll('button');
+            for (var i = 0; i < btns.length; i++) {{
+                if (btns[i].innerText.trim() === '⬇') {{
+                    btns[i].click();
+                    return;
                 }}
             }}
         }}
-        if (scrollTop + clientHeight < scrollHeight - 400) {{
-            fired = false;
+        if (scrollTop + winHeight < docHeight - 500) {{
+            triggered = false;
         }}
-    }}
-    (window.parent || window).addEventListener('scroll', checkScroll, true);
+    }}, {{passive: true}});
 }})();
 </script>
 """, height=0)
@@ -1228,6 +1227,15 @@ for i, tab in enumerate(top_tabs):
 
             nav_col, card_col = st.columns([1, 4])
 
+            st.markdown("""<style>
+[data-testid="column"]:first-of-type {
+    position: sticky !important;
+    top: 0 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    align-self: flex-start !important;
+}
+</style>""", unsafe_allow_html=True)
             with nav_col:
                 sport_key = "sel_sport"
                 comp_key  = "sel_comp"
