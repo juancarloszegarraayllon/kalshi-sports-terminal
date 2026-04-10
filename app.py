@@ -1145,7 +1145,7 @@ def filter_data(cat, subcat, subsubcat, data):
     return data
 
 # ── Main layout ──────────────────────────────────────────────────────────────
-present_cats = ["All"] + [c for c in TOP_CATS
+present_cats = ["", "All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
 # Auto-select Sports tab if a sport nav click happened
@@ -1185,7 +1185,15 @@ for i, tab in enumerate(top_tabs):
             pass  # Don't auto-select
         st.session_state["_active_tab"] = i
 
-        if cat == "All":
+        if cat == "":
+            # Home page - shown on initial load
+            st.markdown("""
+<div style='text-align:center;padding:80px 20px;font-family:Helvetica,Arial,sans-serif;'>
+  <div style='font-size:20px;color:#00ff00;font-weight:700;margin-bottom:12px;'>Welcome to OddsIQ</div>
+  <div style='font-size:14px;color:#666;'>Select a category above to browse prediction markets.</div>
+</div>""", unsafe_allow_html=True)
+
+        elif cat == "All":
             render_cards(filtered)
 
         elif cat == "Sports":
