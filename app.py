@@ -1181,45 +1181,52 @@ for i, tab in enumerate(top_tabs):
                         return ["All"] + ch if ch else []
                     return []
 
-                all_items = ["All sports"] + sports_present
-
-                # Build nav as selectbox options list styled via CSS
-                # Use st.selectbox hidden — selection drives the nav
-                sel_idx = 0
-                flat_options = []  # (display_label, sport, comp)
-                for item in all_items:
+                # Build flat list based on CURRENT session state
+                # Each entry: (label, sport, comp)
+                flat = []
+                for item in ["All sports"] + sports_present:
                     cnt = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
                     children = [] if item == "All sports" else get_children(item, sdf)
-                    flat_options.append((f"{item} ({cnt})", item, "All"))
-                    is_sel = sel_sport == item
-                    if is_sel and children:
+                    arrow = " ▾" if (item == sel_sport and children) else (" ▸" if children else "")
+                    flat.append((f"{item} ({cnt}){arrow}", item, "All"))
+                    # Only expand children for currently selected sport
+                    if item == sel_sport and children:
                         for child in children:
-                            flat_options.append((f"  {child}", item, child))
+                            prefix = "  ▸ " if child == sel_comp else "    "
+                            flat.append((f"{prefix}{child}", item, child))
 
-                # Find current selection index
-                for fi, (lbl, sp, cp) in enumerate(flat_options):
+                labels = [f[0] for f in flat]
+
+                # Find index of current selection
+                cur_idx = 0
+                for fi, (lbl, sp, cp) in enumerate(flat):
                     if sp == sel_sport and cp == sel_comp:
-                        sel_idx = fi
+                        cur_idx = fi
                         break
 
-                labels = [o[0] for o in flat_options]
-                chosen = st.radio("nav", labels, index=sel_idx,
-                                  label_visibility="collapsed", key="nav_radio")
-                if chosen:
-                    for (lbl, sp, cp) in flat_options:
-                        if lbl == chosen:
-                            new_sp, new_cp = sp, cp
-                            # Toggle collapse
-                            if new_sp == sel_sport and new_cp == "All" and new_sp != "All sports":
-                                new_sp = "All sports"
-                            if new_sp != sel_sport or new_cp != sel_comp:
-                                st.session_state[sport_key] = new_sp
-                                st.session_state[comp_key]  = new_cp
-                            break
+                chosen_label = st.radio("nav", labels, index=cur_idx,
+                                        label_visibility="collapsed",
+                                        key=f"nav_radio_{sel_sport}_{sel_comp}")
+
+                # Map chosen label back to (sport, comp)
+                chosen_sp, chosen_cp = "All sports", "All"
+                for (lbl, sp, cp) in flat:
+                    if lbl == chosen_label:
+                        chosen_sp, chosen_cp = sp, cp
+                        break
+
+                # Toggle collapse: clicking active sport header collapses
+                if chosen_sp == sel_sport and chosen_cp == "All" and chosen_sp != "All sports":
+                    chosen_sp = "All sports"
+
+                # Update session state
+                if chosen_sp != sel_sport or chosen_cp != sel_comp:
+                    st.session_state[sport_key] = chosen_sp
+                    st.session_state[comp_key]  = chosen_cp
 
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
-                c = st.session_state.get("sel_comp",  "All")
+                c = st.session_state.get("sel_comp", "All")
                 if s == "All sports":
                     view = sdf
                 else:
