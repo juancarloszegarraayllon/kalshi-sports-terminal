@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import time
-from datetime import date, timedelta, timezone
+from datetime import date, timezone
 
 st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="")
 
@@ -39,44 +39,30 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 
 UTC = timezone.utc
 
-# ==================== ALL METADATA (from your original file) ====================
-TOP_CATS = ["Sports","Elections","Politics","Economics","Financials","Crypto","Companies",
-            "Entertainment","Climate and Weather","Science and Technology","Health"]
+# ==================== METADATA ====================
+TOP_CATS = ["Sports", "Elections", "Politics", "Economics", "Financials", "Crypto"]
 
 CAT_META = {
-    "Sports":("🏟️","pill-sports"),"Elections":("🗳️","pill-elections"),
-    "Politics":("🏛️","pill-politics"),"Economics":("📈","pill-economics"),
-    "Financials":("💰","pill-financials"),"Crypto":("₿","pill-crypto"),
-    "Companies":("🏢","pill-companies"),"Entertainment":("🎬","pill-entertainment"),
-    "Climate and Weather":("🌍","pill-climate"),"Science and Technology":("🔬","pill-science"),
-    "Health":("🏥","pill-health"),
+    "Sports": ("🏟️", "pill-sports"), "Elections": ("🗳️", "pill-elections"),
+    "Politics": ("🏛️", "pill-politics"), "Economics": ("📈", "pill-economics"),
+    "Financials": ("💰", "pill-financials"), "Crypto": ("₿", "pill-crypto"),
 }
 
-# SPORT SERIES → SPORT NAME
+# Sport mapping (you can expand this later with your full list)
 _SPORT_SERIES = {
-    "Soccer": ["KXEPLGAME","KXEPL1H","KXEPLSPREAD","KXEPLTOTAL","KXEPLBTTS","KXUCLGAME","KXUCL","KXLALIGAGAME","KXSERIEAGAME","KXBUNDESLIGAGAME","KXMLSGAME","KXWCGAME"],  # shortened for example - keep your full list
-    "Basketball": ["KXNBAGAME","KXNBA","KXNBAEAST","KXNBAWEST"],
-    "Baseball": ["KXMLBGAME","KXMLB"],
-    "Football": ["KXUFLGAME","KXSB","KXNFLPLAYOFF"],
-    "Hockey": ["KXNHLGAME","KXNHL"],
-    # ... Add the rest of your original _SPORT_SERIES dict here if you want full coverage
+    "Soccer": ["KXEPLGAME", "KXUCLGAME", "KXLALIGAGAME", "KXSERIEAGAME", "KXBUNDESLIGAGAME", "KXMLSGAME", "KXWCGAME"],
+    "Basketball": ["KXNBAGAME", "KXNBA"],
+    "Baseball": ["KXMLBGAME", "KXMLB"],
+    "Football": ["KXUFLGAME", "KXSB"],
+    "Hockey": ["KXNHLGAME"],
 }
 
 SPORT_ICONS = {
-    "Soccer":"⚽","Basketball":"🏀","Baseball":"⚾","Football":"🏈",
-    "Hockey":"🏒","Tennis":"🎾","Golf":"⛳","MMA":"🥊","Cricket":"🏏",
-    "Esports":"🎮","Motorsport":"🏎️","Boxing":"🥊",
+    "Soccer": "⚽", "Basketball": "🏀", "Baseball": "⚾", "Football": "🏈",
+    "Hockey": "🏒", "Tennis": "🎾", "Golf": "⛳", "MMA": "🥊",
 }
 
-# Build SERIES_SPORT lookup
-SERIES_SPORT = {}
-for sport, series_list in _SPORT_SERIES.items():
-    for s in series_list:
-        SERIES_SPORT[s] = sport
-
-SOCCER_COMP = {}  # You can leave empty or add your full dict later
-
-SPORT_SUBTABS = {}  # You can expand later
+SERIES_SPORT = {s: sport for sport, series_list in _SPORT_SERIES.items() for s in series_list}
 
 # ==================== HELPERS ====================
 def parse_game_date_from_ticker(event_ticker):
@@ -97,11 +83,11 @@ def parse_game_date_from_ticker(event_ticker):
 
 def fmt_date(d):
     try:
-        return d.strftime("%b %d") if hasattr(d, 'strftime') else str(d)
+        return d.strftime("%b %d") if d else ""
     except:
         return ""
 
-# ==================== API ====================
+# ==================== API CLIENT ====================
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -139,29 +125,26 @@ def fetch_all():
                 break
 
         if not events:
-            st.error("No events returned. Please try again later.")
+            st.error("No events returned from Kalshi.")
             st.stop()
 
         df = pd.DataFrame(events)
-        
-        # Critical fixes
-        df["category"] = df.get("category", pd.Series("Other", index=df.index)).fillna("Other")
-        df["_series"] = df.get("series_ticker", pd.Series("", index=df.index)).fillna("").str.upper()
+        df["category"] = df.get("category", "Other").fillna("Other")
+        df["_series"] = df.get("series_ticker", "").fillna("").str.upper()
         df["_sport"] = df["_series"].map(SERIES_SPORT).fillna("")
         df["_is_sport"] = df["_sport"] != ""
         df["_game_date"] = df["event_ticker"].apply(parse_game_date_from_ticker)
         df["_display_dt"] = df["_game_date"].apply(fmt_date)
 
-        # Outcome extraction
         def get_outcomes(mkts):
             if not isinstance(mkts, list):
                 return []
             outs = []
             for m in mkts[:5]:
-                label = str(m.get("yes_sub_title") or m.get("ticker","").split("-")[-1])[:30]
+                label = str(m.get("yes_sub_title") or m.get("ticker", "").split("-")[-1])[:30]
                 try:
-                    y = float(m.get("yes_bid_dollars") or (m.get("yes_bid") or 0)/100)
-                    n = float(m.get("no_bid_dollars") or (m.get("no_bid") or 0)/100)
+                    y = float(m.get("yes_bid_dollars") or (m.get("yes_bid") or 0) / 100)
+                    n = float(m.get("no_bid_dollars") or (m.get("no_bid") or 0) / 100)
                     outs.append((label, f"{int(y*100)}%", f"{int(y*100)}¢", f"{int(n*100)}¢"))
                 except:
                     outs.append((label, "—", "—", "—"))
@@ -172,21 +155,22 @@ def fetch_all():
         st.success(f"✅ Loaded {len(df)} markets")
         return df
 
-# ==================== RENDER CARDS ====================
-def render_cards(data, page_size=30):
+# ==================== RENDER CARDS (Fixed duplicate keys) ====================
+def render_cards(data, page_size=30, key_prefix=""):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
 
-    if "card_page" not in st.session_state:
-        st.session_state.card_page = 1
+    if f"{key_prefix}_card_page" not in st.session_state:
+        st.session_state[f"{key_prefix}_card_page"] = 1
 
     total = len(data)
-    total_pages = (total // page_size) + bool(total % page_size)
-    page = max(1, min(st.session_state.card_page, total_pages))
+    total_pages = (total // page_size) + (1 if total % page_size else 0)
+    page = st.session_state[f"{key_prefix}_card_page"]
+    page = max(1, min(page, total_pages))
 
     start = (page - 1) * page_size
-    page_data = data.iloc[start : start + page_size]
+    page_data = data.iloc[start:start + page_size]
 
     html = '<div class="card-grid">'
     for _, row in page_data.iterrows():
@@ -230,26 +214,27 @@ def render_cards(data, page_size=30):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-    # Pagination
+    # Pagination with unique keys
     c1, c2, c3 = st.columns([1, 2, 1])
     with c1:
-        if st.button("← Previous", disabled=page <= 1, key="prev"):
-            st.session_state.card_page -= 1
+        if st.button("← Previous", disabled=page <= 1, key=f"{key_prefix}_prev"):
+            st.session_state[f"{key_prefix}_card_page"] -= 1
             st.rerun()
     with c2:
         st.markdown(f"<div style='text-align:center;color:#00ff00;'>Page {page} of {total_pages} ({total} total)</div>", unsafe_allow_html=True)
     with c3:
-        if st.button("Next →", disabled=page >= total_pages, key="next"):
-            st.session_state.card_page += 1
+        if st.button("Next →", disabled=page >= total_pages, key=f"{key_prefix}_next"):
+            st.session_state[f"{key_prefix}_card_page"] += 1
             st.rerun()
 
-# ==================== MAIN UI ====================
-st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-weight:800;margin:1rem 0;'>OddsIQ</div>", unsafe_allow_html=True)
+# ==================== MAIN APP ====================
+st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-weight:800;margin:1rem 0 2rem;'>OddsIQ</div>", unsafe_allow_html=True)
 
 if st.button("🔄 Refresh Data"):
     fetch_all.clear()
-    if "card_page" in st.session_state:
-        st.session_state.card_page = 1
+    for key in list(st.session_state.keys()):
+        if "_card_page" in key:
+            del st.session_state[key]
     st.rerun()
 
 df = fetch_all()
@@ -270,9 +255,9 @@ tab_list = st.tabs(["All Markets", "Sports"])
 for i, tab in enumerate(tab_list):
     with tab:
         if i == 0:
-            render_cards(filtered)
+            render_cards(filtered, key_prefix="all")
         else:
-            sports_df = filtered[filtered["_is_sport"] == True]
-            render_cards(sports_df)
+            sports_df = filtered[filtered["_is_sport"]]
+            render_cards(sports_df, key_prefix="sports")
 
-st.caption("KALSHI TERMINAL • Updated every 15 minutes • Not financial advice")
+st.caption("KALSHI TERMINAL • Data cached 15 min • Not financial advice")
