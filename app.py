@@ -6,7 +6,7 @@ from datetime import date, timezone
 
 st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="")
 
-# ==================== CSS ====================
+# ==================== CSS (your original style) ====================
 st.markdown("""<style>
 html,body,[class*="css"]{font-family:Helvetica,Arial,sans-serif!important;background:#000000!important;color:#ffffff!important;}
 section[data-testid="stSidebar"]{display:none!important;}
@@ -40,21 +40,10 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 UTC = timezone.utc
 
 # ==================== METADATA ====================
-TOP_CATS = ["Sports", "Elections", "Politics", "Economics", "Financials", "Crypto"]
-
 CAT_META = {
     "Sports": ("🏟️", "pill-sports"), "Elections": ("🗳️", "pill-elections"),
     "Politics": ("🏛️", "pill-politics"), "Economics": ("📈", "pill-economics"),
     "Financials": ("💰", "pill-financials"), "Crypto": ("₿", "pill-crypto"),
-}
-
-# Sport mapping (you can expand this later with your full list)
-_SPORT_SERIES = {
-    "Soccer": ["KXEPLGAME", "KXUCLGAME", "KXLALIGAGAME", "KXSERIEAGAME", "KXBUNDESLIGAGAME", "KXMLSGAME", "KXWCGAME"],
-    "Basketball": ["KXNBAGAME", "KXNBA"],
-    "Baseball": ["KXMLBGAME", "KXMLB"],
-    "Football": ["KXUFLGAME", "KXSB"],
-    "Hockey": ["KXNHLGAME"],
 }
 
 SPORT_ICONS = {
@@ -62,18 +51,26 @@ SPORT_ICONS = {
     "Hockey": "🏒", "Tennis": "🎾", "Golf": "⛳", "MMA": "🥊",
 }
 
-SERIES_SPORT = {s: sport for sport, series_list in _SPORT_SERIES.items() for s in series_list}
+# Expand this with your full list from original file
+_SPORT_SERIES = {
+    "Soccer": ["KXEPLGAME","KXUCLGAME","KXLALIGAGAME","KXSERIEAGAME","KXBUNDESLIGAGAME","KXMLSGAME","KXWCGAME"],
+    "Basketball": ["KXNBAGAME","KXNBA"],
+    "Baseball": ["KXMLBGAME","KXMLB"],
+    "Football": ["KXUFLGAME","KXSB"],
+    "Hockey": ["KXNHLGAME"],
+}
+
+SERIES_SPORT = {s: sport for sport, lst in _SPORT_SERIES.items() for s in lst}
 
 # ==================== HELPERS ====================
-def parse_game_date_from_ticker(event_ticker):
+def parse_game_date_from_ticker(ticker):
     import re
     from datetime import date
     MONTHS = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,"JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
     try:
-        parts = str(event_ticker).split("-")
+        parts = str(ticker).split("-")
         if len(parts) < 2: return None
-        seg = parts[1]
-        m = re.match(r"(\d{2})([A-Z]{3})(\d{2})", seg)
+        m = re.match(r"(\d{2})([A-Z]{3})(\d{2})", parts[1])
         if m:
             yy, mon, dd = m.group(1), m.group(2), m.group(3)
             return date(2000 + int(yy), MONTHS.get(mon, 1), int(dd))
@@ -83,11 +80,11 @@ def parse_game_date_from_ticker(event_ticker):
 
 def fmt_date(d):
     try:
-        return d.strftime("%b %d") if d else ""
+        return d.strftime("%b %d") if d else "Open"
     except:
-        return ""
+        return "Open"
 
-# ==================== API CLIENT ====================
+# ==================== KALSHI CLIENT ====================
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -105,30 +102,36 @@ client = get_client()
 
 @st.cache_data(ttl=900)
 def fetch_all():
-    with st.spinner("Loading markets from Kalshi..."):
+    with st.spinner("Loading all open markets from Kalshi..."):
         events = []
         cursor = None
-        for i in range(25):
+        max_pages = 40   # Increased to load more events
+        for i in range(max_pages):
             try:
                 kw = {"limit": 200, "status": "open", "with_nested_markets": True}
                 if cursor:
                     kw["cursor"] = cursor
                 resp = client.get_events(**kw).to_dict()
                 batch = resp.get("events", [])
+                if not batch:
+                    break
                 events.extend(batch)
                 cursor = resp.get("cursor") or resp.get("next_cursor")
-                if not cursor or not batch:
+                if not cursor:
                     break
-                time.sleep(0.07)
+                time.sleep(0.06)
             except Exception as e:
-                st.error(f"API Error: {e}")
-                break
-
-        if not events:
-            st.error("No events returned from Kalshi.")
-            st.stop()
+                if "429" in str(e):
+                    time.sleep(2)
+                else:
+                    st.error(f"API error: {e}")
+                    break
 
         df = pd.DataFrame(events)
+        if df.empty:
+            st.error("No markets loaded. Please try Refresh.")
+            st.stop()
+
         df["category"] = df.get("category", "Other").fillna("Other")
         df["_series"] = df.get("series_ticker", "").fillna("").str.upper()
         df["_sport"] = df["_series"].map(SERIES_SPORT).fillna("")
@@ -137,14 +140,14 @@ def fetch_all():
         df["_display_dt"] = df["_game_date"].apply(fmt_date)
 
         def get_outcomes(mkts):
-            if not isinstance(mkts, list):
+            if not isinstance(mkts, list) or not mkts:
                 return []
             outs = []
             for m in mkts[:5]:
-                label = str(m.get("yes_sub_title") or m.get("ticker", "").split("-")[-1])[:30]
+                label = str(m.get("yes_sub_title") or m.get("ticker","").split("-")[-1])[:30]
                 try:
-                    y = float(m.get("yes_bid_dollars") or (m.get("yes_bid") or 0) / 100)
-                    n = float(m.get("no_bid_dollars") or (m.get("no_bid") or 0) / 100)
+                    y = float(m.get("yes_bid_dollars") or (m.get("yes_bid") or 0)/100)
+                    n = float(m.get("no_bid_dollars") or (m.get("no_bid") or 0)/100)
                     outs.append((label, f"{int(y*100)}%", f"{int(y*100)}¢", f"{int(n*100)}¢"))
                 except:
                     outs.append((label, "—", "—", "—"))
@@ -152,39 +155,39 @@ def fetch_all():
 
         df["_outcomes"] = df["markets"].apply(get_outcomes)
 
-        st.success(f"✅ Loaded {len(df)} markets")
+        st.success(f"✅ Loaded {len(df)} open markets")
         return df
 
-# ==================== RENDER CARDS (Fixed duplicate keys) ====================
-def render_cards(data, page_size=30, key_prefix=""):
+# ==================== CARD RENDERER ====================
+def render_cards(data, page_size=35, key_prefix=""):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
 
-    if f"{key_prefix}_card_page" not in st.session_state:
-        st.session_state[f"{key_prefix}_card_page"] = 1
+    page_key = f"{key_prefix}_page"
+    if page_key not in st.session_state:
+        st.session_state[page_key] = 1
 
     total = len(data)
     total_pages = (total // page_size) + (1 if total % page_size else 0)
-    page = st.session_state[f"{key_prefix}_card_page"]
-    page = max(1, min(page, total_pages))
+    page = max(1, min(st.session_state[page_key], total_pages))
 
     start = (page - 1) * page_size
-    page_data = data.iloc[start:start + page_size]
+    page_data = data.iloc[start:start+page_size]
 
     html = '<div class="card-grid">'
     for _, row in page_data.iterrows():
         try:
-            ticker = str(row.get("event_ticker", "")).upper()
-            title = str(row.get("title", ""))[:85]
-            cat = str(row.get("category", "Other"))
-            sport = str(row.get("_sport", ""))
-            icon, pill = CAT_META.get(cat, ("📊", "pill-default"))
+            ticker = str(row.get("event_ticker","")).upper()
+            title = str(row.get("title",""))[:85]
+            cat = str(row.get("category","Other"))
+            sport = str(row.get("_sport",""))
+            icon, pill = CAT_META.get(cat, ("📊","pill-default"))
             icon = SPORT_ICONS.get(sport, icon) if sport else icon
             label = sport[:16] if sport else cat[:16]
             dt = row.get("_display_dt") or "Open"
 
-            series_lower = str(row.get("series_ticker", "")).lower()
+            series_lower = str(row.get("series_ticker","")).lower()
             kalshi_url = f"https://kalshi.com/markets/{series_lower}/{ticker.lower()}" if series_lower else ""
 
             outcomes_html = ""
@@ -214,32 +217,34 @@ def render_cards(data, page_size=30, key_prefix=""):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-    # Pagination with unique keys
-    c1, c2, c3 = st.columns([1, 2, 1])
+    # Pagination
+    c1, c2, c3 = st.columns([1,2,1])
     with c1:
-        if st.button("← Previous", disabled=page <= 1, key=f"{key_prefix}_prev"):
-            st.session_state[f"{key_prefix}_card_page"] -= 1
+        if st.button("← Previous", disabled=page<=1, key=f"{key_prefix}_prev"):
+            st.session_state[page_key] -= 1
             st.rerun()
     with c2:
-        st.markdown(f"<div style='text-align:center;color:#00ff00;'>Page {page} of {total_pages} ({total} total)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='text-align:center;color:#00ff00;'>Page {page} of {total_pages} • {total} markets</div>", unsafe_allow_html=True)
     with c3:
-        if st.button("Next →", disabled=page >= total_pages, key=f"{key_prefix}_next"):
-            st.session_state[f"{key_prefix}_card_page"] += 1
+        if st.button("Next →", disabled=page>=total_pages, key=f"{key_prefix}_next"):
+            st.session_state[page_key] += 1
             st.rerun()
 
 # ==================== MAIN APP ====================
-st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-weight:800;margin:1rem 0 2rem;'>OddsIQ</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-weight:800;margin-bottom:1.5rem;'>OddsIQ</div>", unsafe_allow_html=True)
 
-if st.button("🔄 Refresh Data"):
-    fetch_all.clear()
-    for key in list(st.session_state.keys()):
-        if "_card_page" in key:
-            del st.session_state[key]
-    st.rerun()
+col1, col2 = st.columns([4,1])
+with col2:
+    if st.button("🔄 Refresh"):
+        fetch_all.clear()
+        for k in list(st.session_state.keys()):
+            if "_page" in k:
+                del st.session_state[k]
+        st.rerun()
 
 df = fetch_all()
 
-search = st.text_input("🔍 Search team, player or market", "", label_visibility="collapsed")
+search = st.text_input("🔍 Search markets", placeholder="Team, player, election...", label_visibility="collapsed")
 
 filtered = df.copy()
 if search:
@@ -249,15 +254,25 @@ if search:
         filtered["event_ticker"].str.lower().str.contains(s, na=False)
     ]
 
-# Tabs
-tab_list = st.tabs(["All Markets", "Sports"])
+# Top Tabs
+tabs = st.tabs(["All Markets", "Sports"])
 
-for i, tab in enumerate(tab_list):
-    with tab:
-        if i == 0:
-            render_cards(filtered, key_prefix="all")
-        else:
-            sports_df = filtered[filtered["_is_sport"]]
-            render_cards(sports_df, key_prefix="sports")
+with tabs[0]:
+    render_cards(filtered, key_prefix="all")
 
-st.caption("KALSHI TERMINAL • Data cached 15 min • Not financial advice")
+with tabs[1]:
+    st.subheader("Sports Markets")
+    sports_df = filtered[filtered["_is_sport"]].copy()
+    
+    # Simple left-style navigation for sports
+    sport_list = ["All Sports"] + sorted(sports_df["_sport"].unique())
+    selected_sport = st.radio("Select Sport", sport_list, horizontal=False, label_visibility="collapsed")
+    
+    if selected_sport != "All Sports":
+        view_df = sports_df[sports_df["_sport"] == selected_sport]
+    else:
+        view_df = sports_df
+    
+    render_cards(view_df, key_prefix="sports")
+
+st.caption("KALSHI TERMINAL • Cached 15 min • Not financial advice")
