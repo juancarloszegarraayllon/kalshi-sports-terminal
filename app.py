@@ -1186,23 +1186,31 @@ for i, tab in enumerate(top_tabs):
                 sel_sport = st.session_state[sport_key]
                 sel_comp  = st.session_state[comp_key]
 
-                def get_children(sport, df):
-                    sdf2 = df[df["_sport"]==sport].copy()
+                @st.cache_data(show_spinner=False)
+                def get_children(sport, series_tuple, soccer_comp_tuple):
                     if sport == "Soccer":
-                        comps = sorted([c for c in sdf2["_soccer_comp"].unique() if c and c not in ("Other","")])
+                        comps = sorted(set(c for c in soccer_comp_tuple if c and c not in ("Other","")))
                         return ["All"] + comps if comps else []
                     td = SPORT_SUBTABS.get(sport, [])
                     if td:
                         lk = SERIES_TO_SUBTAB.get(sport, {})
-                        sdf2["_subtab"] = sdf2["_series"].apply(lambda s: lk.get(s,"Other"))
-                        ch = [t for t,_ in td if (sdf2["_subtab"]==t).any()]
+                        subtabs = [lk.get(s,"Other") for s in series_tuple]
+                        ch = [t for t,_ in td if t in subtabs]
                         return ["All"] + ch if ch else []
                     return []
 
                 # Render each sport as individual button, children inline
                 for item in ["All sports"] + sports_present:
                     cnt = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
-                    children = [] if item == "All sports" else get_children(item, sdf)
+                    if item == "All sports":
+                        children = []
+                    else:
+                        _sdf2 = sdf[sdf["_sport"]==item]
+                        children = get_children(
+                            item,
+                            tuple(_sdf2["_series"].tolist()),
+                            tuple(_sdf2["_soccer_comp"].tolist()) if item=="Soccer" else ()
+                        )
                     is_sel = sel_sport == item
                     arrow = " ▾" if (is_sel and children) else (" ▸" if children else "")
                     color = "#00ff00" if is_sel else "#ffffff"
