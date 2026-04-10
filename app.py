@@ -1033,27 +1033,30 @@ st.markdown(f"""<div class="metric-strip">
 
 
 # ── Render ────────────────────────────────────────────────────────────────────
+_render_cards_call_count = [0]  # mutable counter for unique keys
+
 def render_cards(data, page_size=50):
+    _render_cards_call_count[0] += 1
+    uid = _render_cards_call_count[0]
+
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
 
     total = len(data)
-    # Pagination
-    page_key = "card_page"
+    page_key = f"card_page_{uid}"
     if page_key not in st.session_state:
         st.session_state[page_key] = 0
-    page = st.session_state[page_key]
+    page  = st.session_state[page_key]
     start = page * page_size
     end   = min(start + page_size, total)
     data  = data.iloc[start:end]
 
-    # Page controls
     if total > page_size:
         pc1, pc2, pc3 = st.columns([1, 2, 1])
         with pc1:
             if page > 0:
-                if st.button("← Prev", key="prev_page"):
+                if st.button("← Prev", key=f"prev_{uid}"):
                     st.session_state[page_key] -= 1
                     st.rerun()
         with pc2:
@@ -1063,7 +1066,7 @@ def render_cards(data, page_size=50):
                 unsafe_allow_html=True)
         with pc3:
             if end < total:
-                if st.button("Next →", key="next_page"):
+                if st.button("Next →", key=f"next_{uid}"):
                     st.session_state[page_key] += 1
                     st.rerun()
 
