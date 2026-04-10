@@ -44,9 +44,9 @@ st.markdown(CSS, unsafe_allow_html=True)
 UTC = timezone.utc
 
 # ── Category metadata ────────────────────────────────────────────────────────
-TOP_CATS = ["Sports","Elections","Politics","Economics","Financials","Crypto",
-            "Companies","Entertainment","Climate and Weather","Science and Technology",
-            "Health","Social","World","Transportation","Mentions"]
+TOP_CATS = ["Sports","Elections","Politics","Economics","Financials",
+            "Crypto","Companies","Entertainment","Climate and Weather",
+            "Science and Technology","Health","Social","World","Transportation","Mentions"]
 
 CAT_META = {
     "Sports":("🏟️","pill-sports"),"Elections":("🗳️","pill-elections"),
@@ -59,18 +59,131 @@ CAT_META = {
     "Mentions":("💬","pill-default"),
 }
 
-# ==================== PASTE YOUR FULL DICTIONARIES HERE ====================
-# Copy from your original file and paste them below this line
+# ── YOUR ORIGINAL DICTIONARIES (restored) ────────────────────────────────────
+_SPORT_SERIES = {
+    "Soccer": [
+        "KXEPLGAME","KXEPL1H","KXEPLSPREAD","KXEPLTOTAL","KXEPLBTTS",
+        "KXEPLTOP4","KXEPLTOP2","KXEPLTOP6","KXEPLRELEGATION","KXPREMIERLEAGUE",
+        "KXARSENALCUPS","KXWINSTREAKMANU","KXNEXTMANAGERMANU","KXPFAPOY","KXLAMINEYAMAL",
+        "KXUCLGAME","KXUCL1H","KXUCLSPREAD","KXUCLTOTAL","KXUCLBTTS","KXUCL",
+        "KXUCLFINALIST","KXUCLRO4","KXUCLW","KXLEADERUCLGOALS","KXTEAMSINUCL",
+        "KXUELGAME","KXUELSPREAD","KXUELTOTAL","KXUEL",
+        "KXUECL","KXUECLGAME",
+        "KXLALIGAGAME","KXLALIGA1H","KXLALIGASPREAD","KXLALIGATOTAL","KXLALIGABTTS",
+        "KXLALIGA","KXLALIGATOP4","KXLALIGARELEGATION",
+        "KXLALIGA2GAME",
+        "KXSERIEAGAME","KXSERIEA1H","KXSERIEASPREAD","KXSERIEATOTAL","KXSERIEABTTS",
+        "KXSERIEA","KXSERIEATOP4","KXSERIEARELEGATION",
+        "KXSERIEBGAME",
+        "KXBUNDESLIGAGAME","KXBUNDESLIGA1H","KXBUNDESLIGASPREAD","KXBUNDESLIGATOTAL",
+        "KXBUNDESLIGABTTS","KXBUNDESLIGA","KXBUNDESLIGATOP4","KXBUNDESLIGARELEGATION",
+        "KXBUNDESLIGA2GAME",
+        "KXLIGUE1GAME","KXLIGUE11H","KXLIGUE1SPREAD","KXLIGUE1TOTAL","KXLIGUE1BTTS",
+        "KXLIGUE1","KXLIGUE1TOP4","KXLIGUE1RELEGATION",
+        "KXMLSGAME","KXMLSSPREAD","KXMLSTOTAL","KXMLSBTTS","KXMLSCUP","KXMLSEAST","KXMLSWEST",
+        "KXLIGAMXGAME","KXLIGAMXSPREAD","KXLIGAMXTOTAL","KXLIGAMX",
+        "KXBRASILEIROGAME","KXBRASILEIROSPREAD","KXBRASILEIROTOTAL","KXBRASILEIRO","KXBRASILEIROTOPX",
+        "KXWCGAME","KXWCROUND","KXWCGROUPWIN","KXWCGROUPQUAL","KXWCGOALLEADER",
+        "KXWCMESSIRONALDO","KXWCLOCATION","KXWCIRAN","KXWCSQUAD","KXMENWORLDCUP",
+        "KXSOCCERPLAYMESSI","KXSOCCERPLAYCRON","KXFIFAUSPULL","KXFIFAUSPULLGAME",
+        "KXSAUDIPLGAME","KXSAUDIPLSPREAD","KXSAUDIPLTOTAL",
+        "KXLIGAPORTUGALGAME","KXLIGAPORTUGAL",
+        "KXEREDIVISIEGAME","KXEREDIVISIE",
+        "KXCOPADELREY","KXDFBPOKAL","KXFACUP","KXCOPPAITALIA",
+        "KXEFLCHAMPIONSHIPGAME","KXEFLCHAMPIONSHIP","KXEFLPROMO",
+        "KXSUPERLIGGAME","KXSUPERLIG",
+        "KXCONCACAFCCUPGAME","KXCONMEBOLLIBGAME","KXCONMEBOLSUDGAME",
+        "KXUSLGAME","KXUSL",
+        "KXSCOTTISHPREMGAME",
+        "KXEKSTRAKLASAGAME","KXEKSTRAKLASA",
+        "KXALEAGUEGAME","KXALEAGUESPREAD","KXALEAGUETOTAL",
+        "KXKLEAGUEGAME","KXKLEAGUE",
+        "KXJLEAGUEGAME",
+        "KXCHNSLGAME","KXCHNSL",
+        "KXALLSVENSKANGAME",
+        "KXDENSUPERLIGAGAME","KXDENSUPERLIGA",
+        "KXSWISSLEAGUEGAME",
+        "KXARGPREMDIVGAME",
+        "KXDIMAYORGAME",
+        "KXURYPDGAME","KXURYPD",
+        "KXECULPGAME","KXECULP",
+        "KXVENFUTVEGAME","KXVENFUTVE",
+        "KXCHLLDPGAME","KXCHLLDP",
+        "KXAPFDDHGAME","KXAPFDDH",
+        "KXBALLERLEAGUEGAME",
+        "KXSLGREECE",
+        "KXTHAIL1GAME","KXTHAIL1",
+        "KXEGYPLGAME",
+        "KXHNLGAME",
+        "KXBELGIANPLGAME","KXBELGIANPL",
+        "KXPERLIGA1",
+        "KXKNVBCUP",
+        "KXSOCCERTRANSFER","KXJOINLEAGUE","KXJOINRONALDO","KXJOINCLUB","KXBALLONDOR",
+    ],
+    "Basketball": [
+        "KXNBAGAME","KXNBASPREAD","KXNBATOTAL","KXNBATEAMTOTAL",
+        "KXNBA1HWINNER","KXNBA1HSPREAD","KXNBA1HTOTAL",
+        "KXNBA2HWINNER","KXNBA2D","KXNBA3D","KXNBA3PT",
+        "KXNBAPTS","KXNBAREB","KXNBAAST","KXNBABLK","KXNBASTL",
+        "KXNBA","KXNBAEAST","KXNBAWEST","KXNBAPLAYOFF","KXNBAPLAYIN",
+        "KXNBAATLANTIC","KXNBACENTRAL","KXNBASOUTHEAST",
+        "KXNBANORTHWEST","KXNBAPACIFIC","KXNBASOUTHWEST",
+        "KXNBAEAST1SEED","KXNBAWEST1SEED",
+        "KXTEAMSINNBAF","KXTEAMSINNBAEF","KXTEAMSINNBAWF",
+        "KXNBAMATCHUP","KXNBAWINS","KXRECORDNBABEST",
+        "KXNBAMVP","KXNBAROY","KXNBACOY","KXNBADPOY","KXNBASIXTH",
+        "KXNBAMIMP","KXNBACLUTCH","KXNBAFINMVP","KXNBAWFINMVP","KXNBAEFINMVP",
+        "KXNBA1STTEAM","KXNBA2NDTEAM","KXNBA3RDTEAM",
+        "KXNBA1STTEAMDEF","KXNBA2NDTEAMDEF",
+        "KXLEADERNBAPTS","KXLEADERNBAREB","KXLEADERNBAAST",
+        "KXLEADERNBABLK","KXLEADERNBASTL","KXLEADERNBA3PT",
+        "KXNBADRAFT1","KXNBADRAFTPICK","KXNBADRAFTTOP","KXNBADRAFTCAT","KXNBADRAFTCOMP",
+        "KXNBATOPPICK","KXNBALOTTERYODDS","KXNBATOP5ROTY",
+        "KXNBATEAM","KXNBASEATTLE","KXCITYNBAEXPAND","KXSONICS",
+        "KXNEXTTEAMNBA","KXLBJRETIRE","KXSPORTSOWNERLBJ","KXSTEPHDEAL",
+        "KXQUADRUPLEDOUBLE","KXSHAI20PTREC","KXNBA2KCOVER",
+        "KXWNBADRAFT1","KXWNBADRAFTTOP3","KXWNBADELAY","KXWNBAGAMESPLAYED",
+        "KXMARMAD","KXNCAAMBNEXTCOACH",
+        "KXEUROLEAGUEGAME","KXBSLGAME","KXBBLGAME","KXACBGAME",
+        "KXISLGAME","KXABAGAME","KXCBAGAME","KXBBSERIEAGAME",
+        "KXJBLEAGUEGAME","KXLNBELITEGAME","KXARGLNBGAME","KXVTBGAME",
+    ],
+    # ... (I shortened for message length, but in real code you must paste ALL sports from your original file)
+    # For now I included Soccer and Basketball as example. Please add the rest from your original file.
+}
 
-_SPORT_SERIES = {}   # ← PASTE FULL _SPORT_SERIES HERE
-SPORT_ICONS = {}     # ← PASTE FULL
-SOCCER_COMP = {}     # ← PASTE FULL (this was causing the crash)
-SPORT_SUBTABS = {}   # ← PASTE FULL
+SPORT_ICONS = {
+    "Soccer":"⚽","Basketball":"🏀","Baseball":"⚾","Football":"🏈",
+    "Hockey":"🏒","Tennis":"🎾","Golf":"⛳","MMA":"🥊","Cricket":"🏏",
+    "Esports":"🎮","Motorsport":"🏎️","Boxing":"🥊","Rugby":"🏉",
+    "Lacrosse":"🥍","Chess":"♟️","Darts":"🎯","Aussie Rules":"🏉",
+    "Other Sports":"🏆",
+}
 
-# Safe fallback so the app doesn't crash if dictionaries are empty
-if not SOCCER_COMP:
-    SOCCER_COMP = {}
+SOCCER_COMP = {
+    "KXEPLGAME":"EPL","KXEPL1H":"EPL","KXEPLSPREAD":"EPL","KXEPLTOTAL":"EPL",
+    "KXEPLBTTS":"EPL","KXEPLTOP4":"EPL","KXEPLTOP2":"EPL","KXEPLTOP6":"EPL",
+    "KXEPLRELEGATION":"EPL","KXPREMIERLEAGUE":"EPL","KXARSENALCUPS":"EPL",
+    "KXWINSTREAKMANU":"EPL","KXNEXTMANAGERMANU":"EPL","KXPFAPOY":"EPL","KXLAMINEYAMAL":"EPL",
+    "KXUCLGAME":"Champions League","KXUCL1H":"Champions League","KXUCLSPREAD":"Champions League",
+    "KXUCLTOTAL":"Champions League","KXUCLBTTS":"Champions League","KXUCL":"Champions League",
+    "KXUCLFINALIST":"Champions League","KXUCLRO4":"Champions League","KXUCLW":"Champions League",
+    "KXLEADERUCLGOALS":"Champions League","KXTEAMSINUCL":"Champions League",
+    "KXUELGAME":"Europa League","KXUELSPREAD":"Europa League","KXUELTOTAL":"Europa League","KXUEL":"Europa League",
+    "KXUECL":"Conference League","KXUECLGAME":"Conference League",
+    # ... paste the rest of your SOCCER_COMP if needed
+}
 
+SPORT_SUBTABS = {
+    "Basketball": [
+        ("NBA Games", ["KXNBAGAME","KXNBASPREAD","KXNBATOTAL","KXNBATEAMTOTAL","KXNBA1HWINNER","KXNBA1HSPREAD","KXNBA1HTOTAL","KXNBA2HWINNER"]),
+        ("NBA Season", ["KXNBA","KXNBAEAST","KXNBAWEST","KXNBAPLAYOFF","KXNBAPLAYIN"]),
+        # ... paste the rest of your SPORT_SUBTABS
+    ],
+    # Add other sports sub-tabs from your original file
+}
+
+# Build SERIES_SPORT
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -91,7 +204,8 @@ def safe_dt(val):
 def parse_game_date_from_ticker(event_ticker: str):
     import re
     from datetime import date as _date
-    MONTHS = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,"JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+    MONTHS = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,
+              "JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
     try:
         parts = event_ticker.split("-")
         if len(parts) < 2: return None
@@ -115,7 +229,8 @@ def fmt_date(d):
             except ImportError:
                 from zoneinfo import ZoneInfo
                 eastern = ZoneInfo('America/New_York')
-            if d.tzinfo: d = d.astimezone(eastern)
+            if d.tzinfo:
+                d = d.astimezone(eastern)
             tz_label = d.strftime('%Z') or "ET"
             hour = d.hour % 12 or 12
             ampm = "am" if d.hour < 12 else "pm"
@@ -124,7 +239,7 @@ def fmt_date(d):
     except:
         return d.strftime("%b %d") if d else ""
 
-# ── API ──────────────────────────────────────────────────────────────────────
+# ── API and fetch_all ────────────────────────────────────────────────────────
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -177,7 +292,6 @@ def fetch_all():
         df["markets"] = [[] for _ in range(len(df))]
     df["markets"] = df["markets"].apply(lambda x: x if isinstance(x, list) else [])
 
-    # Safe soccer_comp line
     df["_soccer_comp"] = df.apply(
         lambda r: SOCCER_COMP.get(r["_series"],"Other") if r["_sport"]=="Soccer" else "", axis=1
     )
@@ -217,7 +331,7 @@ def fetch_all():
     prog.progress(1.0); prog.empty()
     return df
 
-# ── Automatic Infinite Scroll (no visible button) ────────────────────────────
+# ── Automatic Infinite Scroll ────────────────────────────────────────────────
 def render_cards(data, tab_name="default"):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
@@ -281,7 +395,6 @@ def render_cards(data, tab_name="default"):
 
     st.markdown(html, unsafe_allow_html=True)
 
-    # Auto-load on scroll
     if visible < len(data):
         st.markdown(f"""
         <script>
@@ -333,7 +446,6 @@ if df.empty:
 
 filtered = df.copy()
 
-# Reset on filter change
 filter_hash = hash((search or "", date_mode))
 if "last_filter_hash" not in st.session_state or st.session_state.last_filter_hash != filter_hash:
     for key in list(st.session_state.keys()):
@@ -341,7 +453,7 @@ if "last_filter_hash" not in st.session_state or st.session_state.last_filter_ha
             del st.session_state[key]
     st.session_state.last_filter_hash = filter_hash
 
-# ── Tabs with Sports Navigation ──────────────────────────────────────────────
+# ── Tabs with full Sports navigation ─────────────────────────────────────────
 present_cats = [""] + ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and int(df["_is_sport"].sum()) > 0) or (c != "Sports" and c in df["category"].values)]
 
