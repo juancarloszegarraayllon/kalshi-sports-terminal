@@ -125,13 +125,13 @@ div[data-testid="stRadio"] label > div:first-child {
     width:0!important;
     height:0!important;
 }
-/* Invisible nav trigger buttons - sit ON TOP of the markdown text above */
+/* Invisible nav trigger buttons - overlaid on text */
 button:not([role="tab"]) {
     opacity:0!important;
-    height:28px!important;
+    height:24px!important;
     min-height:0!important;
     padding:0!important;
-    margin:-28px 0 0 0!important;
+    margin:-32px 0 8px 0!important;
     border:none!important;
     background:transparent!important;
     box-shadow:none!important;
@@ -140,7 +140,7 @@ button:not([role="tab"]) {
     display:block!important;
     pointer-events:auto!important;
     position:relative!important;
-    z-index:10!important;
+    z-index:999!important;
 }
 
 /* ── Streamlit overrides ── */
@@ -1208,7 +1208,7 @@ for i, tab in enumerate(top_tabs):
 
                     st.markdown(
                         f"<div style='color:{color};font-weight:{weight};"
-                        f"font-size:13px;padding:4px 0;font-family:Helvetica,Arial,sans-serif;'>"
+                        f"font-size:13px;padding:2px 0 0 0;margin:0;font-family:Helvetica,Arial,sans-serif;'>"
                         f"{item} ({cnt}){arrow}</div>",
                         unsafe_allow_html=True
                     )
@@ -1232,7 +1232,7 @@ for i, tab in enumerate(top_tabs):
                             pre   = "▸ " if is_c else ""
                             st.markdown(
                                 f"<div style='color:{cc};font-weight:{cw};"
-                                f"font-size:12px;padding:2px 0 2px 14px;"
+                                f"font-size:12px;padding:1px 0 1px 14px;margin:0;"
                                 f"font-family:Helvetica,Arial,sans-serif;'>{pre}{child}</div>",
                                 unsafe_allow_html=True
                             )
