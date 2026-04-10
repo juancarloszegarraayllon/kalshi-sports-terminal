@@ -104,6 +104,9 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
+/* Hide nav helper widgets */
+#nav_input, [data-testid="stTextInput"]:has(input#nav_input),
+button[kind="secondary"][data-testid="stBaseButton-secondary"]:has(+*) { display:none!important; }
 /* Radio nav - plain text, no dots */
 div[data-testid="stRadio"] > div { gap:2px!important; }
 div[data-testid="stRadio"] label {
@@ -1178,55 +1181,41 @@ for i, tab in enumerate(top_tabs):
                         return ["All"] + ch if ch else []
                     return []
 
-                # Build entire nav as one HTML block with clickable spans
-                # Use st.query_params to communicate clicks back to Streamlit
                 all_items = ["All sports"] + sports_present
-                
-                nav_html = "<div style='font-family:Helvetica,Arial,sans-serif;line-height:1;'>"
+
+                # Build nav as selectbox options list styled via CSS
+                # Use st.selectbox hidden — selection drives the nav
+                sel_idx = 0
+                flat_options = []  # (display_label, sport, comp)
                 for item in all_items:
-                    is_sel = sel_sport == item
-                    color  = "#00ff00" if is_sel else "#ffffff"
-                    weight = "700" if is_sel else "400"
-                    cnt    = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
+                    cnt = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
                     children = [] if item == "All sports" else get_children(item, sdf)
-                    arrow  = " ▾" if (is_sel and children) else (" ▸" if children else "")
-                    
-                    js_main = f"window.parent.location.href=window.parent.location.pathname+'?sp={item}&cp=All'"
-                    nav_html += (
-                        "<div style='padding:6px 0 0 0;'>"
-                        f"<span onclick='{js_main}' "
-                        f"style='color:{color};font-weight:{weight};font-size:13px;cursor:pointer;'>"
-                        f"{item} ({cnt}){arrow}</span></div>"
-                    )
+                    flat_options.append((f"{item} ({cnt})", item, "All"))
+                    is_sel = sel_sport == item
                     if is_sel and children:
                         for child in children:
-                            is_c  = sel_comp == child
-                            cc    = "#00ff00" if is_c else "#888888"
-                            cw    = "700" if is_c else "400"
-                            pre   = "▸ " if is_c else ""
-                            js_child = f"window.parent.location.href=window.parent.location.pathname+'?sp={item}&cp={child}'"
-                            nav_html += (
-                                "<div style='padding:4px 0 0 14px;'>"
-                                f"<span onclick='{js_child}' "
-                                f"style='color:{cc};font-weight:{cw};font-size:12px;cursor:pointer;'>"
-                                f"{pre}{child}</span></div>"
-                            )
-                nav_html += "</div>"
-                st.markdown(nav_html, unsafe_allow_html=True)
+                            flat_options.append((f"  {child}", item, child))
 
-                # Read query params set by the onclick
-                qp = st.query_params
-                if "sp" in qp:
-                    new_sp = qp.get("sp", "All sports")
-                    new_cp = qp.get("cp", "All")
-                    # Toggle collapse if clicking active sport
-                    if new_sp == sel_sport and new_cp == "All":
-                        new_sp = "All sports"
-                    if new_sp != sel_sport or new_cp != sel_comp:
-                        st.session_state[sport_key] = new_sp
-                        st.session_state[comp_key]  = new_cp
-                        st.query_params.clear()
-                        st.rerun()
+                # Find current selection index
+                for fi, (lbl, sp, cp) in enumerate(flat_options):
+                    if sp == sel_sport and cp == sel_comp:
+                        sel_idx = fi
+                        break
+
+                labels = [o[0] for o in flat_options]
+                chosen = st.radio("nav", labels, index=sel_idx,
+                                  label_visibility="collapsed", key="nav_radio")
+                if chosen:
+                    for (lbl, sp, cp) in flat_options:
+                        if lbl == chosen:
+                            new_sp, new_cp = sp, cp
+                            # Toggle collapse
+                            if new_sp == sel_sport and new_cp == "All" and new_sp != "All sports":
+                                new_sp = "All sports"
+                            if new_sp != sel_sport or new_cp != sel_comp:
+                                st.session_state[sport_key] = new_sp
+                                st.session_state[comp_key]  = new_cp
+                            break
 
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
