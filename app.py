@@ -59,30 +59,13 @@ CAT_META = {
     "Mentions":("💬","pill-default"),
 }
 
-# ── PASTE YOUR FULL ORIGINAL DICTIONARIES HERE ───────────────────────────────
-# Replace the empty dicts below with the real ones from your original file
+# ── PASTE YOUR FULL DICTIONARIES HERE (from your original file) ───────────────
+_SPORT_SERIES = { ... }      # ← Paste full
+SPORT_ICONS = { ... }
+SOCCER_COMP = { ... }
+SPORT_SUBTABS = { ... }
+CAT_TAGS = { ... }
 
-_SPORT_SERIES = {
-    # Paste all your _SPORT_SERIES content here (Soccer, Basketball, etc.)
-}
-
-SPORT_ICONS = {
-    # Paste your SPORT_ICONS
-}
-
-SOCCER_COMP = {
-    # Paste your SOCCER_COMP mapping
-}
-
-SPORT_SUBTABS = {
-    # Paste your SPORT_SUBTABS
-}
-
-CAT_TAGS = {
-    # Paste your CAT_TAGS if used
-}
-
-# Build SERIES_SPORT
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -91,9 +74,7 @@ for sport, series_list in _SPORT_SERIES.items():
 def get_sport(series_ticker):
     return SERIES_SPORT.get(str(series_ticker).upper(), "")
 
-# ── Helper functions ─────────────────────────────────────────────────────────
-# Paste your original helper functions here (safe_dt, parse_game_date_from_ticker, fmt_date, etc.)
-
+# ── Helpers (paste your original ones) ───────────────────────────────────────
 def safe_dt(val):
     try:
         if val is None or val == "": return None
@@ -105,8 +86,7 @@ def safe_dt(val):
 def parse_game_date_from_ticker(event_ticker: str):
     import re
     from datetime import date as _date
-    MONTHS = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,
-              "JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
+    MONTHS = {"JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,"JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12}
     try:
         parts = event_ticker.split("-")
         if len(parts) < 2: return None
@@ -130,8 +110,7 @@ def fmt_date(d):
             except ImportError:
                 from zoneinfo import ZoneInfo
                 eastern = ZoneInfo('America/New_York')
-            if d.tzinfo:
-                d = d.astimezone(eastern)
+            if d.tzinfo: d = d.astimezone(eastern)
             tz_label = d.strftime('%Z') or "ET"
             hour = d.hour % 12 or 12
             ampm = "am" if d.hour < 12 else "pm"
@@ -159,12 +138,12 @@ def paginate(with_markets=False, category=None, max_pages=30):
     events, cursor = [], None
     for _ in range(max_pages):
         try:
-            kw = {"limit":200, "status":"open"}
+            kw = {"limit":200,"status":"open"}
             if with_markets: kw["with_nested_markets"] = True
             if category: kw["category"] = category
             if cursor: kw["cursor"] = cursor
             resp = client.get_events(**kw).to_dict()
-            batch = resp.get("events", [])
+            batch = resp.get("events",[])
             if not batch: break
             events.extend(batch)
             cursor = resp.get("cursor") or resp.get("next_cursor")
@@ -181,30 +160,26 @@ def fetch_all():
     all_ev = paginate(with_markets=True, max_pages=30)
     prog.progress(0.80, text=f"{len(all_ev)} events loaded…")
     if not all_ev:
-        prog.empty()
-        return pd.DataFrame()
+        prog.empty(); return pd.DataFrame()
 
     df = pd.DataFrame(all_ev)
     df["category"] = df.get("category", pd.Series("Other")).fillna("Other").str.strip()
-    df["_series"] = df.get("series_ticker", "").fillna("").str.upper()
-    df["_sport"] = df["_series"].apply(get_sport)
-    df["_is_sport"] = df["_sport"] != ""
+    df["_series"]  = df.get("series_ticker", "").fillna("").str.upper()
+    df["_sport"]   = df["_series"].apply(get_sport)
+    df["_is_sport"]= df["_sport"] != ""
 
     if "markets" not in df.columns:
         df["markets"] = [[] for _ in range(len(df))]
     df["markets"] = df["markets"].apply(lambda x: x if isinstance(x, list) else [])
 
     df["_soccer_comp"] = df.apply(
-        lambda r: SOCCER_COMP.get(r["_series"], "Other") if r["_sport"] == "Soccer" else "", axis=1
+        lambda r: SOCCER_COMP.get(r["_series"],"Other") if r["_sport"]=="Soccer" else "", axis=1
     )
 
-    # Your original extract logic goes here - simplified version below
+    # Paste your full extract function here from original file
     def extract(row):
         mkts = row.get("markets", [])
-        if not mkts:
-            return None, None, None, None, None, "", []
-        # ... (paste your full extract function here from original file)
-        # For now using a basic version
+        if not mkts: return None, None, None, None, None, "", []
         first_mk = mkts[0]
         event_ticker = str(row.get("event_ticker", ""))
         sport = str(row.get("_sport", ""))
@@ -212,25 +187,31 @@ def fetch_all():
         exp_dt = safe_dt(first_mk.get("expected_expiration_time"))
         kickoff_dt = exp_dt
         outcomes = []
-        for mk in mkts[:5]:
-            label = str(mk.get("yes_sub_title") or mk.get("ticker","")).split("-")[-1]
-            yf = float(mk.get("yes_bid_dollars") or mk.get("yes_bid",0))/100
-            nf = float(mk.get("no_bid_dollars") or mk.get("no_bid",0))/100
-            outcomes.append((label[:35], f"{int(yf*100)}%", f"{int(yf*100)}¢", f"{int(nf*100)}¢"))
+        for mk in mkts:
+            label = str(mk.get("yes_sub_title") or "").strip() or str(mk.get("ticker","")).split("-")[-1]
+            yf = nf = None
+            try:
+                yd = mk.get("yes_bid_dollars") or mk.get("yes_bid")
+                if yd is not None: yf = float(yd)/100 if float(yd) > 1 else float(yd)
+                nd = mk.get("no_bid_dollars") or mk.get("no_bid")
+                if nd is not None: nf = float(nd)/100 if float(nd) > 1 else float(nd)
+            except: pass
+            chance = f"{int(round(yf*100))}%" if yf is not None else "—"
+            yes    = f"{int(round(yf*100))}¢" if yf is not None else "—"
+            no     = f"{int(round(nf*100))}¢" if nf is not None else "—"
+            outcomes.append((label[:35], chance, yes, no))
         return None, None, game_date, game_date, kickoff_dt, "", outcomes
 
     info = df.apply(extract, axis=1, result_type="expand")
     df["_mkt_dt"] = info[2]
-    df["_game_date"] = info[3]
     df["_kickoff_dt"] = info[4]
     df["_outcomes"] = info[6]
     df["_display_dt"] = df["_kickoff_dt"].apply(fmt_date)
 
-    prog.progress(1.0)
-    prog.empty()
+    prog.progress(1.0); prog.empty()
     return df
 
-# ── Lazy Loading Cards (with unique keys) ────────────────────────────────────
+# ── Automatic Infinite Scroll Cards ──────────────────────────────────────────
 def render_cards(data, tab_name="default"):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
@@ -265,7 +246,7 @@ def render_cards(data, tab_name="default"):
 
             odds_html = ""
             if outcomes:
-                for (olabel, ochance, oyes, ono) in outcomes:
+                for (olabel, ochance, oyes, ono) in outcomes[:5]:
                     safe_label = olabel[:30] if olabel else "—"
                     odds_html += f'''<div class="outcome-row">
                         <div class="outcome-label">{safe_label}</div>
@@ -294,17 +275,31 @@ def render_cards(data, tab_name="default"):
 
     st.markdown(html, unsafe_allow_html=True)
 
+    # Auto-load more when scrolling to bottom
     if visible < len(data):
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("↓ Load More Markets", type="primary", use_container_width=True, key=f"load_more_{tab_name}"):
-                st.session_state[state_key] += BATCH_SIZE
-                st.rerun()
-        st.markdown(f"<p style='text-align:center;color:#888888;font-size:13px;'>Showing {visible} of {len(data)} markets</p>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <script>
+            function checkScroll() {{
+                var threshold = 300;
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - threshold) {{
+                    var btn = document.querySelector('button[key="auto_load_{tab_name}"]');
+                    if (btn) btn.click();
+                }}
+            }}
+            window.addEventListener('scroll', checkScroll);
+            setTimeout(checkScroll, 500);
+        </script>
+        """, unsafe_allow_html=True)
+
+        # Hidden button that gets clicked by JS
+        if st.button("Load more", key=f"auto_load_{tab_name}", help=""):
+            st.session_state[state_key] += BATCH_SIZE
+            st.rerun()
+
     else:
         st.markdown("<p style='text-align:center;color:#00ff00;font-size:13px;margin-top:24px;'>🎉 You've reached the end</p>", unsafe_allow_html=True)
 
-# ── Main App ─────────────────────────────────────────────────────────────────
+# ── Main UI ──────────────────────────────────────────────────────────────────
 st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
 
 _c1, _c2, _c3 = st.columns([3, 1.4, 1])
@@ -316,7 +311,7 @@ with _c3:
     if st.button("Refresh", use_container_width=True):
         fetch_all.clear()
         for key in list(st.session_state.keys()):
-            if key.startswith("visible_count_"):
+            if key.startswith("visible_count_") or key.startswith("auto_load_"):
                 del st.session_state[key]
         st.rerun()
 
@@ -336,7 +331,7 @@ if df.empty:
 
 filtered = df.copy()
 
-# Reset when filters change
+# Reset counts when filters change
 filter_hash = hash((search or "", date_mode))
 if "last_filter_hash" not in st.session_state or st.session_state.last_filter_hash != filter_hash:
     for key in list(st.session_state.keys()):
@@ -344,7 +339,7 @@ if "last_filter_hash" not in st.session_state or st.session_state.last_filter_ha
             del st.session_state[key]
     st.session_state.last_filter_hash = filter_hash
 
-# ── Tabs ─────────────────────────────────────────────────────────────────────
+# ── Tabs with Full Sports Navigation ─────────────────────────────────────────
 present_cats = [""] + ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and int(df["_is_sport"].sum()) > 0) or (c != "Sports" and c in df["category"].values)]
 
@@ -359,7 +354,27 @@ for i, tab in enumerate(top_tabs):
             render_cards(filtered, tab_name="all")
         elif cat == "Sports":
             sdf = filtered[filtered["_is_sport"]].copy()
-            render_cards(sdf, tab_name="sports")
+            sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
+
+            nav_col, card_col = st.columns([1, 4])
+            with nav_col:
+                if "sel_sport" not in st.session_state:
+                    st.session_state.sel_sport = "All sports"
+
+                for item in ["All sports"] + sports_present:
+                    cnt = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
+                    is_sel = st.session_state.sel_sport == item
+                    color = "#00ff00" if is_sel else "#ffffff"
+                    weight = "bold" if is_sel else "normal"
+                    st.markdown(f"<div style='color:{color};font-weight:{weight};padding:4px 0;'>{item} ({cnt})</div>", unsafe_allow_html=True)
+                    if st.button(item, key=f"sp_{item}"):
+                        st.session_state.sel_sport = item
+                        st.rerun()
+
+            with card_col:
+                s = st.session_state.get("sel_sport", "All sports")
+                view = sdf if s == "All sports" else sdf[sdf["_sport"] == s].copy()
+                render_cards(view, tab_name=f"sports_{s.replace(' ', '_')}")
         else:
             cat_data = filtered[filtered["category"] == cat].copy()
             render_cards(cat_data, tab_name=f"cat_{cat.replace(' ', '_')}")
