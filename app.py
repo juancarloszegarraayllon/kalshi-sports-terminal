@@ -9,7 +9,6 @@ st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="")
 # ====================== YOUR ORIGINAL CSS ======================
 st.markdown("""
 <style>
-/* === PASTE YOUR ENTIRE ORIGINAL <style> BLOCK HERE === */
 html,body,[class*="css"]{font-family:Helvetica,Arial,sans-serif!important;background:#000000!important;color:#ffffff!important;}
 section[data-testid="stSidebar"]{display:none!important;}
 .stMainBlockContainer{padding-left:2rem!important;padding-right:2rem!important;}
@@ -45,9 +44,7 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 UTC = timezone.utc
 
 # ====================== METADATA ======================
-TOP_CATS = ["Sports","Elections","Politics","Economics","Financials","Crypto","Companies",
-            "Entertainment","Climate and Weather","Science and Technology","Health","Social",
-            "World","Transportation","Mentions"]
+TOP_CATS = ["Sports","Elections","Politics","Economics","Financials","Crypto","Companies","Entertainment","Climate and Weather","Science and Technology","Health","Social","World","Transportation","Mentions"]
 
 CAT_META = {
     "Sports":("🏟️","pill-sports"),"Elections":("🗳️","pill-elections"),
@@ -67,23 +64,21 @@ SPORT_ICONS = {
     "Lacrosse":"🥍","Chess":"♟️","Darts":"🎯","Aussie Rules":"🏉","Other Sports":"🏆",
 }
 
-# ====================== <<< PASTE YOUR BIG DICTIONARIES HERE >>> ======================
-# Copy these blocks directly from your original app (43).py file
+# ====================== PASTE YOUR BIG DICTIONARIES HERE ======================
+# Copy these from your original app (43).py
 
 _SPORT_SERIES = {
-    # <<< PASTE THE ENTIRE _SPORT_SERIES DICTIONARY FROM YOUR ORIGINAL FILE HERE >>>
-    # It starts with "Soccer": [ "KXEPLGAME", ... ] and ends with "Other Sports"
+    # <<< PASTE FULL _SPORT_SERIES DICTIONARY HERE >>>
 }
 
 SOCCER_COMP = {
-    # <<< PASTE THE ENTIRE SOCCER_COMP DICTIONARY HERE >>>
+    # <<< PASTE FULL SOCCER_COMP DICTIONARY HERE >>>
 }
 
 SPORT_SUBTABS = {
-    # <<< PASTE THE ENTIRE SPORT_SUBTABS DICTIONARY HERE >>>
+    # <<< PASTE FULL SPORT_SUBTABS DICTIONARY HERE >>>
 }
 
-# ====================== BUILD LOOKUP (this line was causing the error) ======================
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -134,7 +129,7 @@ def get_client():
 
 client = get_client()
 
-# ====================== OPTIMIZED FETCH & PROCESS ======================
+# ====================== FETCH & PROCESS ======================
 @st.cache_data(ttl=900)
 def fetch_all():
     events = []
@@ -217,7 +212,7 @@ include_no_date = st.toggle("Include undated", value=True)
 with st.spinner("Loading markets..."):
     raw_df = fetch_all()
     if raw_df.empty:
-        st.error("No data from Kalshi. Check your API keys in Streamlit secrets.")
+        st.error("No data from Kalshi. Check your API keys.")
         st.stop()
 
     raw_df["_series"] = raw_df.get("series_ticker", "").fillna("").str.upper()
@@ -226,11 +221,12 @@ with st.spinner("Loading markets..."):
 
     df = process_markets(raw_df)
 
-# ====================== RENDER CARDS ======================
+# ====================== FIXED RENDER CARDS ======================
 def render_cards(data):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
+    
     html = '<div class="card-grid">'
     for _, row in data.iterrows():
         try:
@@ -238,10 +234,12 @@ def render_cards(data):
             cat = str(row.get("category", "Other"))
             title = str(row.get("title", ""))[:90]
             sport = str(row.get("_sport", ""))
-            base_ic, pill = CAT_META.get(cat, ("📊", "pill-default"))
+            
+            base_ic, pill_class = CAT_META.get(cat, ("📊", "pill-default"))
             icon = SPORT_ICONS.get(sport, base_ic) if sport else base_ic
-            label = (sport or cat)[:16]
-            dt = str(row.get("_display_dt", "Open"))
+            label = sport[:16] if sport else cat[:16]
+            
+            dt = str(row.get("_display_dt", ""))
             outcomes = row.get("_outcomes") or []
 
             series_lower = str(row.get("series_ticker", "")).lower()
@@ -265,23 +263,30 @@ def render_cards(data):
 
             html += f'''
             <div class="market-card">
-                <div class="card-top"><span class="cat-pill {pill}">{label}</span></div>
+                <div class="card-top">
+                    <span class="cat-pill {pill_class}">{label}</span>
+                </div>
                 {dt_html}
                 <span class="card-icon">{icon}</span>
                 <div class="card-title">{title}</div>
-                <div class="card-footer">{link_html}{odds_html}</div>
+                <div class="card-footer">
+                    {link_html}
+                    {odds_html}
+                </div>
             </div>'''
         except:
             continue
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-# Basic filter
+# Basic filtering
 filtered = df.copy()
 if search:
     s = search.lower()
-    filtered = filtered[filtered["title"].str.lower().str.contains(s, na=False) | 
-                        filtered["event_ticker"].str.lower().str.contains(s, na=False)]
+    filtered = filtered[
+        filtered["title"].str.lower().str.contains(s, na=False) |
+        filtered["event_ticker"].str.lower().str.contains(s, na=False)
+    ]
 
 render_cards(filtered.head(80))
 
