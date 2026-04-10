@@ -774,7 +774,7 @@ def paginate(with_markets=False, category=None, max_pages=30):
     for _ in range(max_pages):
         try:
             kw = {"limit":200,"status":"open"}
-            if with_markets: kw["with_nested_markets"] = False
+            if with_markets: kw["with_nested_markets"] = True
             if category:     kw["category"] = category
             if cursor:       kw["cursor"] = cursor
             resp  = client.get_events(**kw).to_dict()
@@ -793,7 +793,7 @@ def paginate(with_markets=False, category=None, max_pages=30):
 def fetch_all():
     prog = st.progress(0, text="Loading markets…")
 
-    all_ev = paginate(with_markets=True, max_pages=5)
+    all_ev = paginate(with_markets=True, max_pages=30)
     prog.progress(0.80, text=f"{len(all_ev)} events loaded…")
     combined = all_ev
     if not combined:
@@ -958,7 +958,7 @@ elif date_mode == "Custom":
     with _dc2:
         d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
 with st.spinner("Loading…"):
-    df = df.head(200)
+    df = fetch_all()
 
 if df.empty:
     st.error("No data. Check API credentials."); st.stop()
