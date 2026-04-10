@@ -105,22 +105,26 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
 /* Radio nav - plain text, no dots */
-div[data-testid="stRadio"] > div { gap:0!important; }
+div[data-testid="stRadio"] > div { gap:2px!important; }
 div[data-testid="stRadio"] label {
     background:transparent!important;
     border:none!important;
-    padding:4px 0!important;
+    padding:4px 0 4px 0!important;
     font-size:13px!important;
     font-family:Helvetica,Arial,sans-serif!important;
     color:#ffffff!important;
     cursor:pointer!important;
+    display:flex!important;
+    align-items:center!important;
 }
-div[data-testid="stRadio"] label:hover { color:#aaaaaa!important; }
-div[data-testid="stRadio"] label[data-selected="true"],
-div[data-testid="stRadio"] input:checked + div { color:#00ff00!important; font-weight:bold!important; }
-/* Hide the radio circle dots */
-div[data-testid="stRadio"] [data-testid="stMarkdownContainer"] { display:none!important; }
-div[data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child { display:none!important; }
+div[data-testid="stRadio"] label:hover p { color:#aaaaaa!important; }
+div[data-testid="stRadio"] label[data-selected="true"] p { color:#00ff00!important; font-weight:bold!important; }
+/* Hide ONLY the circle dot, keep the text */
+div[data-testid="stRadio"] label > div:first-child {
+    display:none!important;
+    width:0!important;
+    height:0!important;
+}
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
