@@ -9,6 +9,7 @@ st.set_page_config(page_title="OddsIQ", layout="wide", page_icon="")
 # ====================== YOUR ORIGINAL CSS ======================
 st.markdown("""
 <style>
+/* === PASTE YOUR ENTIRE ORIGINAL <style> BLOCK HERE === */
 html,body,[class*="css"]{font-family:Helvetica,Arial,sans-serif!important;background:#000000!important;color:#ffffff!important;}
 section[data-testid="stSidebar"]{display:none!important;}
 .stMainBlockContainer{padding-left:2rem!important;padding-right:2rem!important;}
@@ -44,8 +45,9 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 UTC = timezone.utc
 
 # ====================== METADATA ======================
-# TODO: Paste these from your original file
-TOP_CATS = ["Sports","Elections","Politics","Economics","Financials","Crypto","Companies","Entertainment","Climate and Weather","Science and Technology","Health","Social","World","Transportation","Mentions"]
+TOP_CATS = ["Sports","Elections","Politics","Economics","Financials","Crypto","Companies",
+            "Entertainment","Climate and Weather","Science and Technology","Health","Social",
+            "World","Transportation","Mentions"]
 
 CAT_META = {
     "Sports":("🏟️","pill-sports"),"Elections":("🗳️","pill-elections"),
@@ -65,12 +67,23 @@ SPORT_ICONS = {
     "Lacrosse":"🥍","Chess":"♟️","Darts":"🎯","Aussie Rules":"🏉","Other Sports":"🏆",
 }
 
-# ====================== YOUR BIG DICTIONARIES ======================
-# Paste these exactly from your original app (43).py
-_SPORT_SERIES = { ... }     # ← PASTE FULL _SPORT_SERIES HERE
-SOCCER_COMP = { ... }       # ← PASTE FULL SOCCER_COMP HERE  
-SPORT_SUBTABS = { ... }     # ← PASTE FULL SPORT_SUBTABS HERE
+# ====================== <<< PASTE YOUR BIG DICTIONARIES HERE >>> ======================
+# Copy these blocks directly from your original app (43).py file
 
+_SPORT_SERIES = {
+    # <<< PASTE THE ENTIRE _SPORT_SERIES DICTIONARY FROM YOUR ORIGINAL FILE HERE >>>
+    # It starts with "Soccer": [ "KXEPLGAME", ... ] and ends with "Other Sports"
+}
+
+SOCCER_COMP = {
+    # <<< PASTE THE ENTIRE SOCCER_COMP DICTIONARY HERE >>>
+}
+
+SPORT_SUBTABS = {
+    # <<< PASTE THE ENTIRE SPORT_SUBTABS DICTIONARY HERE >>>
+}
+
+# ====================== BUILD LOOKUP (this line was causing the error) ======================
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -121,7 +134,7 @@ def get_client():
 
 client = get_client()
 
-# ====================== FETCH & PROCESS ======================
+# ====================== OPTIMIZED FETCH & PROCESS ======================
 @st.cache_data(ttl=900)
 def fetch_all():
     events = []
@@ -204,7 +217,7 @@ include_no_date = st.toggle("Include undated", value=True)
 with st.spinner("Loading markets..."):
     raw_df = fetch_all()
     if raw_df.empty:
-        st.error("No data from Kalshi. Check your API keys.")
+        st.error("No data from Kalshi. Check your API keys in Streamlit secrets.")
         st.stop()
 
     raw_df["_series"] = raw_df.get("series_ticker", "").fillna("").str.upper()
@@ -213,12 +226,11 @@ with st.spinner("Loading markets..."):
 
     df = process_markets(raw_df)
 
-# ====================== RENDER CARDS (FIXED) ======================
+# ====================== RENDER CARDS ======================
 def render_cards(data):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
-    
     html = '<div class="card-grid">'
     for _, row in data.iterrows():
         try:
@@ -259,20 +271,18 @@ def render_cards(data):
                 <div class="card-title">{title}</div>
                 <div class="card-footer">{link_html}{odds_html}</div>
             </div>'''
-        except Exception:
+        except:
             continue
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-# Basic filtering
+# Basic filter
 filtered = df.copy()
 if search:
     s = search.lower()
-    filtered = filtered[
-        filtered["title"].str.lower().str.contains(s, na=False) |
-        filtered["event_ticker"].str.lower().str.contains(s, na=False)
-    ]
+    filtered = filtered[filtered["title"].str.lower().str.contains(s, na=False) | 
+                        filtered["event_ticker"].str.lower().str.contains(s, na=False)]
 
-render_cards(filtered.head(80))  # Limit cards for faster rendering
+render_cards(filtered.head(80))
 
-st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · OPTIMIZED VERSION</p>", unsafe_allow_html=True)
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · OPTIMIZED</p>", unsafe_allow_html=True)
