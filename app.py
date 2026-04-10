@@ -939,8 +939,39 @@ with _c3:
 
 today = date.today()
 d_start = d_end = None
-date_mode = "All dates"
-include_no_date = True
+
+# ── Date filters ──────────────────────────────────────────────────────────────
+_df1, _df2, _df3, _df4, _df5 = st.columns([1,1,1,1,2])
+with _df1:
+    if st.button("All dates", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="All dates" else "secondary"):
+        st.session_state["date_mode"] = "All dates"
+with _df2:
+    if st.button("Today", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="Today" else "secondary"):
+        st.session_state["date_mode"] = "Today"
+with _df3:
+    if st.button("This week", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="This week" else "secondary"):
+        st.session_state["date_mode"] = "This week"
+with _df4:
+    if st.button("Custom", use_container_width=True,
+                 type="primary" if st.session_state.get("date_mode","All dates")=="Custom" else "secondary"):
+        st.session_state["date_mode"] = "Custom"
+with _df5:
+    include_no_date = st.toggle("Include undated", value=True)
+
+date_mode = st.session_state.get("date_mode", "All dates")
+if date_mode == "Today":
+    d_start = d_end = today
+elif date_mode == "This week":
+    d_start, d_end = today, today + timedelta(days=6)
+elif date_mode == "Custom":
+    _dc1, _dc2, _ = st.columns([1, 1, 2])
+    with _dc1:
+        d_start = st.date_input("From", value=today, label_visibility="collapsed")
+    with _dc2:
+        d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
 with st.spinner("Loading…"):
     df = fetch_all()
 
@@ -994,11 +1025,6 @@ if sort_by != "Default":
     filtered = filtered.drop(columns=["_sk"])
 
 sport_count = int(df["_is_sport"].sum())
-st.markdown(f"""<div class="metric-strip">
-  <div class="metric-box"><div class="metric-label">Total markets</div><div class="metric-value">{len(df)}</div></div>
-  <div class="metric-box"><div class="metric-label">Sports</div><div class="metric-value">{sport_count}</div></div>
-  <div class="metric-box"><div class="metric-label">Showing</div><div class="metric-value">{len(filtered)}</div></div>
-</div>""", unsafe_allow_html=True)
 
 
 
