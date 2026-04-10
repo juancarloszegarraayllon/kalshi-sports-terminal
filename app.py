@@ -1033,10 +1033,40 @@ st.markdown(f"""<div class="metric-strip">
 
 
 # ── Render ────────────────────────────────────────────────────────────────────
-def render_cards(data):
+def render_cards(data, page_size=50):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
+
+    total = len(data)
+    # Pagination
+    page_key = "card_page"
+    if page_key not in st.session_state:
+        st.session_state[page_key] = 0
+    page = st.session_state[page_key]
+    start = page * page_size
+    end   = min(start + page_size, total)
+    data  = data.iloc[start:end]
+
+    # Page controls
+    if total > page_size:
+        pc1, pc2, pc3 = st.columns([1, 2, 1])
+        with pc1:
+            if page > 0:
+                if st.button("← Prev", key="prev_page"):
+                    st.session_state[page_key] -= 1
+                    st.rerun()
+        with pc2:
+            st.markdown(
+                f"<div style='text-align:center;color:#888;font-size:12px;padding:6px 0;'>"
+                f"Showing {start+1}–{end} of {total}</div>",
+                unsafe_allow_html=True)
+        with pc3:
+            if end < total:
+                if st.button("Next →", key="next_page"):
+                    st.session_state[page_key] += 1
+                    st.rerun()
+
     html = '<div class="card-grid">'
     for _, row in data.iterrows():
         try:
@@ -1170,18 +1200,34 @@ if _default_tab > 0 and _default_tab < len(present_cats):
     }})();
     </script>""", unsafe_allow_html=True)
 
+# Detect which tab is active using a hidden radio
+# Streamlit renders ALL tab content simultaneously, so we use 
+# a session state flag set by the first interaction
+if "_tab_clicked" not in st.session_state:
+    st.session_state["_tab_clicked"] = None
+
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
+        # Mark this tab as visited when rendered
+        if st.session_state["_tab_clicked"] is None and i > 0:
+            pass  # Don't auto-select
         st.session_state["_active_tab"] = i
 
         if cat == "All":
-            st.markdown(
-                "<div style='text-align:center;padding:60px;color:#444;font-size:14px;'>"
-                "Select a category above to browse markets.</div>",
-                unsafe_allow_html=True)
+            if st.session_state.get("_tab_clicked") is None:
+                st.markdown(
+                    "<div style='text-align:center;padding:60px;color:#444;font-size:14px;'>"
+                    "👆 Select a category above to browse markets.</div>",
+                    unsafe_allow_html=True)
+                if st.button("Show all markets", key="show_all_btn"):
+                    st.session_state["_tab_clicked"] = "All"
+                    st.rerun()
+            else:
+                render_cards(filtered)
 
         elif cat == "Sports":
+            st.session_state["_tab_clicked"] = "Sports"
             sdf = filtered[filtered["_is_sport"]].copy()
             sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
 
@@ -1276,6 +1322,7 @@ for i, tab in enumerate(top_tabs):
                 render_cards(view)
 
         else:
+            st.session_state["_tab_clicked"] = cat
             render_cards(filtered[filtered["category"]==cat].copy())
 
 
