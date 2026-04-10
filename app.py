@@ -104,22 +104,13 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Nav sport buttons - invisible overlay on markdown text */
-.nav-sport-btn > div > button,
-.nav-sport-btn button {
-    opacity:0!important;
-    height:22px!important;
-    min-height:0!important;
-    padding:0!important;
-    margin:-24px 0 2px 0!important;
-    border:none!important;
-    background:transparent!important;
-    box-shadow:none!important;
-    width:100%!important;
-    display:block!important;
-    position:relative!important;
-    z-index:99!important;
-    cursor:pointer!important;
+/* Make nav buttons invisible but clickable, overlaid on markdown text */
+[data-testid="stVerticalBlock"] [data-testid="stBaseButton-secondary"] {
+    opacity:0!important;height:20px!important;min-height:0!important;
+    padding:0!important;margin:-22px 0 2px 0!important;
+    border:none!important;background:transparent!important;
+    box-shadow:none!important;width:100%!important;
+    display:block!important;position:relative!important;z-index:99!important;
 }
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
@@ -1046,7 +1037,6 @@ def render_cards(data):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
-
     html = '<div class="card-grid">'
     for _, row in data.iterrows():
         try:
@@ -1154,7 +1144,7 @@ def filter_data(cat, subcat, subsubcat, data):
     return data
 
 # ── Main layout ──────────────────────────────────────────────────────────────
-present_cats = ["", "All"] + [c for c in TOP_CATS
+present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
 # Auto-select Sports tab if a sport nav click happened
@@ -1180,33 +1170,18 @@ if _default_tab > 0 and _default_tab < len(present_cats):
     }})();
     </script>""", unsafe_allow_html=True)
 
-# Detect which tab is active using a hidden radio
-# Streamlit renders ALL tab content simultaneously, so we use 
-# a session state flag set by the first interaction
-if "_tab_clicked" not in st.session_state:
-    st.session_state["_tab_clicked"] = None
-
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
-        # Mark this tab as visited when rendered
-        if st.session_state["_tab_clicked"] is None and i > 0:
-            pass  # Don't auto-select
         st.session_state["_active_tab"] = i
 
-        if cat == "":
-            # Home page - shown on initial load
-            st.markdown("""
-<div style='text-align:center;padding:80px 20px;font-family:Helvetica,Arial,sans-serif;'>
-  <div style='font-size:20px;color:#00ff00;font-weight:700;margin-bottom:12px;'>Welcome to OddsIQ</div>
-  <div style='font-size:14px;color:#666;'>Select a category above to browse prediction markets.</div>
-</div>""", unsafe_allow_html=True)
-
-        elif cat == "All":
-            render_cards(filtered)
+        if cat == "All":
+            st.markdown(
+                "<div style='text-align:center;padding:60px;color:#444;font-size:14px;'>"
+                "Select a category above to browse markets.</div>",
+                unsafe_allow_html=True)
 
         elif cat == "Sports":
-            st.session_state["_tab_clicked"] = "Sports"
             sdf = filtered[filtered["_is_sport"]].copy()
             sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
 
@@ -1251,7 +1226,6 @@ for i, tab in enumerate(top_tabs):
                         f"{item} ({cnt}){arrow}</div>",
                         unsafe_allow_html=True
                     )
-                    st.markdown("<div class='nav-sport-btn'>", unsafe_allow_html=True)
                     if st.button(f"{item}", key=f"sp__{item}"):
                         if item == "All sports":
                             st.session_state[sport_key] = "All sports"
@@ -1266,7 +1240,6 @@ for i, tab in enumerate(top_tabs):
                             st.session_state[comp_key]  = "All"
                         st.session_state["_active_tab"] = present_cats.index("Sports")
                         st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
 
                     if is_sel and children:
                         for child in children:
@@ -1280,13 +1253,11 @@ for i, tab in enumerate(top_tabs):
                                 f"{pre}{child}</div>",
                                 unsafe_allow_html=True
                             )
-                            st.markdown("<div class='nav-sport-btn'>", unsafe_allow_html=True)
                             if st.button(f"{child}", key=f"cp__{item}__{child}"):
                                 st.session_state[sport_key] = item
                                 st.session_state[comp_key] = child
                                 st.session_state["_active_tab"] = present_cats.index("Sports")
                                 st.rerun()
-                            st.markdown("</div>", unsafe_allow_html=True)
 
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
@@ -1305,7 +1276,6 @@ for i, tab in enumerate(top_tabs):
                 render_cards(view)
 
         else:
-            st.session_state["_tab_clicked"] = cat
             render_cards(filtered[filtered["category"]==cat].copy())
 
 
