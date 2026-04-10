@@ -941,27 +941,14 @@ today = date.today()
 d_start = d_end = None
 
 # ── Date filters ──────────────────────────────────────────────────────────────
-_df1, _df2, _df3, _df4, _df5 = st.columns([1,1,1,1,2])
-with _df1:
-    if st.button("All dates", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="All dates" else "secondary"):
-        st.session_state["date_mode"] = "All dates"
-with _df2:
-    if st.button("Today", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="Today" else "secondary"):
-        st.session_state["date_mode"] = "Today"
-with _df3:
-    if st.button("This week", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="This week" else "secondary"):
-        st.session_state["date_mode"] = "This week"
-with _df4:
-    if st.button("Custom", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="Custom" else "secondary"):
-        st.session_state["date_mode"] = "Custom"
-with _df5:
+_dfc1, _dfc2 = st.columns([3, 1])
+with _dfc1:
+    date_mode = st.radio("Date", ["All dates","Today","This week","Custom"],
+                         horizontal=True, label_visibility="collapsed",
+                         key="date_mode_radio")
+with _dfc2:
     include_no_date = st.toggle("Include undated", value=True)
 
-date_mode = st.session_state.get("date_mode", "All dates")
 if date_mode == "Today":
     d_start = d_end = today
 elif date_mode == "This week":
