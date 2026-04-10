@@ -104,10 +104,10 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Nav sport buttons - scoped to first column only */
-[data-testid="column"]:first-of-type [data-testid="stBaseButton-secondary"] {
-    opacity:0!important;height:22px!important;min-height:0!important;
-    padding:0!important;margin:-24px 0 2px 0!important;
+/* Make nav buttons invisible but clickable, overlaid on markdown text */
+[data-testid="stVerticalBlock"] [data-testid="stBaseButton-secondary"] {
+    opacity:0!important;height:20px!important;min-height:0!important;
+    padding:0!important;margin:-22px 0 2px 0!important;
     border:none!important;background:transparent!important;
     box-shadow:none!important;width:100%!important;
     display:block!important;position:relative!important;z-index:99!important;
@@ -937,40 +937,10 @@ with _c3:
     if st.button("Refresh", use_container_width=True):
         fetch_all.clear(); st.rerun()
 
-# ── Row 2: Date filters ───────────────────────────────────────────────────────
 today = date.today()
 d_start = d_end = None
-_df1, _df2, _df3, _df4, _df5 = st.columns([1,1,1,1,2])
-with _df1:
-    if st.button("All dates", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="All dates" else "secondary"):
-        st.session_state["date_mode"] = "All dates"
-with _df2:
-    if st.button("Today", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="Today" else "secondary"):
-        st.session_state["date_mode"] = "Today"
-with _df3:
-    if st.button("This week", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="This week" else "secondary"):
-        st.session_state["date_mode"] = "This week"
-with _df4:
-    if st.button("Custom", use_container_width=True,
-                 type="primary" if st.session_state.get("date_mode","All dates")=="Custom" else "secondary"):
-        st.session_state["date_mode"] = "Custom"
-with _df5:
-    include_no_date = st.toggle("Include undated", value=True)
-
-date_mode = st.session_state.get("date_mode", "All dates")
-if date_mode == "Today":
-    d_start = d_end = today
-elif date_mode == "This week":
-    d_start, d_end = today, today + timedelta(days=6)
-elif date_mode == "Custom":
-    _dc1, _dc2, _ = st.columns([1, 1, 2])
-    with _dc1:
-        d_start = st.date_input("From", value=today, label_visibility="collapsed")
-    with _dc2:
-        d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
+date_mode = "All dates"
+include_no_date = True
 with st.spinner("Loading…"):
     df = fetch_all()
 
@@ -1144,7 +1114,7 @@ def filter_data(cat, subcat, subsubcat, data):
     return data
 
 # ── Main layout ──────────────────────────────────────────────────────────────
-present_cats = ["All"] + [c for c in TOP_CATS
+present_cats = [""] + ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
 # Auto-select Sports tab if a sport nav click happened
@@ -1175,11 +1145,18 @@ for i, tab in enumerate(top_tabs):
         cat = present_cats[i]
         st.session_state["_active_tab"] = i
 
-        if cat == "All":
+        if cat == "":
             st.markdown(
-                "<div style='text-align:center;padding:60px;color:#444;font-size:14px;'>"
-                "Select a category above to browse markets.</div>",
+                "<div style='text-align:center;padding:80px 20px;"
+                "font-family:Helvetica,Arial,sans-serif;'>"
+                "<div style='font-size:18px;color:#00ff00;font-weight:700;margin-bottom:12px;'>"
+                "Welcome to OddsIQ</div>"
+                "<div style='font-size:14px;color:#555;'>"
+                "Select a category above to browse markets.</div>"
+                "</div>",
                 unsafe_allow_html=True)
+        elif cat == "All":
+            render_cards(filtered)
 
         elif cat == "Sports":
             sdf = filtered[filtered["_is_sport"]].copy()
