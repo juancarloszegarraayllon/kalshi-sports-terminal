@@ -1218,16 +1218,7 @@ for i, tab in enumerate(top_tabs):
         st.session_state["_active_tab"] = i
 
         if cat == "All":
-            if st.session_state.get("_tab_clicked") is None:
-                st.markdown(
-                    "<div style='text-align:center;padding:60px;color:#444;font-size:14px;'>"
-                    "👆 Select a category above to browse markets.</div>",
-                    unsafe_allow_html=True)
-                if st.button("Show all markets", key="show_all_btn"):
-                    st.session_state["_tab_clicked"] = "All"
-                    st.rerun()
-            else:
-                render_cards(filtered)
+            render_cards(filtered)
 
         elif cat == "Sports":
             st.session_state["_tab_clicked"] = "Sports"
