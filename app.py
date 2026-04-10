@@ -104,8 +104,17 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
+/* Only nav sport buttons invisible - date buttons stay visible */
+.nav-invisible-btn button {
+    opacity:0!important;height:22px!important;min-height:0!important;
+    padding:0!important;margin:-24px 0 2px 0!important;
+    border:none!important;background:transparent!important;
+    box-shadow:none!important;width:100%!important;
+    display:block!important;position:relative!important;z-index:99!important;
+    cursor:pointer!important;
+}
 /* Make nav buttons invisible but clickable, overlaid on markdown text */
-/* date buttons visible - removed opacity:0 rule */
+
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
 button[kind="secondary"][data-testid="stBaseButton-secondary"]:has(+*) { display:none!important; }
@@ -1217,7 +1226,8 @@ for i, tab in enumerate(top_tabs):
                     st.markdown(
                         f"<div style='color:{color};font-weight:{weight};font-size:13px;"
                         f"padding:4px 0;font-family:Helvetica,Arial,sans-serif;cursor:pointer;'>"
-                        f"{item} ({cnt}){arrow}</div>",
+                        f"{item} ({cnt}){arrow}</div>"
+                        f"<div class='nav-invisible-btn'>",
                         unsafe_allow_html=True
                     )
                     if st.button(f"{item}", key=f"sp__{item}"):
@@ -1234,6 +1244,7 @@ for i, tab in enumerate(top_tabs):
                             st.session_state[comp_key]  = "All"
                         st.session_state["_active_tab"] = present_cats.index("Sports")
                         st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
 
                     if is_sel and children:
                         for child in children:
@@ -1244,7 +1255,8 @@ for i, tab in enumerate(top_tabs):
                             st.markdown(
                                 f"<div style='color:{cc};font-weight:{cw};font-size:12px;"
                                 f"padding:2px 0 2px 14px;font-family:Helvetica,Arial,sans-serif;'>"
-                                f"{pre}{child}</div>",
+                                f"{pre}{child}</div>"
+                                f"<div class='nav-invisible-btn'>",
                                 unsafe_allow_html=True
                             )
                             if st.button(f"{child}", key=f"cp__{item}__{child}"):
@@ -1252,6 +1264,7 @@ for i, tab in enumerate(top_tabs):
                                 st.session_state[comp_key] = child
                                 st.session_state["_active_tab"] = present_cats.index("Sports")
                                 st.rerun()
+                            st.markdown("</div>", unsafe_allow_html=True)
 
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
