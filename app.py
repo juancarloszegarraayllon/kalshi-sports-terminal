@@ -106,8 +106,8 @@ div[data-testid="stButton"] button:active,
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
 /* Make nav buttons invisible but clickable, overlaid on markdown text */
 [data-testid="stVerticalBlock"] [data-testid="stBaseButton-secondary"] {
-    opacity:0!important;height:24px!important;min-height:0!important;
-    padding:0!important;margin:-26px 0 2px 0!important;
+    opacity:0!important;height:20px!important;min-height:0!important;
+    padding:0!important;margin:-22px 0 2px 0!important;
     border:none!important;background:transparent!important;
     box-shadow:none!important;width:100%!important;
     display:block!important;position:relative!important;z-index:99!important;
@@ -1227,11 +1227,17 @@ for i, tab in enumerate(top_tabs):
                         unsafe_allow_html=True
                     )
                     if st.button(f"{item}", key=f"sp__{item}"):
-                        if is_sel and item != "All sports":
+                        if item == "All sports":
                             st.session_state[sport_key] = "All sports"
+                            st.session_state[comp_key]  = "All"
+                        elif sel_sport == item:
+                            # Already selected → collapse
+                            st.session_state[sport_key] = "All sports"
+                            st.session_state[comp_key]  = "All"
                         else:
+                            # New sport → expand
                             st.session_state[sport_key] = item
-                        st.session_state[comp_key] = "All"
+                            st.session_state[comp_key]  = "All"
                         st.session_state["_active_tab"] = present_cats.index("Sports")
                         st.rerun()
 
