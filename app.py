@@ -1130,11 +1130,18 @@ present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
 
 # Top category tabs
+# Preserve active tab across reruns
+if "active_tab_idx" not in st.session_state:
+    st.session_state["active_tab_idx"] = 1  # default to Sports
+
 top_tabs = st.tabs(present_cats)
 
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
+        # Track which tab user is on
+        if i == 0 and st.session_state.get("_just_loaded", True):
+            st.session_state["_just_loaded"] = False
         subcats = get_subcats(cat, filtered)
 
         if not subcats:
@@ -1196,6 +1203,7 @@ for i, tab in enumerate(top_tabs):
                             st.session_state[expand_key] = not is_expanded
                         st.session_state[subcat_key] = sc
                         st.session_state[subsubcat_key] = "All"
+                        st.rerun()
 
                     if is_expanded and has_children:
                         for ssc in subsubcats:
@@ -1211,6 +1219,7 @@ for i, tab in enumerate(top_tabs):
                             if st.button("​", key=f"ssc_{cat}_{sc}_{ssc}", use_container_width=True):
                                 st.session_state[subcat_key] = sc
                                 st.session_state[subsubcat_key] = ssc
+                                st.rerun()
             with _right:
                 selected_subcat  = st.session_state.get(subcat_key, subcats[0])
                 selected_subsubcat = st.session_state.get(subsubcat_key, "All")
