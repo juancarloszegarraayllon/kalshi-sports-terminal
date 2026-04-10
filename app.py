@@ -104,14 +104,7 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Make nav buttons invisible but clickable, overlaid on markdown text */
-[data-testid="stVerticalBlock"] [data-testid="stBaseButton-secondary"] {
-    opacity:0!important;height:20px!important;min-height:0!important;
-    padding:0!important;margin:-22px 0 2px 0!important;
-    border:none!important;background:transparent!important;
-    box-shadow:none!important;width:100%!important;
-    display:block!important;position:relative!important;z-index:99!important;
-}
+
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
 button[kind="secondary"][data-testid="stBaseButton-secondary"]:has(+*) { display:none!important; }
