@@ -209,4 +209,26 @@ def process_markets(df):
 
         outcomes = []
         for mk in mkts[:5]:
-            label = str
+            label = str(mk.get("yes_sub_title") or "").strip() or str(mk.get("ticker","")).split("-")[-1]
+            try:
+                yf = float(mk.get("yes_bid_dollars") or (mk.get("yes_bid") or 0)/100)
+                nf = float(mk.get("no_bid_dollars") or (mk.get("no_bid") or 0)/100)
+                outcomes.append((label[:35], f"{int(round(yf*100))}%", f"{int(round(yf*100))}¢", f"{int(round(nf*100))}¢"))
+            except:
+                outcomes.append((label[:35], "—", "—", "—"))
+        return sort_dt, game_date, kickoff_dt, display_dt, outcomes
+
+    processed = df.apply(extract_row, axis=1, result_type="expand")
+    df = df.copy()
+    df[["_sort_dt", "_game_date", "_kickoff_dt", "_display_dt", "_outcomes"]] = processed
+    return df
+
+# ====================== REST OF YOUR APP ======================
+# From here, continue with your original code:
+# st.markdown title, controls, date filters, filtering logic, render_cards(), tabs, etc.
+
+st.markdown("<div style='text-align:center;font-size:80px;color:#00ff00;font-family:Helvetica,Arial,sans-serif;font-weight:800;margin-bottom:1rem;line-height:1.1;'>OddsIQ</div>", unsafe_allow_html=True)
+
+# ... paste the rest of your original app code (controls, date filter, filtering, render_cards, navigation, etc.)
+
+st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 15 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
