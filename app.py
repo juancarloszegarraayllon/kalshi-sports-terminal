@@ -104,8 +104,8 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* All nav buttons - plain text, no box, no rectangle */
-button[kind="secondary"]:not([data-testid*="date"]) {
+/* Nav buttons - plain text, no rectangle - universal selector */
+button {
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
@@ -120,18 +120,28 @@ button[kind="secondary"]:not([data-testid*="date"]) {
     border-radius:0!important;
     min-height:0!important;
 }
-button[kind="secondary"]:not([data-testid*="date"]):hover {
+button:hover {
     background:transparent!important;
     color:#aaaaaa!important;
     border:none!important;
     box-shadow:none!important;
 }
-button[kind="secondary"]:not([data-testid*="date"]):focus,
-button[kind="secondary"]:not([data-testid*="date"]):active {
+button:focus, button:active {
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
     outline:none!important;
+}
+/* Tab buttons keep their style */
+[data-baseweb="tab-list"] button {
+    color:#555555!important;
+    padding:8px 14px!important;
+    width:auto!important;
+}
+[data-baseweb="tab-list"] [aria-selected="true"] {
+    background:#001500!important;
+    color:#00ff00!important;
+    border-radius:6px 6px 0 0!important;
 }
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
