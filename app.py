@@ -941,22 +941,22 @@ today = date.today()
 d_start = d_end = None
 
 # ── Date filters ──────────────────────────────────────────────────────────────
-_dfc1, _dfc2 = st.columns([3, 1])
+_dfc1, _dfc2, _dfc3 = st.columns([1.5, 1.5, 1])
 with _dfc1:
-    date_mode = st.radio("Date", ["All dates","Today","This week","Custom"],
-                         horizontal=True, label_visibility="collapsed",
-                         key="date_mode_radio")
+    date_mode = st.selectbox("Date filter", ["All dates","Today","This week","Custom"],
+                             label_visibility="collapsed", key="date_mode_sel")
 with _dfc2:
+    if date_mode == "Custom":
+        d_start = st.date_input("From", value=today, label_visibility="collapsed")
+    elif date_mode == "Today":
+        d_start = d_end = today
+    elif date_mode == "This week":
+        d_start, d_end = today, today + timedelta(days=6)
+with _dfc3:
     include_no_date = st.toggle("Include undated", value=True)
 
-if date_mode == "Today":
-    d_start = d_end = today
-elif date_mode == "This week":
-    d_start, d_end = today, today + timedelta(days=6)
-elif date_mode == "Custom":
-    _dc1, _dc2, _ = st.columns([1, 1, 2])
-    with _dc1:
-        d_start = st.date_input("From", value=today, label_visibility="collapsed")
+if date_mode == "Custom":
+    _, _dc2, _ = st.columns([1.5, 1.5, 1])
     with _dc2:
         d_end = st.date_input("To", value=today+timedelta(days=7), label_visibility="collapsed")
 with st.spinner("Loading…"):
