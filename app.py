@@ -104,21 +104,23 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Sports nav - strip ALL button chrome everywhere EXCEPT tab buttons */
-/* Make nav buttons invisible - text shown via markdown above */
-button:not([role="tab"]) {
-    opacity: 0!important;
-    height: 4px!important;
-    min-height: 0!important;
-    padding: 0!important;
-    margin: -8px 0 4px 0!important;
-    border: none!important;
-    background: transparent!important;
-    box-shadow: none!important;
-    cursor: pointer!important;
-    display: block!important;
-    width: 100%!important;
+/* Radio nav - plain text, no dots */
+div[data-testid="stRadio"] > div { gap:0!important; }
+div[data-testid="stRadio"] label {
+    background:transparent!important;
+    border:none!important;
+    padding:4px 0!important;
+    font-size:13px!important;
+    font-family:Helvetica,Arial,sans-serif!important;
+    color:#ffffff!important;
+    cursor:pointer!important;
 }
+div[data-testid="stRadio"] label:hover { color:#aaaaaa!important; }
+div[data-testid="stRadio"] label[data-selected="true"],
+div[data-testid="stRadio"] input:checked + div { color:#00ff00!important; font-weight:bold!important; }
+/* Hide the radio circle dots */
+div[data-testid="stRadio"] [data-testid="stMarkdownContainer"] { display:none!important; }
+div[data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child { display:none!important; }
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
@@ -1125,106 +1127,75 @@ def filter_data(cat, subcat, subsubcat, data):
                 data = data[data["title"].str.contains(subcat, case=False, na=False)]
     return data
 
-# ── Main layout: top tabs + left sidebar subcategories ────────────────────────
+# ── Main layout ──────────────────────────────────────────────────────────────
 present_cats = ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and sport_count>0) or (c!="Sports" and c in df["category"].values)]
-
-# Top category tabs
-# Preserve active tab across reruns
-if "active_tab_idx" not in st.session_state:
-    st.session_state["active_tab_idx"] = 1  # default to Sports
 
 top_tabs = st.tabs(present_cats)
 
 for i, tab in enumerate(top_tabs):
     with tab:
         cat = present_cats[i]
-        # Track which tab user is on
-        if i == 0 and st.session_state.get("_just_loaded", True):
-            st.session_state["_just_loaded"] = False
-        subcats = get_subcats(cat, filtered)
 
-        if not subcats:
-            if cat == "All":
-                st.markdown(
-                    "<div style='text-align:center;padding:60px 20px;color:#555;font-size:14px;'>"
-                    "Select a category above to browse markets."
-                    "</div>",
-                    unsafe_allow_html=True
+        if cat == "All":
+            st.markdown(
+                "<div style='text-align:center;padding:60px;color:#444;font-size:14px;'>"
+                "Select a category above to browse markets.</div>",
+                unsafe_allow_html=True)
+
+        elif cat == "Sports":
+            sdf = filtered[filtered["_is_sport"]].copy()
+            sports_present = [s for s in _SPORT_SERIES.keys() if s in sdf["_sport"].values]
+
+            nav_col, card_col = st.columns([1, 4])
+
+            with nav_col:
+                # Use radio for sport selection - no rerun issues
+                sport_options = ["All sports"] + sports_present
+                sel_sport = st.radio(
+                    "sport", sport_options, index=0,
+                    label_visibility="collapsed",
+                    key=f"radio_sport_{cat}"
                 )
-            else:
-                render_cards(filter_data(cat, None, None, filtered))
-        else:
-            # Layout: left column for subcategories, right for cards
-            _left, _right = st.columns([1, 4])
 
-            with _left:
-                subcat_key    = f"subcat_{cat}"
-                subsubcat_key = f"subsubcat_{cat}"
-                if subcat_key not in st.session_state:
-                    st.session_state[subcat_key] = subcats[0]
-                if subsubcat_key not in st.session_state:
-                    st.session_state[subsubcat_key] = "All"
-
-                selected_subcat    = st.session_state[subcat_key]
-                selected_subsubcat = st.session_state[subsubcat_key]
-
-                for sc in subcats:
-                    clean = sc.replace("🏟️ ","").replace("⚽","").replace("🏀","")                               .replace("⚾","").replace("🏈","").replace("🏒","")                               .replace("🎾","").replace("⛳","").replace("🥊","")                               .replace("🏏","").replace("🎮","").replace("🏎️","")                               .replace("♟️","").replace("🏉","").replace("🥍","")                               .replace("🎯","").replace("⛵","").strip()
-                    is_active = selected_subcat == sc
-                    expand_key = f"expand_{cat}_{sc}"
-                    if expand_key not in st.session_state:
-                        st.session_state[expand_key] = False
-                    is_expanded = st.session_state[expand_key]
-
-                    if cat == "Sports" and sc != "All sports":
-                        cnt = int((filtered["_sport"] == sc).sum())
-                    elif cat == "Sports" and sc == "All sports":
-                        cnt = int(filtered["_is_sport"].sum())
+                # If a sport with children is selected, show competition radio
+                sel_comp = "All"
+                if sel_sport and sel_sport != "All sports":
+                    sport_df = sdf[sdf["_sport"]==sel_sport].copy()
+                    if sel_sport == "Soccer":
+                        comps = sorted([c for c in sport_df["_soccer_comp"].unique() if c and c not in ("Other","")])
+                        children = ["All"] + comps
                     else:
-                        cnt = len(filtered)
+                        tabs_def = SPORT_SUBTABS.get(sel_sport, [])
+                        if tabs_def:
+                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
+                            sport_df["_subtab"] = sport_df["_series"].apply(lambda s: lookup.get(s,"Other"))
+                            children = ["All"] + [t for t,_ in tabs_def if (sport_df["_subtab"]==t).any()]
+                        else:
+                            children = []
+                    if len(children) > 1:
+                        sel_comp = st.radio(
+                            "comp", children, index=0,
+                            label_visibility="collapsed",
+                            key=f"radio_comp_{sel_sport}"
+                        )
 
-                    subsubcats = get_subsubcats(cat, sc, filtered)
-                    has_children = bool(subsubcats)
-                    arrow = " ▾" if (is_expanded and has_children) else (" ▸" if has_children else "")
-                    color  = "#00ff00" if is_active else "#ffffff"
-                    weight = "bold" if is_active else "normal"
-
-                    # Text via markdown (no button styling issues)
-                    st.markdown(
-                        f"<div style='color:{color};font-weight:{weight};font-size:13px;"
-                        f"margin:2px 0;padding:0;font-family:Helvetica,Arial,sans-serif;"
-                        f"cursor:pointer;'>{clean} ({cnt}){arrow}</div>",
-                        unsafe_allow_html=True
-                    )
-                    # Invisible button for click detection
-                    if st.button("​", key=f"sc_{cat}_{sc}", use_container_width=True):
-                        if has_children:
-                            st.session_state[expand_key] = not is_expanded
-                        st.session_state[subcat_key] = sc
-                        st.session_state[subsubcat_key] = "All"
-                        st.rerun()
-
-                    if is_expanded and has_children:
-                        for ssc in subsubcats:
-                            is_ssc = selected_subsubcat == ssc
-                            sc2 = "#00ff00" if is_ssc else "#888888"
-                            pre = "▸ " if is_ssc else ""
-                            st.markdown(
-                                f"<div style='color:{sc2};font-size:12px;margin:1px 0;"
-                                f"padding-left:14px;font-family:Helvetica,Arial,sans-serif;'>"
-                                f"{pre}{ssc}</div>",
-                                unsafe_allow_html=True
-                            )
-                            if st.button("​", key=f"ssc_{cat}_{sc}_{ssc}", use_container_width=True):
-                                st.session_state[subcat_key] = sc
-                                st.session_state[subsubcat_key] = ssc
-                                st.rerun()
-            with _right:
-                selected_subcat  = st.session_state.get(subcat_key, subcats[0])
-                selected_subsubcat = st.session_state.get(subsubcat_key, "All")
-                view = filter_data(cat, selected_subcat, selected_subsubcat, filtered)
+            with card_col:
+                if sel_sport == "All sports":
+                    view = sdf
+                else:
+                    view = sdf[sdf["_sport"]==sel_sport].copy()
+                    if sel_comp and sel_comp != "All":
+                        if sel_sport == "Soccer":
+                            view = view[view["_soccer_comp"]==sel_comp]
+                        else:
+                            lookup = SERIES_TO_SUBTAB.get(sel_sport, {})
+                            view["_subtab"] = view["_series"].apply(lambda x: lookup.get(x,"Other"))
+                            view = view[view["_subtab"]==sel_comp]
                 render_cards(view)
+
+        else:
+            render_cards(filtered[filtered["category"]==cat].copy())
 
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
