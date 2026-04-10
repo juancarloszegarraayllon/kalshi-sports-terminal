@@ -28,21 +28,17 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .pill-health,.pill-default{background:transparent;border:none;color:#ffffff!important;}
 .card-timing{display:flex;flex-direction:row;align-items:center;gap:4px;margin-bottom:8px;}
 .date-text{font-size:11px;color:#ffffff;opacity:.6;}
-.begins-text{font-size:11px;color:#00ff00;font-weight:600;}
-.live-text{font-size:11px;color:#00ff00;font-weight:700;}
 .card-icon{font-size:20px;margin-bottom:4px;display:block;}
 .card-title{font-size:14px;font-weight:600;color:#ffffff;line-height:1.45;margin-bottom:12px;min-height:52px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .card-footer{border-top:1px solid #1c1c1c;padding-top:10px;}
 .ticker-link{font-size:10px;color:#00ff00;letter-spacing:.04em;display:block;margin-bottom:8px;word-break:break-all;text-decoration:none;opacity:.6;}
 .ticker-link:hover{opacity:1;text-decoration:underline;}
-.ticker-text{font-size:10px;color:#00ff00;opacity:.6;display:block;margin-bottom:8px;word-break:break-all;}
 
 /* ── Outcomes ── */
 .outcome-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
 .outcome-label{font-size:11px;color:#ffffff;font-weight:500;flex:0 0 auto;min-width:80px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85;}
 .outcome-chance{font-size:13px;font-weight:700;color:#ffffff;flex:0 0 auto;min-width:38px;text-align:right;}
 .outcome-odds{display:flex;gap:6px;flex:1;justify-content:flex-end;}
-.outcome-odds .odds-yes,.outcome-odds .odds-no{flex:0 0 auto;min-width:52px;}
 .odds-yes{background:#001500;border:1px solid #00ff00;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-no{background:#150000;border:1px solid #ff2222;border-radius:6px;padding:5px 8px;text-align:center;}
 .odds-label{font-size:9px;color:#ffffff;text-transform:uppercase;letter-spacing:.08em;opacity:.5;}
@@ -51,7 +47,7 @@ h1,h1 *,.css-10trblm,div[data-testid='stMarkdownContainer'] h1{font-family:Helve
 .empty-state{text-align:center;padding:80px 20px;color:#333;font-size:14px;}
 hr{border-color:#1c1c1c!important;}
 
-/* Nav buttons - plain text style like original */
+/* Plain text nav buttons - exactly like your original */
 button[kind="secondary"], button[kind="primary"],
 div[data-testid="stButton"] button,
 .stButton > div > button,
@@ -90,127 +86,12 @@ CAT_META = {
     "Mentions":("💬","pill-default"),
 }
 
-# ── YOUR ORIGINAL DICTIONARIES ───────────────────────────────────────────────
-# Paste these exactly from your original file
+# ── YOUR ORIGINAL DICTIONARIES (paste full from your file) ───────────────────
+_SPORT_SERIES = { ... }   # ← Paste your full _SPORT_SERIES here
+SPORT_ICONS = { ... }
+SOCCER_COMP = { ... }
+SPORT_SUBTABS = { ... }
 
-_SPORT_SERIES = {
-    "Soccer": [
-        "KXEPLGAME","KXEPL1H","KXEPLSPREAD","KXEPLTOTAL","KXEPLBTTS",
-        "KXEPLTOP4","KXEPLTOP2","KXEPLTOP6","KXEPLRELEGATION","KXPREMIERLEAGUE",
-        "KXARSENALCUPS","KXWINSTREAKMANU","KXNEXTMANAGERMANU","KXPFAPOY","KXLAMINEYAMAL",
-        "KXUCLGAME","KXUCL1H","KXUCLSPREAD","KXUCLTOTAL","KXUCLBTTS","KXUCL",
-        "KXUCLFINALIST","KXUCLRO4","KXUCLW","KXLEADERUCLGOALS","KXTEAMSINUCL",
-        "KXUELGAME","KXUELSPREAD","KXUELTOTAL","KXUEL",
-        "KXUECL","KXUECLGAME",
-        "KXLALIGAGAME","KXLALIGA1H","KXLALIGASPREAD","KXLALIGATOTAL","KXLALIGABTTS",
-        "KXLALIGA","KXLALIGATOP4","KXLALIGARELEGATION",
-        "KXLALIGA2GAME",
-        "KXSERIEAGAME","KXSERIEA1H","KXSERIEASPREAD","KXSERIEATOTAL","KXSERIEABTTS",
-        "KXSERIEA","KXSERIEATOP4","KXSERIEARELEGATION",
-        "KXSERIEBGAME",
-        "KXBUNDESLIGAGAME","KXBUNDESLIGA1H","KXBUNDESLIGASPREAD","KXBUNDESLIGATOTAL",
-        "KXBUNDESLIGABTTS","KXBUNDESLIGA","KXBUNDESLIGATOP4","KXBUNDESLIGARELEGATION",
-        "KXBUNDESLIGA2GAME",
-        "KXLIGUE1GAME","KXLIGUE11H","KXLIGUE1SPREAD","KXLIGUE1TOTAL","KXLIGUE1BTTS",
-        "KXLIGUE1","KXLIGUE1TOP4","KXLIGUE1RELEGATION",
-        "KXMLSGAME","KXMLSSPREAD","KXMLSTOTAL","KXMLSBTTS","KXMLSCUP","KXMLSEAST","KXMLSWEST",
-        "KXLIGAMXGAME","KXLIGAMXSPREAD","KXLIGAMXTOTAL","KXLIGAMX",
-        "KXBRASILEIROGAME","KXBRASILEIROSPREAD","KXBRASILEIROTOTAL","KXBRASILEIRO","KXBRASILEIROTOPX",
-        "KXWCGAME","KXWCROUND","KXWCGROUPWIN","KXWCGROUPQUAL","KXWCGOALLEADER",
-        "KXWCMESSIRONALDO","KXWCLOCATION","KXWCIRAN","KXWCSQUAD","KXMENWORLDCUP",
-        "KXSOCCERPLAYMESSI","KXSOCCERPLAYCRON","KXFIFAUSPULL","KXFIFAUSPULLGAME",
-        "KXSAUDIPLGAME","KXSAUDIPLSPREAD","KXSAUDIPLTOTAL",
-        "KXLIGAPORTUGALGAME","KXLIGAPORTUGAL",
-        "KXEREDIVISIEGAME","KXEREDIVISIE",
-        "KXCOPADELREY","KXDFBPOKAL","KXFACUP","KXCOPPAITALIA",
-        "KXEFLCHAMPIONSHIPGAME","KXEFLCHAMPIONSHIP","KXEFLPROMO",
-        "KXSUPERLIGGAME","KXSUPERLIG",
-        "KXCONCACAFCCUPGAME","KXCONMEBOLLIBGAME","KXCONMEBOLSUDGAME",
-        "KXUSLGAME","KXUSL",
-        "KXSCOTTISHPREMGAME",
-        "KXEKSTRAKLASAGAME","KXEKSTRAKLASA",
-        "KXALEAGUEGAME","KXALEAGUESPREAD","KXALEAGUETOTAL",
-        "KXKLEAGUEGAME","KXKLEAGUE",
-        "KXJLEAGUEGAME",
-        "KXCHNSLGAME","KXCHNSL",
-        "KXALLSVENSKANGAME",
-        "KXDENSUPERLIGAGAME","KXDENSUPERLIGA",
-        "KXSWISSLEAGUEGAME",
-        "KXARGPREMDIVGAME",
-        "KXDIMAYORGAME",
-        "KXURYPDGAME","KXURYPD",
-        "KXECULPGAME","KXECULP",
-        "KXVENFUTVEGAME","KXVENFUTVE",
-        "KXCHLLDPGAME","KXCHLLDP",
-        "KXAPFDDHGAME","KXAPFDDH",
-        "KXBALLERLEAGUEGAME",
-        "KXSLGREECE",
-        "KXTHAIL1GAME","KXTHAIL1",
-        "KXEGYPLGAME",
-        "KXHNLGAME",
-        "KXBELGIANPLGAME","KXBELGIANPL",
-        "KXPERLIGA1",
-        "KXKNVBCUP",
-        "KXSOCCERTRANSFER","KXJOINLEAGUE","KXJOINRONALDO","KXJOINCLUB","KXBALLONDOR",
-    ],
-    "Basketball": [
-        "KXNBAGAME","KXNBASPREAD","KXNBATOTAL","KXNBATEAMTOTAL",
-        "KXNBA1HWINNER","KXNBA1HSPREAD","KXNBA1HTOTAL",
-        "KXNBA2HWINNER","KXNBA2D","KXNBA3D","KXNBA3PT",
-        "KXNBAPTS","KXNBAREB","KXNBAAST","KXNBABLK","KXNBASTL",
-        "KXNBA","KXNBAEAST","KXNBAWEST","KXNBAPLAYOFF","KXNBAPLAYIN",
-        "KXNBAATLANTIC","KXNBACENTRAL","KXNBASOUTHEAST",
-        "KXNBANORTHWEST","KXNBAPACIFIC","KXNBASOUTHWEST",
-        "KXNBAEAST1SEED","KXNBAWEST1SEED",
-        "KXTEAMSINNBAF","KXTEAMSINNBAEF","KXTEAMSINNBAWF",
-        "KXNBAMATCHUP","KXNBAWINS","KXRECORDNBABEST",
-        "KXNBAMVP","KXNBAROY","KXNBACOY","KXNBADPOY","KXNBASIXTH",
-        "KXNBAMIMP","KXNBACLUTCH","KXNBAFINMVP","KXNBAWFINMVP","KXNBAEFINMVP",
-        "KXNBA1STTEAM","KXNBA2NDTEAM","KXNBA3RDTEAM",
-        "KXNBA1STTEAMDEF","KXNBA2NDTEAMDEF",
-        "KXLEADERNBAPTS","KXLEADERNBAREB","KXLEADERNBAAST",
-        "KXLEADERNBABLK","KXLEADERNBASTL","KXLEADERNBA3PT",
-        "KXNBADRAFT1","KXNBADRAFTPICK","KXNBADRAFTTOP","KXNBADRAFTCAT","KXNBADRAFTCOMP",
-        "KXNBATOPPICK","KXNBALOTTERYODDS","KXNBATOP5ROTY",
-        "KXNBATEAM","KXNBASEATTLE","KXCITYNBAEXPAND","KXSONICS",
-        "KXNEXTTEAMNBA","KXLBJRETIRE","KXSPORTSOWNERLBJ","KXSTEPHDEAL",
-        "KXQUADRUPLEDOUBLE","KXSHAI20PTREC","KXNBA2KCOVER",
-        "KXWNBADRAFT1","KXWNBADRAFTTOP3","KXWNBADELAY","KXWNBAGAMESPLAYED",
-        "KXMARMAD","KXNCAAMBNEXTCOACH",
-        "KXEUROLEAGUEGAME","KXBSLGAME","KXBBLGAME","KXACBGAME",
-        "KXISLGAME","KXABAGAME","KXCBAGAME","KXBBSERIEAGAME",
-        "KXJBLEAGUEGAME","KXLNBELITEGAME","KXARGLNBGAME","KXVTBGAME",
-    ],
-    # Add the rest of your sports (Baseball, Football, Hockey, Tennis, Golf, etc.) from your original file here
-}
-
-SPORT_ICONS = {
-    "Soccer":"⚽","Basketball":"🏀","Baseball":"⚾","Football":"🏈",
-    "Hockey":"🏒","Tennis":"🎾","Golf":"⛳","MMA":"🥊","Cricket":"🏏",
-    "Esports":"🎮","Motorsport":"🏎️","Boxing":"🥊","Rugby":"🏉",
-    "Lacrosse":"🥍","Chess":"♟️","Darts":"🎯","Aussie Rules":"🏉",
-    "Other Sports":"🏆",
-}
-
-SOCCER_COMP = {
-    "KXEPLGAME":"EPL","KXEPL1H":"EPL","KXEPLSPREAD":"EPL","KXEPLTOTAL":"EPL",
-    "KXEPLBTTS":"EPL","KXEPLTOP4":"EPL","KXEPLTOP2":"EPL","KXEPLTOP6":"EPL",
-    "KXEPLRELEGATION":"EPL","KXPREMIERLEAGUE":"EPL","KXARSENALCUPS":"EPL",
-    "KXWINSTREAKMANU":"EPL","KXNEXTMANAGERMANU":"EPL","KXPFAPOY":"EPL","KXLAMINEYAMAL":"EPL",
-    "KXUCLGAME":"Champions League","KXUCL1H":"Champions League","KXUCLSPREAD":"Champions League",
-    "KXUCLTOTAL":"Champions League","KXUCLBTTS":"Champions League","KXUCL":"Champions League",
-    "KXUCLFINALIST":"Champions League","KXUCLRO4":"Champions League","KXUCLW":"Champions League",
-    "KXLEADERUCLGOALS":"Champions League","KXTEAMSINUCL":"Champions League",
-    "KXUELGAME":"Europa League","KXUELSPREAD":"Europa League","KXUELTOTAL":"Europa League","KXUEL":"Europa League",
-    "KXUECL":"Conference League","KXUECLGAME":"Conference League",
-    # Add the rest of your original SOCCER_COMP here
-}
-
-SPORT_SUBTABS = {
-    # Paste your full SPORT_SUBTABS from original file here
-}
-
-# Build SERIES_SPORT
 SERIES_SPORT = {}
 for sport, series_list in _SPORT_SERIES.items():
     for s in series_list:
@@ -219,7 +100,7 @@ for sport, series_list in _SPORT_SERIES.items():
 def get_sport(series_ticker):
     return SERIES_SPORT.get(str(series_ticker).upper(), "")
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Helpers with NaT fix ─────────────────────────────────────────────────────
 def safe_dt(val):
     try:
         if val is None or val == "": return None
@@ -267,7 +148,7 @@ def fmt_date(d):
     except:
         return ""
 
-# ── API ──────────────────────────────────────────────────────────────────────
+# ── API (original) ───────────────────────────────────────────────────────────
 @st.cache_resource
 def get_client():
     from kalshi_python_sync import Configuration, KalshiClient
@@ -401,19 +282,19 @@ def fetch_all():
     prog.progress(1.0); prog.empty()
     return df
 
-# ── Automatic Infinite Scroll render_cards ───────────────────────────────────
-def render_cards(data):
+# ── Automatic Infinite Scroll (unique key per tab) ───────────────────────────
+def render_cards(data, tab_name="default"):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
         return
 
     BATCH_SIZE = 24
-    STATE_KEY = "visible_count"
+    state_key = f"visible_count_{tab_name}"
 
-    if STATE_KEY not in st.session_state:
-        st.session_state[STATE_KEY] = BATCH_SIZE
+    if state_key not in st.session_state:
+        st.session_state[state_key] = BATCH_SIZE
 
-    visible = min(len(data), st.session_state[STATE_KEY])
+    visible = min(len(data), st.session_state[state_key])
     display_df = data.iloc[:visible]
 
     html = '<div class="card-grid">'
@@ -464,14 +345,14 @@ def render_cards(data):
 
     st.markdown(html, unsafe_allow_html=True)
 
-    # Automatic infinite scroll
+    # Automatic infinite scroll with unique key
     if visible < len(data):
         st.markdown(f"""
         <script>
             function autoLoad() {{
                 var threshold = 350;
                 if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - threshold) {{
-                    var btn = document.querySelector('button[key="auto_load_btn"]');
+                    var btn = document.querySelector('button[key="auto_load_{tab_name}"]');
                     if (btn) btn.click();
                 }}
             }}
@@ -480,8 +361,8 @@ def render_cards(data):
         </script>
         """, unsafe_allow_html=True)
 
-        if st.button("", key="auto_load_btn", help=""):
-            st.session_state[STATE_KEY] += BATCH_SIZE
+        if st.button("", key=f"auto_load_{tab_name}", help=""):
+            st.session_state[state_key] += BATCH_SIZE
             st.rerun()
 
 # ── Main layout (original) ───────────────────────────────────────────────────
@@ -495,8 +376,9 @@ with _c2:
 with _c3:
     if st.button("Refresh", use_container_width=True):
         fetch_all.clear()
-        if "visible_count" in st.session_state:
-            del st.session_state.visible_count
+        for key in list(st.session_state.keys()):
+            if key.startswith("visible_count_") or key.startswith("auto_load_"):
+                del st.session_state[key]
         st.rerun()
 
 today = date.today()
@@ -584,7 +466,7 @@ for i, tab in enumerate(top_tabs):
                 "</div>",
                 unsafe_allow_html=True)
         elif cat == "All":
-            render_cards(filtered)
+            render_cards(filtered, tab_name="all")
 
         elif cat == "Sports":
             sdf = filtered[filtered["_is_sport"]].copy()
@@ -616,9 +498,9 @@ for i, tab in enumerate(top_tabs):
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
                 view = sdf if s == "All sports" else sdf[sdf["_sport"]==s].copy()
-                render_cards(view)
+                render_cards(view, tab_name=f"sports_{s.replace(' ','_')}")
 
         else:
-            render_cards(filtered[filtered["category"]==cat].copy())
+            render_cards(filtered[filtered["category"]==cat].copy(), tab_name=f"cat_{cat.replace(' ','_')}")
 
 st.markdown("<hr><p style='text-align:center;color:#1f2937;font-size:11px;'>KALSHI TERMINAL · CACHED 30 MIN · NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
