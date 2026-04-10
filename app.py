@@ -125,23 +125,7 @@ div[data-testid="stRadio"] label > div:first-child {
     width:0!important;
     height:0!important;
 }
-/* Invisible nav trigger buttons - overlaid on text */
-button:not([role="tab"]) {
-    opacity:0!important;
-    height:24px!important;
-    min-height:0!important;
-    padding:0!important;
-    margin:-32px 0 8px 0!important;
-    border:none!important;
-    background:transparent!important;
-    box-shadow:none!important;
-    width:100%!important;
-    cursor:pointer!important;
-    display:block!important;
-    pointer-events:auto!important;
-    position:relative!important;
-    z-index:999!important;
-}
+
 
 /* ── Streamlit overrides ── */
 .stTextInput input{background:#0a0a0a!important;color:#ffffff!important;border:1px solid #1c1c1c!important;border-radius:6px!important;}
@@ -1171,7 +1155,6 @@ for i, tab in enumerate(top_tabs):
             nav_col, card_col = st.columns([1, 4])
 
             with nav_col:
-                # Track selections in session state
                 sport_key = "sel_sport"
                 comp_key  = "sel_comp"
                 if sport_key not in st.session_state:
@@ -1182,7 +1165,6 @@ for i, tab in enumerate(top_tabs):
                 sel_sport = st.session_state[sport_key]
                 sel_comp  = st.session_state[comp_key]
 
-                # Build children map for each sport
                 def get_children(sport, df):
                     sdf2 = df[df["_sport"]==sport].copy()
                     if sport == "Soccer":
@@ -1196,51 +1178,55 @@ for i, tab in enumerate(top_tabs):
                         return ["All"] + ch if ch else []
                     return []
 
-                # Render each sport as a radio item, with children inline below
+                # Build entire nav as one HTML block with clickable spans
+                # Use st.query_params to communicate clicks back to Streamlit
                 all_items = ["All sports"] + sports_present
+                
+                nav_html = "<div style='font-family:Helvetica,Arial,sans-serif;line-height:1;'>"
                 for item in all_items:
                     is_sel = sel_sport == item
                     color  = "#00ff00" if is_sel else "#ffffff"
-                    weight = "bold" if is_sel else "normal"
+                    weight = "700" if is_sel else "400"
                     cnt    = len(sdf) if item == "All sports" else int((sdf["_sport"]==item).sum())
                     children = [] if item == "All sports" else get_children(item, sdf)
                     arrow  = " ▾" if (is_sel and children) else (" ▸" if children else "")
-
-                    st.markdown(
-                        f"<div style='color:{color};font-weight:{weight};"
-                        f"font-size:13px;padding:2px 0 0 0;margin:0;font-family:Helvetica,Arial,sans-serif;'>"
-                        f"{item} ({cnt}){arrow}</div>",
-                        unsafe_allow_html=True
+                    
+                    js_main = f"window.parent.location.href=window.parent.location.pathname+'?sp={item}&cp=All'"
+                    nav_html += (
+                        "<div style='padding:6px 0 0 0;'>"
+                        f"<span onclick='{js_main}' "
+                        f"style='color:{color};font-weight:{weight};font-size:13px;cursor:pointer;'>"
+                        f"{item} ({cnt}){arrow}</span></div>"
                     )
-                    if st.button(f"_{item}", key=f"sp_{item}", use_container_width=True):
-                        if item == "All sports":
-                            st.session_state[sport_key] = "All sports"
-                        elif st.session_state[sport_key] == item:
-                            # Clicking active sport collapses it back to All
-                            st.session_state[sport_key] = "All sports"
-                        else:
-                            st.session_state[sport_key] = item
-                        st.session_state[comp_key] = "All"
-                        st.rerun()
-
-                    # Show children inline right below this sport
                     if is_sel and children:
                         for child in children:
                             is_c  = sel_comp == child
                             cc    = "#00ff00" if is_c else "#888888"
-                            cw    = "bold" if is_c else "normal"
+                            cw    = "700" if is_c else "400"
                             pre   = "▸ " if is_c else ""
-                            st.markdown(
-                                f"<div style='color:{cc};font-weight:{cw};"
-                                f"font-size:12px;padding:1px 0 1px 14px;margin:0;"
-                                f"font-family:Helvetica,Arial,sans-serif;'>{pre}{child}</div>",
-                                unsafe_allow_html=True
+                            js_child = f"window.parent.location.href=window.parent.location.pathname+'?sp={item}&cp={child}'"
+                            nav_html += (
+                                "<div style='padding:4px 0 0 14px;'>"
+                                f"<span onclick='{js_child}' "
+                                f"style='color:{cc};font-weight:{cw};font-size:12px;cursor:pointer;'>"
+                                f"{pre}{child}</span></div>"
                             )
-                            if st.button(f"_{item}_{child}", key=f"cp_{item}_{child}",
-                                         use_container_width=True):
-                                st.session_state[sport_key] = item
-                                st.session_state[comp_key]  = child
-                                st.rerun()
+                nav_html += "</div>"
+                st.markdown(nav_html, unsafe_allow_html=True)
+
+                # Read query params set by the onclick
+                qp = st.query_params
+                if "sp" in qp:
+                    new_sp = qp.get("sp", "All sports")
+                    new_cp = qp.get("cp", "All")
+                    # Toggle collapse if clicking active sport
+                    if new_sp == sel_sport and new_cp == "All":
+                        new_sp = "All sports"
+                    if new_sp != sel_sport or new_cp != sel_comp:
+                        st.session_state[sport_key] = new_sp
+                        st.session_state[comp_key]  = new_cp
+                        st.query_params.clear()
+                        st.rerun()
 
             with card_col:
                 s = st.session_state.get("sel_sport", "All sports")
