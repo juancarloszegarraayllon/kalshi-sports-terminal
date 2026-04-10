@@ -59,19 +59,20 @@ CAT_META = {
     "Mentions":("💬","pill-default"),
 }
 
-# ==================== PASTE YOUR ORIGINAL DICTIONARIES HERE ====================
-# Copy from your original app (43).py and paste them below
+# ==================== YOUR ORIGINAL DICTIONARIES (PASTE HERE) ====================
+# Copy these exactly from your original app (43).py file
 
 _SPORT_SERIES = {
-    "Soccer": [ ... ],   # ← PASTE ALL YOUR DATA HERE
-    "Basketball": [ ... ],
+    # Paste the entire _SPORT_SERIES dictionary here (Soccer, Basketball, etc.)
+    "Soccer": [...],   # your full list
+    "Basketball": [...],
     # ... all other sports
 }
 
-SPORT_ICONS = { ... }      # ← Paste full
-SOCCER_COMP = { ... }      # ← Paste full
-SPORT_SUBTABS = { ... }    # ← Paste full
-CAT_TAGS = { ... }         # ← Paste full if you use it
+SPORT_ICONS = { ... }      # Paste full
+SOCCER_COMP = { ... }      # Paste full
+SPORT_SUBTABS = { ... }    # Paste full
+CAT_TAGS = { ... }         # Paste full if needed
 
 # Build SERIES_SPORT
 SERIES_SPORT = {}
@@ -186,7 +187,6 @@ def fetch_all():
         lambda r: SOCCER_COMP.get(r["_series"],"Other") if r["_sport"]=="Soccer" else "", axis=1
     )
 
-    # Use your original extract logic here
     def extract(row):
         mkts = row.get("markets", [])
         if not mkts:
@@ -286,7 +286,7 @@ def render_cards(data, tab_name="default"):
 
     st.markdown(html, unsafe_allow_html=True)
 
-    # Automatic scroll loading
+    # Automatic infinite scroll
     if visible < len(data):
         st.markdown(f"""
         <script>
@@ -346,7 +346,7 @@ if "last_filter_hash" not in st.session_state or st.session_state.last_filter_ha
             del st.session_state[key]
     st.session_state.last_filter_hash = filter_hash
 
-# ── Tabs ─────────────────────────────────────────────────────────────────────
+# ── Tabs with Full Sports Navigation ─────────────────────────────────────────
 present_cats = [""] + ["All"] + [c for c in TOP_CATS
     if (c=="Sports" and int(df["_is_sport"].sum()) > 0) or (c != "Sports" and c in df["category"].values)]
 
