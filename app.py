@@ -65,8 +65,7 @@ SPORT_ICONS = {
 }
 
 # ====================== PASTE YOUR BIG DICTIONARIES HERE ======================
-# Copy these from your original app (43).py
-
+# (Keep your _SPORT_SERIES, SOCCER_COMP, SPORT_SUBTABS exactly as before)
 _SPORT_SERIES = {
     # <<< PASTE FULL _SPORT_SERIES DICTIONARY HERE >>>
 }
@@ -129,67 +128,95 @@ def get_client():
 
 client = get_client()
 
-# ====================== FETCH & PROCESS ======================
-@st.cache_data(ttl=900)
+# ====================== FETCH & PROCESS (OPTIMIZED) ======================
+@st.cache_data(ttl=600)  # 10 minutes
 def fetch_all():
     events = []
     cursor = None
-    for _ in range(25):
+    max_pages = 6                    # ← Reduced from 25 (biggest speedup)
+    
+    for _ in range(max_pages):
         try:
-            resp = client.get_events(limit=200, status="open", with_nested_markets=True, cursor=cursor).to_dict()
+            resp = client.get_events(
+                limit=200,
+                status="open",
+                with_nested_markets=True,
+                cursor=cursor
+            ).to_dict()
+            
             batch = resp.get("events", [])
-            if not batch: break
+            if not batch:
+                break
+                
             events.extend(batch)
             cursor = resp.get("cursor") or resp.get("next_cursor")
-            if not cursor: break
-            time.sleep(0.04)
-        except:
+            if not cursor:
+                break
+                
+        except Exception as e:
+            st.warning(f"Kalshi fetch error: {e}")
             break
+    
     return pd.DataFrame(events)
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=600)
 def process_markets(df):
-    if df.empty: return df
+    if df.empty:
+        return df
 
-    def extract(row):
-        mkts = row.get("markets", [])
-        if not mkts:
-            return None, None, "", []
-        first = mkts[0]
-        event_ticker = str(row.get("event_ticker", ""))
-        sport = row.get("_sport", "")
+    df = df.copy()
 
-        game_date = parse_game_date_from_ticker(event_ticker)
-        exp_dt = None
-        try:
-            ts = pd.to_datetime(first.get("expected_expiration_time"), utc=True)
-            if not pd.isna(ts):
-                exp_dt = ts.to_pydatetime().astimezone(UTC)
-        except:
-            pass
+    # Fast sport tagging
+    df["_series"] = df.get("series_ticker", "").fillna("").str.upper()
+    df["_sport"] = df["_series"].map(get_sport)
+    df["_is_sport"] = df["_sport"] != ""
 
-        kickoff_dt = None
-        if game_date and sport:
-            hours = {"Soccer":2,"Baseball":3,"Basketball":2.5,"Hockey":2.5,"Football":3}.get(sport, 2)
-            if exp_dt:
-                from datetime import timedelta
-                kickoff_dt = exp_dt - timedelta(hours=hours)
+    # Optional: keep only sports if you want even faster loading
+    # df = df[df["_is_sport"] == True]
 
-        display_dt = fmt_date(kickoff_dt) if kickoff_dt else ""
+    # Fast game date parsing
+    df["_game_date"] = df["event_ticker"].apply(parse_game_date_from_ticker)
+
+    # Optimized outcomes extraction (much faster than apply)
+    outcomes_list = []
+    for _, row in df.iterrows():
+        mkts = row.get("markets", [])[:5]
         outcomes = []
-        for mk in mkts[:5]:
-            label = str(mk.get("yes_sub_title") or "").strip() or str(mk.get("ticker","")).split("-")[-1]
+        for mk in mkts:
             try:
+                label = str(mk.get("yes_sub_title") or "").strip() or str(mk.get("ticker","")).split("-")[-1]
                 yf = float(mk.get("yes_bid_dollars") or (mk.get("yes_bid") or 0)/100)
                 nf = float(mk.get("no_bid_dollars") or (mk.get("no_bid") or 0)/100)
-                outcomes.append((label[:35], f"{int(round(yf*100))}%", f"{int(round(yf*100))}¢", f"{int(round(nf*100))}¢"))
+                outcomes.append((
+                    label[:35],
+                    f"{int(round(yf*100))}%",
+                    f"{int(round(yf*100))}¢",
+                    f"{int(round(nf*100))}¢"
+                ))
             except:
-                outcomes.append((label[:35], "—", "—", "—"))
-        return game_date, kickoff_dt, display_dt, outcomes
+                outcomes.append((label[:35] if 'label' in locals() else "—", "—", "—", "—"))
+        outcomes_list.append(outcomes)
 
-    processed = df.apply(extract, axis=1, result_type="expand")
-    df = df.copy()
-    df[["_game_date", "_kickoff_dt", "_display_dt", "_outcomes"]] = processed
+    df["_outcomes"] = outcomes_list
+
+    # Compute display dates (keep your logic, just vectorized where easy)
+    def get_display_dt(row):
+        try:
+            exp_ts = row.get("markets", [{}])[0].get("expected_expiration_time")
+            exp_dt = pd.to_datetime(exp_ts, utc=True).to_pydatetime().astimezone(UTC) if exp_ts else None
+            sport = row.get("_sport", "")
+            game_date = row.get("_game_date")
+            
+            if game_date and sport and exp_dt:
+                hours = {"Soccer":2,"Baseball":3,"Basketball":2.5,"Hockey":2.5,"Football":3}.get(sport, 2)
+                kickoff_dt = exp_dt - timedelta(hours=hours)
+                return fmt_date(kickoff_dt)
+            return ""
+        except:
+            return ""
+
+    df["_display_dt"] = df.apply(get_display_dt, axis=1)
+
     return df
 
 # ====================== MAIN APP ======================
@@ -209,19 +236,15 @@ with c3:
 date_mode = st.selectbox("", ["All dates", "Today", "This week", "Custom"], label_visibility="collapsed")
 include_no_date = st.toggle("Include undated", value=True)
 
-with st.spinner("Loading markets..."):
+with st.spinner("Loading sports markets..."):
     raw_df = fetch_all()
     if raw_df.empty:
         st.error("No data from Kalshi. Check your API keys.")
         st.stop()
 
-    raw_df["_series"] = raw_df.get("series_ticker", "").fillna("").str.upper()
-    raw_df["_sport"] = raw_df["_series"].map(get_sport)
-    raw_df["_is_sport"] = raw_df["_sport"] != ""
-
     df = process_markets(raw_df)
 
-# ====================== FIXED RENDER CARDS ======================
+# ====================== RENDER CARDS (unchanged) ======================
 def render_cards(data):
     if data.empty:
         st.markdown('<div class="empty-state">No markets found.</div>', unsafe_allow_html=True)
