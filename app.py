@@ -104,8 +104,8 @@ div[data-testid="stButton"] button:active,
 .stTabs [data-baseweb="tab-list"]{background:#000000;border-bottom:1px solid #00ff00;gap:2px;flex-wrap:wrap;}
 .stTabs [data-baseweb="tab"]{background:transparent;color:#555555;border:none;font-size:12px;padding:8px 14px;font-family:Helvetica,Arial,sans-serif!important;}
 .stTabs [aria-selected="true"]{background:#001500!important;color:#00ff00!important;border-radius:6px 6px 0 0;}
-/* Nav sport buttons - plain text, no box */
-[data-testid="column"]:first-of-type button[kind="secondary"] {
+/* All nav buttons - plain text, no box, no rectangle */
+button[kind="secondary"]:not([data-testid*="date"]) {
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
@@ -120,17 +120,18 @@ div[data-testid="stButton"] button:active,
     border-radius:0!important;
     min-height:0!important;
 }
-[data-testid="column"]:first-of-type button[kind="secondary"]:hover {
+button[kind="secondary"]:not([data-testid*="date"]):hover {
     background:transparent!important;
     color:#aaaaaa!important;
     border:none!important;
     box-shadow:none!important;
 }
-[data-testid="column"]:first-of-type button[kind="secondary"]:focus,
-[data-testid="column"]:first-of-type button[kind="secondary"]:active {
+button[kind="secondary"]:not([data-testid*="date"]):focus,
+button[kind="secondary"]:not([data-testid*="date"]):active {
     background:transparent!important;
     border:none!important;
     box-shadow:none!important;
+    outline:none!important;
 }
 /* Hide nav helper widgets */
 #nav_input, [data-testid="stTextInput"]:has(input#nav_input),
